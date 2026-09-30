@@ -1,0 +1,10 @@
+.local
+.env*
+.wrangler
+.sites-runtime
+.vinext
+dist
+node_modules
+.openai
+.next
+.demo

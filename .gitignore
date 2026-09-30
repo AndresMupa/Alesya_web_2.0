@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+.env*
+!.env.example
+.vercel/
+*.tsbuildinfo
+*.sqlite*
+*.db*
+.local/
+.next/
+dist/
+.demo/

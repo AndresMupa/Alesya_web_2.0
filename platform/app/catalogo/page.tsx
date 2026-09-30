@@ -1,0 +1,10 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { ManagedProducts } from "@/components/managed-products";
+import { catalogGroups, featuredProducts } from "@/lib/catalog";
+
+export default function CatalogPage() {
+  return <div className="site-shell"><div className="interior-header"><SiteHeader /></div><main><section className="page-hero"><div className="page-width"><p className="eyebrow eyebrow-light">Tienda educativa</p><h1>Herramientas para<br />ideas grandes.</h1><p>Kits, componentes, libros y experiencias organizados por su uso pedagógico.</p></div></section><section className="section page-width"><div className="category-grid">{catalogGroups.map(({ title, icon: Icon, detail }, index) => <a href="#productos" className="category-card" key={title}><span className="category-number">0{index + 1}</span><Icon size={29} /><h3>{title}</h3><p>{detail}</p><span className="round-arrow"><ArrowRight size={17} /></span></a>)}</div></section><section className="commerce-section" id="productos"><div className="page-width"><div className="section-heading split-heading"><div><p className="eyebrow">Selección Alesya</p><h2>Productos con ruta pedagógica.</h2></div><p>Cada producto puede relacionarse con proyectos, contenidos descargables y formación.</p></div><div className="product-grid">{featuredProducts.map((product) => <article className="product-card" key={product.slug}><div className="product-visual" data-tone={product.tone}><product.icon size={76} strokeWidth={1.15} />{product.badge && <span>{product.badge}</span>}</div><div className="product-copy"><p className="product-type">{product.type}</p><h3>{product.name}</h3><p>{product.description}</p><div className="product-footer"><strong>{product.price}</strong><Link href={`/checkout?producto=${product.slug}`}><ArrowRight size={19} /></Link></div></div></article>)}</div><ManagedProducts /></div></section></main><SiteFooter /></div>;
+}

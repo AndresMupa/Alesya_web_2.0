@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "alesya-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "platform"
+      ],
+      "port": 5173,
+      "url": "http://127.0.0.1:5173"
+    }
+  ]
+}
