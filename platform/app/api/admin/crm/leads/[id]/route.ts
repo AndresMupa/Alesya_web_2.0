@@ -14,6 +14,9 @@ const patchSchema = z.object({
   phone: nullableText(60), city: nullableText(100), website: nullableText(300), owner: nullableText(120),
   priority: z.enum(leadPriorityValues), stage: z.enum(leadStageValues), notes: z.string().trim().max(4000),
   lastContact: day, nextFollowUp: day, estimatedValue: z.coerce.number().int().min(0).max(10_000_000_000), lostReason: nullableText(160),
+  nextAction: nullableText(200), expectedClose: day, students: z.coerce.number().int().min(0).max(100_000), program: nullableText(120), decisionMaker: nullableText(160),
+  grades: nullableText(80), sector: z.union([z.enum(["privado", "publico"]), z.null()]), calendar: z.union([z.enum(["A", "B"]), z.null()]), techLevel: z.union([z.enum(["ninguno", "basico", "avanzado"]), z.null()]),
+  budgetRange: z.union([z.enum(["desconocido", "menos_5m", "5_20m", "20_50m", "mas_50m"]), z.null()]), painPoints: z.string().trim().max(2000), competitors: nullableText(200),
 }).partial().extend({ asesor: z.string().trim().max(80).optional() }).refine((value) => Object.keys(value).some((key) => key !== "asesor"));
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

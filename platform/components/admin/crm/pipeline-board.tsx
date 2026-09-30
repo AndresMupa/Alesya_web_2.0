@@ -4,12 +4,13 @@ import { useRef, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { send } from "@/components/admin/kit";
 import { leadPriorityLabel, lostReasons } from "@/lib/crm/constants";
+import { scoreGrade } from "@/lib/crm/score";
 import { bogotaDay, daysSince, formatDay, formatMoneyCompact } from "@/lib/format";
 
 /** Días en la misma etapa a partir de los cuales una oportunidad abierta se marca como estancada. */
 const STALE_DAYS = 14;
 
-export type PipelineCard = { id: string; name: string; organization: string; city: string | null; stage: string; priority: string; owner: string | null; estimatedValueInCents: number; nextFollowUp: string | null; lastContact: string | null; source: string; phone: string | null; email: string | null; stageChangedAt: string | null };
+export type PipelineCard = { id: string; name: string; organization: string; city: string | null; stage: string; priority: string; owner: string | null; estimatedValueInCents: number; nextFollowUp: string | null; lastContact: string | null; source: string; phone: string | null; email: string | null; stageChangedAt: string | null; score: number; nextAction: string | null; expectedClose: string | null; students: number; program: string | null };
 export type PipelineColumn = { stage: string; label: string; cards: PipelineCard[]; total: number; valueInCents: number };
 
 const hints: Record<string, string> = { new: "Entrantes sin atender", contacted: "Primer contacto hecho", meeting: "Reunión agendada o hecha", proposal: "Propuesta enviada", won: "Últimos 60 días", lost: "Últimos 60 días" };
@@ -63,8 +64,9 @@ export function PipelineBoard({ columns, onOpen, onMoved }: { columns: PipelineC
                 onDragStart={(event) => { dragged.current = card; event.dataTransfer.effectAllowed = "move"; }}
                 onDragEnd={() => { dragged.current = null; setTarget(null); }}
                 onClick={() => onOpen(card.id)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(card.id); }} tabIndex={0} role="button" aria-label={`Abrir ${card.organization}`}>
-                <strong>{card.organization}</strong>
-                <span>{card.name}{card.city && ` · ${card.city}`}</span>
+                <strong><b className="adm-score" data-grade={scoreGrade(card.score)} title={`Puntaje ${card.score}/100`}>{scoreGrade(card.score)}</b>{card.organization}</strong>
+                <span>{card.name}{card.city && ` · ${card.city}`}{card.students > 0 && ` · ${card.students.toLocaleString("es-CO")} est.`}</span>
+                {card.nextAction && !["won", "lost"].includes(card.stage) && <small className="adm-pipe-next">→ {card.nextAction}</small>}
                 <div className="adm-pipe-meta">
                   <i title={`Prioridad ${leadPriorityLabel(card.priority).toLowerCase()}`} data-priority={card.priority} />
                   {card.estimatedValueInCents > 0 && <b>{formatMoneyCompact(card.estimatedValueInCents)}</b>}

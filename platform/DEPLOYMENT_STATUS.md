@@ -84,6 +84,16 @@ SMTP_PASS
 MAIL_FROM=Alesya X-Tech <comercial@alesyaediciones.com>
 ```
 
+### Resumen diario del CRM (cron)
+
+Con `CRON_SECRET` definido (una cadena aleatoria de al menos 16 caracteres, p. ej. `openssl rand -hex 24`), en cPanel → **Trabajos de cron** crear uno diario (por ejemplo 7:00) con:
+
+```sh
+wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/daily?token=EL_SECRETO"
+```
+
+Envía al correo de avisos (`/admin/configuracion`) los seguimientos del día, entrantes sin atender, oportunidades sin siguiente acción y cotizaciones por vencer. Requiere el correo SMTP configurado; sin él responde con el resumen en JSON pero no envía nada.
+
 Las variables `SMTP_*` y `MAIL_FROM` activan el correo transaccional (pedido recibido, pago confirmado, envío y avisos al equipo). Se obtienen en cPanel → **Cuentas de correo** → *Connect Devices* de la cuenta que enviará; sin ellas la tienda funciona igual pero no envía correos (Integraciones lo indica). Después de pegarlas, **Restart** y probar con **Configuración → Enviar correo de prueba**.
 
 Las credenciales de `/admin` se generan con `npm run admin:setup -- --production --force correo@dominio.co` (quedan en `.local/admin-cpanel.txt`); después de pegarlas hay que pulsar **Restart**. Los valores secretos no deben escribirse en este documento.
