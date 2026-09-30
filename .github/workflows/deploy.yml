@@ -1,9 +1,11 @@
 # Despliegue a cPanel en cada push a la rama de producción (o a mano desde Actions).
 #
-# La cuenta de cPanel solo permite SFTP (sin shell), así que todo se hace por SFTP con lftp:
+# La cuenta de cPanel no tiene shell: se usa SFTP (lftp) y, si hay token, la API de cPanel.
 #   1. Reutiliza ci.yml (lint + build).
 #   2. npm run package:cpanel: paquete linux x64 validado y con smoke test (Docker del runner).
-#   3. Lo extrae en el runner y sube la carpeta a <APP_DIR>.release-<commit>.
+#   3. Lleva el paquete a <APP_DIR>.release-<commit>:
+#      - con CPANEL_API_TOKEN: sube un solo .tar.gz por SFTP y cPanel lo extrae (rápido);
+#      - sin token: sube los ~2000 archivos uno a uno por SFTP (lento).
 #   4. Intercambia carpetas con dos renombrados (la versión anterior queda en <APP_DIR>.previous).
 #   5. Sube tmp/restart.txt para que la app reinicie; bootstrap.mjs aplica las migraciones al arrancar.
 #   6. Comprueba que el sitio sirva archivos del build nuevo.
@@ -11,11 +13,13 @@
 # Volver atrás a mano (Administrador de archivos): renombrar <APP_DIR> a otro nombre,
 # <APP_DIR>.previous a <APP_DIR>, y reiniciar la app en "Setup Node.js App".
 #
-# Secrets requeridos (Settings → Secrets and variables → Actions):
+# Secrets del entorno "production":
 #   CPANEL_SSH_HOST, CPANEL_SSH_PORT, CPANEL_SSH_USER, CPANEL_SSH_KEY (clave privada),
 #   CPANEL_SSH_KNOWN_HOSTS (salida de `ssh-keyscan -p <puerto> <host>`),
-#   CPANEL_APP_DIR (ruta absoluta de la raíz de la app, p. ej. /home/usuario/alesya-platform).
-# Variable opcional: PRODUCTION_URL (p. ej. https://nueva.alesyaediciones.com).
+#   CPANEL_APP_DIR (ruta absoluta de la raíz de la app, p. ej. /home/usuario/alesya-platform),
+#   CPANEL_API_TOKEN (opcional; cPanel → Seguridad → Manage API Tokens).
+# Variables: PRODUCTION_URL (p. ej. https://nueva.alesyaediciones.com),
+#   CPANEL_API_URL (p. ej. https://alesyaediciones.com:2083; necesaria con el token).
 name: Deploy cPanel
 
 on:
@@ -62,9 +66,9 @@ jobs:
           build_id=$(cat pkg/.next/BUILD_ID)
           # Preferir un archivo de .next/static/<BUILD_ID>/: solo existe en este build.
           probe=$(cd pkg && { find ".next/static/$build_id" -type f 2>/dev/null; find .next/static -type f -name '*.js'; } | head -n 1)
-          echo "build_id=$build_id" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
           echo "probe=${probe#.next/}" >> "$GITHUB_OUTPUT"
-          echo "Build $build_id, $(find pkg -type f | wc -l) archivos"
+          echo "Build $build_id, $(find pkg -type f | wc -l) archivos, $(du -h "$archive" | cut -f1)"
 
       - name: Configurar SSH y lftp
         env:
@@ -77,17 +81,23 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
 
-      - name: Subir y activar por SFTP
+      - name: Subir y activar
         env:
           HOST: ${{ secrets.CPANEL_SSH_HOST }}
           PORT: ${{ secrets.CPANEL_SSH_PORT }}
           USER: ${{ secrets.CPANEL_SSH_USER }}
           APP_DIR: ${{ secrets.CPANEL_APP_DIR }}
+          API_TOKEN: ${{ secrets.CPANEL_API_TOKEN }}
+          API_URL: ${{ vars.CPANEL_API_URL }}
+          ARCHIVE: ${{ steps.pkg.outputs.archive }}
         run: |
           # Protege los rm/mv remotos: APP_DIR debe ser una carpeta directa del home.
-          [[ "$APP_DIR" =~ ^/home/[A-Za-z0-9_-]+/[A-Za-z0-9._-]+$ ]] || { echo "CPANEL_APP_DIR inválido: $APP_DIR" >&2; exit 1; }
+          [[ "$APP_DIR" =~ ^/home/[A-Za-z0-9_-]+/[A-Za-z0-9._-]+$ ]] || { echo "CPANEL_APP_DIR inválido" >&2; exit 1; }
           release="$APP_DIR.release-${GITHUB_SHA::12}"
-          lftp <<EOF
+          remote_archive="$(dirname "$APP_DIR")/alesya-deploy-${GITHUB_SHA::12}.tar.gz"
+
+          sftp_run() {
+            lftp <<EOF
           set cmd:fail-exit yes
           set net:max-retries 5
           set net:timeout 30
@@ -96,15 +106,54 @@ jobs:
           set net:connection-limit 1
           set sftp:connect-program "ssh -a -x -i $HOME/.ssh/deploy_key -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
           open -u "$USER," -p "$PORT" "sftp://$HOST"
-          rm -r -f "$release"
-          mirror -R --parallel=1 --no-perms pkg "$release"
-          rm -r -f "$APP_DIR.previous"
-          mv "$APP_DIR" "$APP_DIR.previous"
-          mv "$release" "$APP_DIR"
-          put pkg/tmp/restart.txt -o "$APP_DIR/tmp/restart.txt"
+          $1
           bye
           EOF
-          echo "Desplegado ${GITHUB_SHA::12} en $APP_DIR"
+          }
+
+          # API2 Fileman::fileop de cPanel. Falla si cPanel no confirma la operación.
+          fileop() {
+            local response
+            response=$(curl -fsS --max-time 600 -H "Authorization: cpanel $USER:$API_TOKEN" \
+              --data-urlencode "cpanel_jsonapi_user=$USER" \
+              --data-urlencode "cpanel_jsonapi_apiversion=2" \
+              --data-urlencode "cpanel_jsonapi_module=Fileman" \
+              --data-urlencode "cpanel_jsonapi_func=fileop" \
+              --data-urlencode "op=$1" \
+              --data-urlencode "sourcefiles=$2" \
+              ${3:+--data-urlencode "destfiles=$3"} \
+              --data-urlencode "doubledecode=0" \
+              "$API_URL/json-api/cpanel")
+            if ! jq -e '.cpanelresult.error == null and .cpanelresult.data[0].result == 1' <<<"$response" >/dev/null; then
+              echo "cPanel $1 falló: $(jq -c '.cpanelresult.error // .cpanelresult.data' <<<"$response")" >&2
+              return 1
+            fi
+          }
+
+          if [ -n "$API_TOKEN" ]; then
+            [ -n "$API_URL" ] || { echo "Falta la variable CPANEL_API_URL" >&2; exit 1; }
+            echo "Modo rápido: un solo archivo + extracción en cPanel"
+            sftp_run "rm -r -f \"$release\"
+          mkdir -p \"$release\"
+          put \"$ARCHIVE\" -o \"$remote_archive\""
+            fileop extract "$remote_archive" "$release"
+            # Confirma que la extracción dejó la app completa antes de activarla.
+            sftp_run "cls \"$release/server.js\" \"$release/.next/BUILD_ID\"
+          rm \"$remote_archive\""
+            fileop unlink "$APP_DIR.previous" || echo "(no había versión anterior que borrar)"
+          else
+            echo "Modo lento: subida archivo por archivo (configura CPANEL_API_TOKEN para acelerarlo)"
+            sftp_run "rm -r -f \"$release\"
+          mirror -R --parallel=1 --no-perms pkg \"$release\"
+          rm -r -f \"$APP_DIR.previous\""
+          fi
+
+          sftp_run "mkdir -p \"$release/tmp\"
+          put pkg/tmp/restart.txt -o \"$release/tmp/restart.txt\"
+          mv \"$APP_DIR\" \"$APP_DIR.previous\"
+          mv \"$release\" \"$APP_DIR\"
+          put pkg/tmp/restart.txt -o \"$APP_DIR/tmp/restart.txt\""
+          echo "Desplegado ${GITHUB_SHA::12} en la app"
 
       - name: Chequeo de salud
         if: vars.PRODUCTION_URL != ''
