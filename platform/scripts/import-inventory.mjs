@@ -1,5 +1,6 @@
 // Importa el inventario real desde ../../inventario-alesya.csv a la tabla products.
-// Es idempotente: un SKU que ya existe se actualiza (nombre, categoría, stock si cambia, precio si el CSV lo trae).
+// Es idempotente: un SKU que ya existe se actualiza (nombre, categoría, descripción y foto si el CSV la trae).
+// En producción (sin shell) se usa el mismo archivo desde el panel: Productos → Importar CSV.
 // Uso: node --env-file-if-exists=.env.local scripts/import-inventory.mjs
 import { createClient } from "@libsql/client";
 import { randomUUID } from "node:crypto";
@@ -47,14 +48,15 @@ async function main() {
       const stock = parseInt(row[col.cantidad] || "0", 10) || 0;
       const price = Math.round((parseFloat(row[col.precio_cop] || "0") || 0)) * 100;
       const description = (row[col.notas]?.trim() || `${name} — inventario Alesya.`);
+      const imageUrl = col.imagen === undefined ? null : row[col.imagen]?.trim() || null;
       const position = (positions[category] ??= 0); positions[category]++;
       const status = price > 0 ? "active" : "draft";
       if (existing.has(sku)) {
-        statements.push({ sql: "update products set name=?, category=?, description=?, position=?, updated_at=? where sku=?", args: [name, category, description, position, now, sku] });
+        statements.push({ sql: "update products set name=?, category=?, description=?, image_url=coalesce(?, image_url), position=?, updated_at=? where sku=?", args: [name, category, description, imageUrl, position, now, sku] });
         updated++;
       } else {
         const id = randomUUID();
-        statements.push({ sql: "insert into products (id, slug, sku, name, description, category, price_in_cents, stock, status, position, created_at, updated_at) values (?,?,?,?,?,?,?,?,?,?,?,?)", args: [id, `${slugify(name)}-${id.slice(0, 5)}`, sku, name, description, category, price, stock, status, position, now, now] });
+        statements.push({ sql: "insert into products (id, slug, sku, name, description, category, price_in_cents, stock, status, image_url, position, created_at, updated_at) values (?,?,?,?,?,?,?,?,?,?,?,?,?)", args: [id, `${slugify(name)}-${id.slice(0, 5)}`, sku, name, description, category, price, stock, status, imageUrl, position, now, now] });
         if (stock) statements.push({ sql: "insert into inventory_events (id, product_id, quantity_delta, reason, created_at) values (?,?,?,?,?)", args: [randomUUID(), id, stock, "initial_stock", now] });
         created++;
       }

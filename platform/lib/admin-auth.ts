@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const derive = promisify(scrypt);
 export const ADMIN_COOKIE = "alesya_admin";
@@ -48,7 +49,24 @@ export function sameOrigin(request: Request) {
 }
 
 export async function guardAdmin(request?: Request) {
-  if (!await getAdmin()) return Response.json({ message: "Inicia sesión para continuar." }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  const admin = await authorizeAdmin(request);
+  return admin instanceof Response ? admin : null;
+}
+
+/**
+ * Para las APIs del panel: devuelve el administrador o la respuesta de rechazo. Las escrituras pasan
+ * `request` para exigir mismo origen; las lecturas GET pueden omitirlo.
+ */
+export async function authorizeAdmin(request?: Request): Promise<{ email: string } | Response> {
+  const admin = await getAdmin();
+  if (!admin) return Response.json({ message: "Inicia sesión para continuar." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   if (request && !sameOrigin(request)) return Response.json({ message: "Solicitud no permitida." }, { status: 403 });
-  return null;
+  return admin;
+}
+
+/** Para las páginas del panel: redirige al acceso si no hay sesión. */
+export async function requireAdmin() {
+  const admin = await getAdmin();
+  if (!admin) redirect("/admin/login");
+  return admin;
 }

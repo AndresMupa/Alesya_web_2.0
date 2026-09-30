@@ -17,7 +17,11 @@ import { LeadForm } from "@/components/lead-form";
 import { ImmersiveHero } from "@/components/immersive-hero";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { featuredProducts, learningPaths } from "@/lib/catalog";
+import { ProductCard } from "@/components/store/product-card";
+import { getFeaturedProducts, type StoreProduct } from "@/lib/commerce/catalog";
+import { learningPaths } from "@/lib/content";
+
+export const dynamic = "force-dynamic";
 
 const categories = [
   { icon: Bot, title: "LEGO EV3", copy: "Retos de construcción, sensores, motores y programación por bloques.", color: "var(--signal-yellow)" },
@@ -27,7 +31,24 @@ const categories = [
   { icon: Printer, title: "Impresión 3D", copy: "Modelado, prototipado y piezas que conectan las ideas con el mundo físico.", color: "var(--signal-violet)" },
 ];
 
-export default function Home() {
+/** Colegios que ya trabajan con Alesya (logos en /public/media/clientes). */
+const clientSchools = [
+  { src: "/media/clientes/lideres-del-manana.png", name: "Gimnasio Líderes del Mañana" },
+  { src: "/media/clientes/colegio-finlandes.png", name: "Colegio Finlandés Juan Pablo II" },
+  { src: "/media/clientes/meryland.png", name: "Nuevo Gimnasio Campestre Meryland Bilingüe" },
+  { src: "/media/clientes/la-anunciacion.png", name: "Instituto La Anunciación" },
+  { src: "/media/clientes/mayor-andino.jpg", name: "Colegio Mayor Andino" },
+  { src: "/media/clientes/alcibiades-florez.jpg", name: "Gimnasio Alcibíades Flórez" },
+  { src: "/media/clientes/ninos-felices.png", name: "Colegio Niños Felices" },
+  { src: "/media/clientes/gs.jpg", name: "Institución aliada" },
+];
+
+async function loadFeatured(): Promise<StoreProduct[]> {
+  try { return await getFeaturedProducts(4); } catch (error) { console.error("home_featured_failed", error); return []; }
+}
+
+export default async function Home() {
+  const featured = await loadFeatured();
   return (
     <div className="site-shell immersive-home">
       <SiteHeader />
@@ -70,9 +91,7 @@ export default function Home() {
         <section className="commerce-section">
           <div className="page-width">
             <div className="section-heading split-heading"><div><p className="eyebrow">Tienda educativa</p><h2>Todo para empezar a construir.</h2></div><p>Productos seleccionados por su valor pedagógico, no solo por sus especificaciones.</p></div>
-            <div className="product-grid">
-              {featuredProducts.map((product) => <article className="product-card" key={product.slug}><div className="product-visual" data-tone={product.tone}><product.icon size={76} strokeWidth={1.15} />{product.badge && <span>{product.badge}</span>}</div><div className="product-copy"><p className="product-type">{product.type}</p><h3>{product.name}</h3><p>{product.description}</p><div className="product-footer"><strong>{product.price}</strong><Link href={`/checkout?producto=${product.slug}`} aria-label={`Comprar ${product.name}`}><ArrowRight size={19} /></Link></div></div></article>)}
-            </div>
+            {featured.length ? <div className="product-grid">{featured.map((product) => <ProductCard key={product.slug} product={product} />)}</div> : <p className="store-coming">Estamos preparando el catálogo en línea. Escríbenos y te ayudamos a elegir.</p>}
             <Link href="/catalogo" className="button button-dark centered-button">Ver catálogo completo</Link>
           </div>
         </section>
@@ -87,6 +106,11 @@ export default function Home() {
               <div><GraduationCap /><span><b>Docentes y formadores</b><small>Rutas, libros y acompañamiento.</small></span></div>
               <div><UsersRound /><span><b>Familias y estudiantes</b><small>Kits y proyectos para aprender haciendo.</small></span></div>
               <div><Sparkles /><span><b>Fundaciones y aliados</b><small>Proyectos de impacto y cobertura.</small></span></div>
+            </div>
+            <p className="clients-logos-title">Colegios que confían en Alesya</p>
+            <div className="clients-logos">
+              {/* eslint-disable-next-line @next/next/no-img-element -- logos pequeños y estáticos */}
+              {clientSchools.map((school) => <img key={school.src} src={school.src} alt={school.name} title={school.name} loading="lazy" width={72} height={72} />)}
             </div>
           </div>
           <div className="clients-gallery">
