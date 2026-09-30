@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./store.css";
+import { Toaster } from "sonner";
 import { RobotChat } from "@/components/robot-chat";
 
 export const metadata: Metadata = {
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body>{children}<RobotChat /></body></html>;
+  return <html lang="es"><body>{children}<RobotChat /><Toaster position="bottom-center" richColors closeButton /></body></html>;
 }

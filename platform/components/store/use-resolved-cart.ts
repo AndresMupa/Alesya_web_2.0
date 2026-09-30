@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { CartItem } from "@/lib/commerce/cart-store";
 
 export type ResolvedLine = { slug: string; name: string; category: string; priceInCents: number; imageUrl: string | null; stock: number; backorder: boolean; quantity: number; lineTotalInCents: number; available: boolean; problem: string | null };
-type Resolved = { lines: ResolvedLine[]; missing: string[]; subtotalInCents: number };
+type Resolved = { lines: ResolvedLine[]; missing: string[]; subtotalInCents: number; shippingInCents: number; shippingNote: string };
 
 /** Pide al servidor precios y disponibilidad actuales del carrito cada vez que cambia. */
 export function useResolvedCart(items: CartItem[]) {
@@ -22,5 +22,5 @@ export function useResolvedCart(items: CartItem[]) {
   }, [key]);
   const empty = key === "[]";
   // Mientras llega la respuesta se conserva el último resultado para no parpadear.
-  return { data: empty ? { lines: [], missing: [], subtotalInCents: 0 } : state.data, loading: !empty && state.key !== key, error: state.key === key && state.error };
+  return { data: empty ? { lines: [], missing: [], subtotalInCents: 0, shippingInCents: 0, shippingNote: "" } : state.data, loading: !empty && state.key !== key, error: state.key === key && state.error };
 }

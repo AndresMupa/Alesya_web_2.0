@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { campaignChannels } from "@/lib/crm/constants";
 import { createLead } from "@/lib/crm/leads";
+import { notifyNewLead } from "@/lib/commerce/notifications";
 import { handleError, ok, readBody } from "@/lib/http";
+import { publicOrigin } from "@/lib/payments/wompi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const leadSchema = z.object({
@@ -21,7 +23,9 @@ export async function POST(request: Request) {
   const body = await readBody(request, leadSchema, "Revisa los datos del formulario."); if (body instanceof Response) return body;
   const { source, campaign, ...contact } = body;
   try {
-    await createLead({ ...contact, source: campaign ? `${source} / ${campaign}` : source, priority: "high" }, { type: "form" });
+    const fullSource = campaign ? `${source} / ${campaign}` : source;
+    const id = await createLead({ ...contact, source: fullSource, priority: "high" }, { type: "form" });
+    await notifyNewLead({ id, ...contact, source: fullSource }, publicOrigin(request)).catch((error) => console.error("lead_notify_failed", error));
     return ok({ ok: true }, 201);
   } catch (error) { return handleError(error, "lead_create_failed", "El CRM no está disponible temporalmente."); }
 }

@@ -3,15 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Minus, Plus, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
 import { cart } from "@/lib/commerce/cart-store";
+
+const announce = (name: string, quantity: number, goToCart: () => void) => toast.success(`${quantity > 1 ? `${quantity} × ` : ""}${name} en el carrito`, { action: { label: "Ver carrito", onClick: goToCart } });
 
 export type CartProduct = { slug: string; name: string; priceInCents: number; imageUrl: string | null; category: string };
 
 /** Botón compacto de las tarjetas del catálogo. */
 export function AddToCartButton({ product, max, disabled }: { product: CartProduct; max: number; disabled?: boolean }) {
+  const router = useRouter();
   const [added, setAdded] = useState(false);
   return <button type="button" className="store-add" disabled={disabled} aria-label={disabled ? `${product.name} agotado` : `Agregar ${product.name} al carrito`}
-    onClick={() => { cart.add(product, 1, max); setAdded(true); setTimeout(() => setAdded(false), 1600); }}>
+    onClick={() => { cart.add(product, 1, max); setAdded(true); announce(product.name, 1, () => router.push("/carrito")); setTimeout(() => setAdded(false), 1600); }}>
     {added ? <Check size={19} /> : <ShoppingCart size={19} />}
   </button>;
 }
@@ -28,7 +32,7 @@ export function AddToCartPanel({ product, max, disabled }: { product: CartProduc
       <input value={quantity} inputMode="numeric" aria-label="Cantidad" onChange={(event) => setQuantity(Math.max(1, Math.min(max, Number(event.target.value.replace(/\D/g, "")) || 1)))} />
       <button type="button" onClick={() => setQuantity(Math.min(max, quantity + 1))} aria-label="Más" disabled={quantity >= max}><Plus size={16} /></button>
     </div>
-    <button type="button" className="button button-dark" onClick={() => { cart.add(product, quantity, max); setAdded(true); }}>{added ? <><Check size={18} /> En el carrito</> : <><ShoppingCart size={18} /> Agregar al carrito</>}</button>
+    <button type="button" className="button button-dark" onClick={() => { cart.add(product, quantity, max); setAdded(true); announce(product.name, quantity, () => router.push("/carrito")); }}>{added ? <><Check size={18} /> En el carrito</> : <><ShoppingCart size={18} /> Agregar al carrito</>}</button>
     <button type="button" className="button button-primary" onClick={() => { cart.add(product, quantity, max); router.push("/checkout"); }}>Comprar ahora</button>
   </div>;
 }

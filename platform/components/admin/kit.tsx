@@ -33,7 +33,7 @@ export function useDebounced<T>(value: T, delay = 250) {
 }
 
 /** Envía JSON a una API del panel y muestra el resultado como notificación. */
-export async function send<T = Record<string, unknown>>(url: string, method: "POST" | "PATCH", body: unknown, success?: string): Promise<(T & { ok: true }) | null> {
+export async function send<T = Record<string, unknown>>(url: string, method: "POST" | "PATCH" | "PUT", body: unknown, success?: string): Promise<(T & { ok: true }) | null> {
   try {
     const response = await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const result = await response.json().catch(() => ({})) as T & { message?: string };

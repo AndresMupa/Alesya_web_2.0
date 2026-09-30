@@ -76,7 +76,15 @@ ADMIN_SESSION_SECRET
 WOMPI_PUBLIC_KEY
 WOMPI_INTEGRITY_SECRET
 WOMPI_EVENTS_SECRET
+PRODUCTION_URL=https://nueva.alesyaediciones.com
+SMTP_HOST=mail.alesyaediciones.com
+SMTP_PORT=465
+SMTP_USER=comercial@alesyaediciones.com
+SMTP_PASS
+MAIL_FROM=Alesya X-Tech <comercial@alesyaediciones.com>
 ```
+
+Las variables `SMTP_*` y `MAIL_FROM` activan el correo transaccional (pedido recibido, pago confirmado, envío y avisos al equipo). Se obtienen en cPanel → **Cuentas de correo** → *Connect Devices* de la cuenta que enviará; sin ellas la tienda funciona igual pero no envía correos (Integraciones lo indica). Después de pegarlas, **Restart** y probar con **Configuración → Enviar correo de prueba**.
 
 Las credenciales de `/admin` se generan con `npm run admin:setup -- --production --force correo@dominio.co` (quedan en `.local/admin-cpanel.txt`); después de pegarlas hay que pulsar **Restart**. Los valores secretos no deben escribirse en este documento.
 

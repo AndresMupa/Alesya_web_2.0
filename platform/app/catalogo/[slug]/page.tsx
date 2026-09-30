@@ -5,12 +5,16 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { AddToCartPanel } from "@/components/store/add-to-cart";
 import { ProductCard, ProductVisual } from "@/components/store/product-card";
-import { getRelatedProducts, getStoreProduct } from "@/lib/commerce/catalog";
+import { getRelatedProducts, getStoreProduct, type StoreProduct } from "@/lib/commerce/catalog";
 import { stockState } from "@/lib/commerce/constants";
 import { categoryMeta } from "@/lib/content";
 import { formatMoney } from "@/lib/format";
+import { storeConfig } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
+
+const SITE = process.env.PRODUCTION_URL?.replace(/\/$/, "") || "https://nueva.alesyaediciones.com";
+const absolute = (url: string | null) => (url ? (url.startsWith("http") ? url : `${SITE}${url}`) : null);
 
 async function load(slug: string) {
   try { return await getStoreProduct(slug); } catch (error) { console.error("store_product_failed", error); return null; }
@@ -18,18 +22,37 @@ async function load(slug: string) {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const product = await load((await params).slug);
-  return product ? { title: `${product.name} | Tienda Alesya`, description: product.description.slice(0, 160) } : { title: "Producto no disponible | Alesya" };
+  if (!product) return { title: "Producto no disponible | Alesya" };
+  const description = product.description.slice(0, 160);
+  const image = absolute(product.imageUrl);
+  return {
+    title: `${product.name} | Tienda Alesya`, description,
+    alternates: { canonical: `${SITE}/catalogo/${product.slug}` },
+    openGraph: { title: product.name, description, type: "website", url: `${SITE}/catalogo/${product.slug}`, siteName: "Alesya X-Tech", locale: "es_CO", ...(image && { images: [{ url: image, alt: product.name }] }) },
+    twitter: { card: image ? "summary_large_image" : "summary", title: product.name, description },
+  };
+}
+
+/** Datos estructurados para Google (ficha de producto con precio y disponibilidad). */
+function productJsonLd(product: StoreProduct, purchasable: boolean) {
+  return JSON.stringify({
+    "@context": "https://schema.org", "@type": "Product", name: product.name, description: product.description, sku: product.slug, category: product.category,
+    ...(product.imageUrl && { image: absolute(product.imageUrl) }),
+    brand: { "@type": "Brand", name: "Alesya X-Tech" },
+    offers: { "@type": "Offer", url: `${SITE}/catalogo/${product.slug}`, priceCurrency: "COP", price: Math.round(product.priceInCents / 100), availability: purchasable ? (product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/PreOrder") : "https://schema.org/OutOfStock", itemCondition: "https://schema.org/NewCondition", seller: { "@type": "Organization", name: "Alesya Ediciones" } },
+  });
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const product = await load((await params).slug);
   if (!product) notFound();
-  const related = await getRelatedProducts(product).catch(() => []);
+  const [related, config] = await Promise.all([getRelatedProducts(product).catch(() => []), storeConfig().catch(() => null)]);
   const state = stockState(product);
   const { tone } = categoryMeta(product.category);
-  const whatsapp = `https://wa.me/573005937840?text=${encodeURIComponent(`Hola, quiero información sobre ${product.name}.`)}`;
+  const whatsapp = (text: string) => `https://wa.me/${config?.whatsappDigits ?? "573005937840"}?text=${encodeURIComponent(text)}`;
 
   return <div className="site-shell"><div className="interior-header is-solid"><SiteHeader /></div><main className="store-product-page">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: productJsonLd(product, state.purchasable) }} />
     <div className="page-width">
       <nav className="store-breadcrumb" aria-label="Ruta"><Link href="/catalogo">Tienda</Link><span>/</span><Link href={`/catalogo?categoria=${encodeURIComponent(product.category)}#productos`}>{product.category}</Link><span>/</span><span aria-current="page">{product.name}</span></nav>
       <section className="store-product">
@@ -40,11 +63,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <strong className="store-price">{formatMoney(product.priceInCents)}</strong>
           <p className="store-stock" data-state={state.purchasable ? (state.label === "Disponible" ? "ok" : "low") : "out"}>{state.label}</p>
           <p className="store-description">{product.description}</p>
-          <AddToCartPanel product={{ slug: product.slug, name: product.name, priceInCents: product.priceInCents, imageUrl: product.imageUrl, category: product.category }} max={state.max} disabled={!state.purchasable} />
+          {state.purchasable
+            ? <AddToCartPanel product={{ slug: product.slug, name: product.name, priceInCents: product.priceInCents, imageUrl: product.imageUrl, category: product.category }} max={state.max} disabled={false} />
+            : <div className="store-buy"><p className="store-soldout">Agotado por ahora.</p><a className="button button-dark" href={whatsapp(`Hola, quiero que me avisen cuando vuelva a estar disponible: ${product.name}.`)} target="_blank" rel="noopener noreferrer"><MessageCircle size={17} /> Avísame cuando llegue</a></div>}
           <ul className="store-assurances">
             <li><ShieldCheck size={18} /> Pago seguro con Wompi o transferencia confirmada por el equipo.</li>
-            <li><Truck size={18} /> Envíos a toda Colombia; coordinamos la entrega al confirmar el pago.</li>
-            <li><MessageCircle size={18} /> ¿Compras para un colegio? <a href={whatsapp} target="_blank" rel="noopener noreferrer">Pide una cotización por WhatsApp</a>.</li>
+            <li><Truck size={18} /> {config?.shippingNote ?? "Envíos a toda Colombia; coordinamos la entrega al confirmar el pago."}</li>
+            <li><MessageCircle size={18} /> ¿Compras para un colegio? <a href={whatsapp(`Hola, quiero una cotización para colegio de ${product.name}.`)} target="_blank" rel="noopener noreferrer">Pide una cotización por WhatsApp</a>.</li>
           </ul>
         </div>
       </section>

@@ -1,17 +1,20 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Mail, MessageCircle, Truck } from "lucide-react";
+import { AlertTriangle, Copy, ExternalLink, Link2, Mail, MessageCircle, Truck } from "lucide-react";
+import { toast } from "sonner";
 import { Drawer, send, useJson } from "@/components/admin/kit";
-import { isPendingStatus, manualPaymentMethods, orderEventLabels, orderStatusLabel, paymentMethodLabel } from "@/lib/commerce/constants";
+import { isPendingStatus, manualPaymentMethods, orderEventLabels, orderStatusLabel, paidOrderStatuses, paymentMethodLabel, type OrderStatus } from "@/lib/commerce/constants";
 import { formatDateTime, formatMoney, whatsappLink } from "@/lib/format";
 
 type Order = { id: string; reference: string; customerName: string; customerEmail: string; customerPhone: string; customerDocument: string | null; shippingCity: string; shippingAddress: string; customerNotes: string; internalNotes: string; subtotalInCents: number; shippingInCents: number; totalInCents: number; status: string; createdAt: string; updatedAt: string };
+type Event = { id: string; type: string; detail: string; createdBy: string | null; createdAt: string };
 type Detail = {
-  order: Order; transitions: string[]; canConfirmPayment: boolean;
+  order: Order; transitions: string[]; canConfirmPayment: boolean; canEditShipping: boolean; paymentLinkAvailable: boolean;
+  config: { paymentInstructions: string; shippingNote: string };
   items: { id: string; productSlug: string; productName: string; quantity: number; unitPriceInCents: number; lineTotalInCents: number }[];
   payments: { id: string; provider: string; method: string | null; status: string; amountInCents: number; reference: string; providerTransactionId: string | null; createdAt: string }[];
-  events: { id: string; type: string; detail: string; createdBy: string | null; createdAt: string }[];
+  events: Event[];
 };
 
 const paymentStatus: Record<string, string> = { pending: "Pendiente", approved: "Aprobado", declined: "Rechazado", voided: "Anulado", error: "Error", review: "En revisión", superseded: "Reemplazado", cancelled: "Cancelado" };
@@ -36,10 +39,31 @@ export function OrderDrawer({ orderId, onClose, onChanged }: { orderId: string |
   </Drawer>;
 }
 
+/** Mensajes al cliente según el estado del pedido. Marcadores: {nombre} {referencia} {total} {instrucciones} {enlace_pago} {guia}. */
+function customerTemplate(order: Order, paymentUrl: string | null, guide: string, instructions: string) {
+  const values: Record<string, string> = { nombre: order.customerName.split(" ")[0], referencia: order.reference, total: formatMoney(order.totalInCents), instrucciones: instructions, enlace_pago: paymentUrl ?? "", guia: guide || "(pendiente)" };
+  const status = order.status as OrderStatus;
+  const text = paidOrderStatuses.includes(status)
+    ? status === "shipped" ? "Hola {nombre}, tu pedido {referencia} ya salió. Guía o transportadora: {guia}. Cualquier duda con la entrega, escríbenos por aquí."
+      : status === "delivered" ? "Hola {nombre}, ¿ya recibiste tu pedido {referencia}? Esperamos que lo disfruten. Si necesitas algo más, por aquí estamos."
+        : "Hola {nombre}, confirmamos el pago de tu pedido {referencia} por {total}. Ya lo estamos preparando y te avisamos cuando salga."
+    : paymentUrl
+      ? "Hola {nombre}, tu pedido {referencia} por {total} está listo para pagar con Nequi, PSE, Botón Bancolombia o tarjeta en este enlace: {enlace_pago}\n\nCuando pagues, lo preparamos de inmediato."
+      : "Hola {nombre}, recibimos tu pedido {referencia} por {total}.\n\n{instrucciones}\n\nCuando hagas el pago envíanos el comprobante por aquí y lo preparamos.";
+  return text.replace(/\{(\w+)\}/g, (_, key: string) => values[key] ?? "");
+}
+
 function OrderDetail({ detail, reload }: { detail: Detail; reload: () => void }) {
   const { order } = detail;
   const [saving, setSaving] = useState(false);
   const [shippingNote, setShippingNote] = useState("");
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
+  const [message, setMessage] = useState("");
+  const shippedEvent = detail.events.find((event) => event.type === "status" && event.detail.includes("→ Enviado"));
+  const guide = shippedEvent?.detail.split(" · ")[1] ?? "";
+  const stockWarnings = detail.events.filter((event) => event.type === "stock_warning");
+  const wa = whatsappLink(order.customerPhone, message || customerTemplate(order, paymentUrl, guide, detail.config.paymentInstructions));
 
   async function act(body: Record<string, unknown>, message: string) {
     setSaving(true);
@@ -50,7 +74,7 @@ function OrderDetail({ detail, reload }: { detail: Detail; reload: () => void })
 
   function transition(next: string) {
     if (next === "cancelled" && !confirm(`¿Cancelar el pedido ${order.reference}? El cliente no podrá pagarlo.`)) return;
-    void act({ action: "status", status: next, detail: next === "shipped" ? shippingNote : "" }, `Pedido ${orderStatusLabel(next).toLowerCase()}.`);
+    void act({ action: "status", status: next, detail: next === "shipped" ? shippingNote : "" }, `Pedido ${orderStatusLabel(next).toLowerCase()}.${next === "shipped" ? " Correo de envío enviado si hay SMTP." : ""}`);
   }
 
   function confirmPayment(event: FormEvent<HTMLFormElement>) {
@@ -60,22 +84,58 @@ function OrderDetail({ detail, reload }: { detail: Detail; reload: () => void })
     void act({ action: "manual_payment", method: form.get("method"), note: form.get("note") }, "Pago registrado. Pedido listo para preparar.");
   }
 
+  async function paymentLink() {
+    setSaving(true);
+    const result = await send<{ url: string }>(`/api/admin/commerce/orders/${order.id}`, "PATCH", { action: "payment_link" }, "Enlace de pago generado.");
+    setSaving(false);
+    if (result) { setPaymentUrl(result.url); setMessage(""); setComposing(true); }
+  }
+
+  function openComposer() { setMessage((current) => current || customerTemplate(order, paymentUrl, guide, detail.config.paymentInstructions)); setComposing(true); }
+
   return <div className="adm-order">
+    {stockWarnings.length > 0 && <div className="adm-warning-box"><AlertTriangle size={16} /><div><strong>Revisa el inventario antes de preparar.</strong>{stockWarnings.map((event) => <p key={event.id}>{event.detail}</p>)}</div></div>}
+
     {detail.transitions.length > 0 && <section className="adm-card adm-next">
       <h3>Siguiente paso</h3>
-      {detail.transitions.includes("shipped") && <label>Guía o transportadora (opcional)<input value={shippingNote} onChange={(event) => setShippingNote(event.target.value)} maxLength={300} placeholder="Ej. Servientrega 123456789" /></label>}
+      {detail.transitions.includes("shipped") && <label>Guía o transportadora (opcional, va en el correo al cliente)<input value={shippingNote} onChange={(event) => setShippingNote(event.target.value)} maxLength={300} placeholder="Ej. Servientrega 123456789" /></label>}
       <div className="adm-actions-row">{detail.transitions.map((next) => <button key={next} type="button" disabled={saving} className={next === "cancelled" ? "refresh-button adm-danger" : "button button-dark"} onClick={() => transition(next)}>{next === "shipped" && <Truck size={16} />}{actionLabel[next] ?? orderStatusLabel(next)}</button>)}</div>
     </section>}
 
-    {detail.canConfirmPayment && <form className="adm-card adm-form" onSubmit={confirmPayment}>
-      <h3>Registrar pago recibido</h3>
-      <p className="adm-muted">Úsalo cuando el cliente pagó por transferencia, Nequi directo, efectivo o datáfono. Los pagos de Wompi se confirman solos.</p>
-      <div className="adm-form-grid">
-        <label>Medio<select name="method" defaultValue="TRANSFER">{manualPaymentMethods.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}</select></label>
-        <label>Referencia o comprobante<input name="note" maxLength={300} placeholder="N.º de transacción" /></label>
+    {detail.canConfirmPayment && <section className="adm-card">
+      <h3>Cobrar</h3>
+      {detail.canEditShipping && <form className="adm-inline-form" onSubmit={(event) => { event.preventDefault(); void act({ action: "shipping", shippingCop: Number(new FormData(event.currentTarget).get("shippingCop")) || 0 }, "Envío actualizado; el total y el cobro cambian."); }}>
+        <label>Costo de envío (COP)<input name="shippingCop" type="number" min="0" step="1000" defaultValue={Math.round(order.shippingInCents / 100)} /></label>
+        <button className="refresh-button" type="submit" disabled={saving}>Guardar envío</button>
+        <small className="adm-muted">Total actual: <strong>{formatMoney(order.totalInCents)}</strong>. Solo se puede cambiar antes del pago.</small>
+      </form>}
+      <div className="adm-actions-row">
+        {detail.paymentLinkAvailable ? <button type="button" className="button button-primary" disabled={saving} onClick={() => void paymentLink()}><Link2 size={15} /> Enlace de pago Wompi</button>
+          : <span className="adm-muted">Sin Wompi configurado: envía las instrucciones de pago y registra el pago cuando llegue.</span>}
+        <button type="button" className="refresh-button" onClick={openComposer}><MessageCircle size={14} /> Escribir al cliente</button>
       </div>
-      <button className="button button-primary" type="submit" disabled={saving}>Confirmar pago de {formatMoney(order.totalInCents)}</button>
-    </form>}
+      {paymentUrl && <div className="adm-paylink"><input readOnly value={paymentUrl} aria-label="Enlace de pago" onFocus={(event) => event.currentTarget.select()} /><button type="button" className="refresh-button" onClick={() => { void navigator.clipboard.writeText(paymentUrl).then(() => toast.success("Enlace copiado."), () => toast.error("No se pudo copiar.")); }}><Copy size={14} /> Copiar</button><a className="refresh-button" href={paymentUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> Abrir</a></div>}
+      <form className="adm-form" onSubmit={confirmPayment}>
+        <h4>Registrar pago recibido</h4>
+        <p className="adm-muted">Transferencia, Nequi directo, efectivo o datáfono. Los pagos de Wompi se confirman solos.</p>
+        <div className="adm-form-grid">
+          <label>Medio<select name="method" defaultValue="TRANSFER">{manualPaymentMethods.map((method) => <option key={method.value} value={method.value}>{method.label}</option>)}</select></label>
+          <label>Referencia o comprobante<input name="note" maxLength={300} placeholder="N.º de transacción" /></label>
+        </div>
+        <button className="button button-dark" type="submit" disabled={saving}>Confirmar pago de {formatMoney(order.totalInCents)}</button>
+      </form>
+    </section>}
+
+    {(composing || !detail.canConfirmPayment) && <section className="adm-card adm-order-composer">
+      <div className="adm-card-row"><h3><MessageCircle size={15} /> Escribir al cliente</h3>{composing && <button type="button" className="adm-link-button" onClick={() => setComposing(false)}>Ocultar</button>}</div>
+      {(composing || !detail.canConfirmPayment) && <>
+        <textarea value={message || customerTemplate(order, paymentUrl, guide, detail.config.paymentInstructions)} onChange={(event) => setMessage(event.target.value)} rows={6} maxLength={2000} aria-label="Mensaje al cliente" />
+        <div className="adm-composer-actions">
+          {wa ? <a className="button button-primary" href={wa} target="_blank" rel="noopener noreferrer"><ExternalLink size={15} /> Abrir WhatsApp</a> : <span className="adm-muted">El celular del pedido no sirve para WhatsApp.</span>}
+          <button type="button" className="refresh-button" onClick={() => { void navigator.clipboard.writeText(message || customerTemplate(order, paymentUrl, guide, detail.config.paymentInstructions)).then(() => toast.success("Mensaje copiado."), () => toast.error("No se pudo copiar.")); }}><Copy size={14} /> Copiar</button>
+        </div>
+      </>}
+    </section>}
 
     <section className="adm-card">
       <h3>Productos</h3>

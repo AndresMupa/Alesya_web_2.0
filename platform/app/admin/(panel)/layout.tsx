@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Toaster } from "sonner";
 import { demoDatabase } from "@/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -28,6 +27,5 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         {children}
       </div>
     </main>
-    <Toaster position="bottom-right" richColors closeButton />
   </div>;
 }
