@@ -225,6 +225,8 @@ async function containerSmoke() {
   const [mode, ip, priorIp] = process.argv.slice(2);
   const app = "/home/app";
   const base = "http://127.0.0.1:3000";
+  // Se serializa con toString(): la lista vive aquí dentro (y se repite en checkSmoke).
+  const storePages = ["/catalogo", "/catalogo/kit-arduino-explorador", "/carrito", "/checkout", "/proyectos", "/admin/login"];
   const out = { mode, ready: false };
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const request = async (pathname, init = {}) => {
@@ -234,7 +236,7 @@ async function containerSmoke() {
   };
   const started = Date.now();
   while (Date.now() - started < 120_000) {
-    try { await request("/api/products"); out.ready = true; break; } catch { await sleep(500); }
+    try { await request("/favicon.svg"); out.ready = true; break; } catch { await sleep(500); }
   }
   out.readyAfterMs = Date.now() - started;
   if (!out.ready) { process.stdout.write(JSON.stringify(out)); return; }
@@ -249,7 +251,11 @@ async function containerSmoke() {
   const home = await request("/");
   out.home = home.status;
   out.securityHeaders = Object.fromEntries(["x-content-type-options", "x-frame-options", "referrer-policy", "permissions-policy"].map((h) => [h, home.headers.get(h)]));
-  for (const page of ["/catalogo", "/proyectos", "/api/products", "/admin/login"]) out[page] = (await request(page)).status;
+  // /catalogo/kit-arduino-explorador existe solo si la migración 0004 se aplicó (producto destacado con precio).
+  for (const page of storePages) out[page] = (await request(page)).status;
+  const cart = await fetch(`${base}/api/store/cart`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ items: [{ slug: "kit-arduino-explorador", quantity: 2 }] }) });
+  const cartBody = await cart.json().catch(() => ({}));
+  out.cart = { status: cart.status, lines: cartBody.lines?.length ?? null, subtotal: cartBody.subtotalInCents ?? null };
   const admin = await request("/admin");
   out["/admin"] = { status: admin.status, location: admin.headers.get("location") };
   const chunks = fs.readdirSync(path.join(app, ".next/static/chunks")).filter((f) => f.endsWith(".js"));
@@ -370,6 +376,7 @@ function smokeRun(mode, ip, priorIp, env) {
 
 function checkSmoke(result, { firstRun }) {
   const problems = [];
+  const storePages = ["/catalogo", "/catalogo/kit-arduino-explorador", "/carrito", "/checkout", "/proyectos", "/admin/login"];
   const expect = (label, actual, expected) => {
     const ok = JSON.stringify(actual) === JSON.stringify(expected);
     console.log(`${ok ? "PASS" : "FAIL"}  [${result.mode}] ${label}: ${JSON.stringify(actual)}${ok ? "" : ` (expected ${JSON.stringify(expected)})`}`);
@@ -381,7 +388,9 @@ function checkSmoke(result, { firstRun }) {
   expect("alesya_migrations rows == drizzle/*.sql", result.migrationRows, result.migrationFiles);
   expect("GET /", result.home, 200);
   for (const [header, value] of Object.entries(result.securityHeaders)) expect(`header ${header} present`, Boolean(value), true);
-  for (const page of ["/catalogo", "/proyectos", "/api/products", "/admin/login"]) expect(`GET ${page}`, result[page], 200);
+  for (const page of storePages) expect(`GET ${page}`, result[page], 200);
+  expect("POST /api/store/cart status", result.cart.status, 200);
+  expect("POST /api/store/cart resolves the featured product", result.cart.lines, 1);
   expect("GET /admin status", result["/admin"].status, 307);
   expect("GET /admin redirects to /admin/login", /\/admin\/login$/.test(result["/admin"].location ?? ""), true);
   expect(`GET ${result.staticAsset.path}`, result.staticAsset.status, 200);

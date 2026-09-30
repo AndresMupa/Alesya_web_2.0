@@ -178,10 +178,11 @@ jobs:
           URL: ${{ vars.PRODUCTION_URL }}
           PROBE: ${{ steps.pkg.outputs.probe }}
         run: |
-          # Un archivo estático del build nuevo solo responde 200 cuando la app nueva ya arrancó.
+          # Un archivo estático del build nuevo solo responde 200 cuando la app nueva ya arrancó;
+          # la ficha del destacado confirma que la base y la migración 0004 responden.
           curl -fsS -o /dev/null "$URL/" || true
           for i in $(seq 1 36); do
-            if curl -fsS -o /dev/null "$URL/_next/$PROBE" && curl -fsS -o /dev/null "$URL/api/products"; then
+            if curl -fsS -o /dev/null "$URL/_next/$PROBE" && curl -fsS -o /dev/null "$URL/catalogo/kit-arduino-explorador"; then
               echo "OK: $URL sirve el build nuevo"; exit 0
             fi
             sleep 5
