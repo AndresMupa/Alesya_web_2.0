@@ -200,6 +200,7 @@ export function RobotChat() {
   const [typing, setTyping] = useState(false);
   const [activity, setActivity] = useState<Activity>("wave");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const nextUserId = useRef(1);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -219,7 +220,7 @@ export function RobotChat() {
   function send(raw: string) {
     const text = raw.trim();
     if (!text) return;
-    const userMsg: Message = { id: Date.now() - 1, from: "user", text };
+    const userMsg: Message = { id: nextUserId.current++, from: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setTyping(true);

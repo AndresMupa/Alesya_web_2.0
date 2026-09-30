@@ -13,7 +13,8 @@ export async function PATCH(request: Request) {
   const now = new Date();
   try {
     const db = getDb();
-    await db.batch(parsed.data.items.map((item) => db.update(products).set({ position: item.position, category: item.category, updatedAt: now }).where(eq(products.id, item.id))));
+    const [first, ...rest] = parsed.data.items.map((item) => db.update(products).set({ position: item.position, category: item.category, updatedAt: now }).where(eq(products.id, item.id)));
+    await db.batch([first, ...rest]); // schema garantiza al menos un elemento
     return Response.json({ ok: true });
   } catch (error) { console.error("admin_product_reorder_failed", error); return Response.json({ message: "No se pudo guardar el nuevo orden." }, { status: 503 }); }
 }
