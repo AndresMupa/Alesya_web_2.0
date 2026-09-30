@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { products } from "@/db/schema";
@@ -13,16 +13,28 @@ export type StoreProduct = { slug: string; name: string; description: string; ca
 const sellable = and(eq(products.status, "active"), gt(products.priceInCents, 0));
 const categoryRank = sql`case ${products.category} ${sql.join(categoryOrder.map((category, index) => sql`when ${category} then ${index}`), sql` `)} else ${categoryOrder.length} end`;
 
-export async function listStoreProducts(filters: { category?: string; search?: string } = {}) {
+export const storeSorts = [
+  { value: "relevancia", label: "Relevancia" },
+  { value: "precio-asc", label: "Precio: menor a mayor" },
+  { value: "precio-desc", label: "Precio: mayor a menor" },
+  { value: "nuevos", label: "Novedades" },
+] as const;
+export type StoreSort = (typeof storeSorts)[number]["value"];
+
+export async function listStoreProducts(filters: { category?: string; search?: string; sort?: string } = {}) {
   const search = filters.search?.trim().slice(0, 80);
+  const order = filters.sort === "precio-asc" ? [asc(products.priceInCents)] : filters.sort === "precio-desc" ? [desc(products.priceInCents)] : filters.sort === "nuevos" ? [desc(products.createdAt)]
+    : [desc(products.featured), categoryRank, asc(products.category), asc(products.position), desc(products.createdAt)];
   return getDb().select(storeFields).from(products)
     .where(and(sellable, filters.category ? eq(products.category, filters.category) : undefined, search ? or(like(products.name, `%${search}%`), like(products.description, `%${search}%`)) : undefined))
-    .orderBy(categoryRank, asc(products.category), asc(products.position), desc(products.createdAt)).limit(500) as Promise<StoreProduct[]>;
+    .orderBy(...order).limit(500) as Promise<StoreProduct[]>;
 }
 
+/** Categorías con productos a la venta y cuántos hay en cada una, en el orden de la tienda. */
 export async function listStoreCategories() {
-  const rows = await getDb().selectDistinct({ category: products.category }).from(products).where(sellable);
-  return sortCategories(rows.map((row) => row.category));
+  const rows = await getDb().select({ category: products.category, total: count() }).from(products).where(sellable).groupBy(products.category);
+  const totals = new Map(rows.map((row) => [row.category, row.total]));
+  return sortCategories(rows.map((row) => row.category)).map((category) => ({ category, total: totals.get(category) ?? 0 }));
 }
 
 export async function getStoreProduct(slug: string) {

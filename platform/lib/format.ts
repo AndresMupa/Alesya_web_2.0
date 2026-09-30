@@ -30,6 +30,9 @@ export function bogotaMonthStart(offsetMonths = 0, now = Date.now()) {
   return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + offsetMonths, 1) + BOGOTA_OFFSET_MS);
 }
 
+/** Días enteros transcurridos desde una fecha (para "lleva N días en esta etapa"). */
+export const daysSince = (value: Date | number | string | null | undefined) => value ? Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000)) : 0;
+
 export const plural = (value: number, one: string, many: string) => `${value.toLocaleString("es-CO")} ${value === 1 ? one : many}`;
 
 export function slugify(value: string) {

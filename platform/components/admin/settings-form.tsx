@@ -41,6 +41,9 @@ export function SettingsForm() {
     <label>Nota de envío<input name="store.shipping_note" defaultValue={values["store.shipping_note"]} maxLength={300} /><small>Aparece en la ficha de producto y en los correos.</small></label>
     <label>Instrucciones de pago manual<textarea name="store.payment_instructions" defaultValue={values["store.payment_instructions"]} rows={4} minLength={10} maxLength={2000} /><small>Se muestran al cliente cuando el pedido queda pendiente sin Wompi (página de resultado, correo y plantilla de WhatsApp). Puedes poner la cuenta bancaria y el Nequi.</small></label>
 
+    <h2>Máquina de ventas</h2>
+    <label>Meta diaria de gestiones por asesor<input name="crm.daily_goal" type="number" min="1" max="9999" defaultValue={values["crm.daily_goal"]} /><small>Llamadas, WhatsApp, correos, reuniones e intentos que cuentan cada día. Se muestra como barra de avance en la máquina de ventas.</small></label>
+
     <h2><Mail size={17} /> Correo</h2>
     <label>Correo de avisos del equipo<input name="mail.notify_to" type="email" defaultValue={values["mail.notify_to"]} maxLength={180} /><small>Recibe los pedidos nuevos y los contactos del formulario; es el “responder a” de los correos al cliente.</small></label>
     <p className={`adm-callout${data.mail.configured ? " is-ok" : ""}`}>

@@ -2,8 +2,9 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CalendarClock, MessageCircle, Play, RefreshCw, School, Users } from "lucide-react";
+import { ArrowUpRight, CalendarClock, Flag, MessageCircle, Play, RefreshCw, School, Users } from "lucide-react";
 import { toast } from "sonner";
+import { ColumnChart } from "@/components/admin/charts";
 import { Metric, PageHeader, useJson } from "@/components/admin/kit";
 import { AsesorPicker, useAsesor } from "@/components/admin/asesor";
 import { LeadDrawer } from "@/components/admin/crm/lead-drawer";
@@ -12,16 +13,19 @@ import { ProspectingMode } from "@/components/admin/crm/prospecting-mode";
 import { campaignChannels, leadStageLabel } from "@/lib/crm/constants";
 import { bogotaDay, formatDay, formatMoney, formatMoneyCompact, plural, whatsappLink } from "@/lib/format";
 
-type Metrics = { pipeline: { open: number; valueInCents: number }; wonThisMonth: { total: number; valueInCents: number }; lostThisMonth: number; winRate: number | null; dueFollowUps: number; inboundNew: number; prospectsUntouched: number; touchesThisWeek: number };
+type Metrics = { pipeline: { open: number; valueInCents: number }; wonThisMonth: { total: number; valueInCents: number }; lostThisMonth: number; winRate: number | null; dueFollowUps: number; inboundNew: number; prospectsUntouched: number; touchesThisWeek: number; touchesToday: number };
 type AgendaItem = PipelineCard & { notes: string };
-type Pipeline = { columns: PipelineColumn[]; prospects: number; metrics: Metrics; agenda: AgendaItem[]; queue: PipelineCard[]; queueTotal: number; owners: string[]; cities: string[] };
+type Pipeline = { columns: PipelineColumn[]; prospects: number; metrics: Metrics; agenda: AgendaItem[]; queue: PipelineCard[]; queueTotal: number; owners: string[]; cities: string[]; dailyGoal: number };
 type Stats = {
+  activityByDay: { day: string; total: number }[];
   owners: { owner: string; assigned: number; open: number; valueInCents: number; won30: number; wonValueInCents30: number; lost30: number; due: number; touchesWeek: number; touchesMonth: number }[];
   sources: { source: string; label: string; total: number; open: number; won: number; lost: number; winRate: number | null }[];
   lostReasons: { reason: string; total: number }[];
 };
 
 const campaign = "/colegios?utm_campaign=colegios_2026&utm_source=";
+const shortDate = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" });
+const dayLabel = (day: string) => shortDate.format(new Date(`${day}T05:00:00Z`));
 
 /**
  * Máquina de ventas: métricas del embudo, agenda de seguimientos, cola de prospección de la base de
@@ -62,6 +66,16 @@ export function SalesMachine() {
       </select></label>
       <span className="adm-muted">Aplica a la agenda, la cola y el embudo.</span>
     </div>
+
+    {metrics && data && <section className="adm-today">
+      <div>
+        <p className="adm-today-label"><Flag size={14} /> Hoy</p>
+        <h2>{metrics.touchesToday} de {data.dailyGoal} gestiones</h2>
+        <div className="adm-progress" role="progressbar" aria-valuemin={0} aria-valuemax={data.dailyGoal} aria-valuenow={metrics.touchesToday}><i style={{ width: `${Math.min(100, Math.round((metrics.touchesToday / data.dailyGoal) * 100))}%` }} /></div>
+        <p>{metrics.touchesToday >= data.dailyGoal ? "Meta del día cumplida. Lo que sigue es ganancia." : `Faltan ${data.dailyGoal - metrics.touchesToday} para la meta diaria${metrics.dueFollowUps ? ` · ${metrics.dueFollowUps} seguimientos por atender` : ""}${metrics.inboundNew ? ` · ${metrics.inboundNew} entrantes esperan respuesta` : ""}.`}</p>
+      </div>
+      <button className="button button-primary" onClick={() => setProspecting(true)}><Play size={15} /> {metrics.dueFollowUps ? "Prospectar" : "Empezar a prospectar"}</button>
+    </section>}
 
     <section className="adm-metrics">
       <Metric label="Embudo abierto" value={metrics ? formatMoneyCompact(metrics.pipeline.valueInCents) : "—"} hint={metrics && plural(metrics.pipeline.open, "oportunidad en curso", "oportunidades en curso")} />
@@ -105,6 +119,11 @@ export function SalesMachine() {
     <section className="panel adm-section">
       <div className="panel-header"><div><h2>Embudo por etapas</h2><p className="adm-muted">Arrastra una tarjeta para cambiar su etapa. Clic para abrir la ficha.</p></div></div>
       {data ? <PipelineBoard columns={data.columns} onOpen={setOpenLead} onMoved={reload} /> : <p className="adm-muted">{loading ? "Cargando embudo…" : ""}</p>}
+    </section>
+
+    <section className="panel adm-section">
+      <div className="panel-header"><div><h2>Gestiones por día</h2><p className="adm-muted">Últimos 14 días. Las columnas que alcanzan la meta diaria ({data?.dailyGoal ?? "—"}) se resaltan.</p></div></div>
+      {stats ? <ColumnChart data={stats.activityByDay.map((row) => ({ dia: dayLabel(row.day), gestiones: row.total }))} x="dia" y="gestiones" unit="gestiones" goal={data?.dailyGoal} highlightLast={false} /> : <p className="adm-muted">{loading ? "Cargando…" : ""}</p>}
     </section>
 
     <section className="adm-two-col">

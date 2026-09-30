@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, Mail, MessageCircle, Phone, SkipForward, X } from "lucide-react";
 import { toast } from "sonner";
 import { send, useJson } from "@/components/admin/kit";
@@ -79,11 +79,25 @@ function ProspectCard({ prospect, position, batch, asesor, onSkip, onDone, onOpe
   const phones = phonesOf(prospect.phone);
   const needsDate = outcome === "meeting";
   const defaultDays = outcome === "answered" ? 3 : outcome === "no_answer" ? 2 : 0;
+  const formRef = useRef<HTMLFormElement>(null);
 
   function pick(next: Outcome) {
     setOutcome(next);
     setDate(next === "meeting" ? "" : next === "answered" || next === "no_answer" ? bogotaDay(next === "answered" ? 3 : 2) : "");
   }
+
+  // Atajos de teclado fuera de los campos de texto: 1–5 resultado, S saltar, Enter guardar.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (/^[1-5]$/.test(event.key)) { const next = outcomes[Number(event.key) - 1]; if (next) { event.preventDefault(); pick(next.value); } }
+      else if (event.key.toLowerCase() === "s") { event.preventDefault(); onSkip(); }
+      else if (event.key === "Enter" && outcome) { event.preventDefault(); formRef.current?.requestSubmit(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -115,13 +129,13 @@ function ProspectCard({ prospect, position, batch, asesor, onSkip, onDone, onOpe
 
     <div className="adm-prospect-work">
       <MessageComposer lead={prospect} asesor={asesor} compact onOpened={(used) => { setChannel(used === "email" ? "email" : "whatsapp"); if (!outcome) setOutcome(null); }} />
-      <form className="adm-card adm-outcome" onSubmit={save}>
+      <form className="adm-card adm-outcome" onSubmit={save} ref={formRef}>
         <div className="adm-outcome-head">
-          <h3>¿Qué pasó?</h3>
+          <h3>¿Qué pasó? <small className="adm-kbd-hint">Atajos: <kbd>1</kbd>–<kbd>5</kbd> resultado · <kbd>S</kbd> saltar · <kbd>Enter</kbd> guardar</small></h3>
           <div className="adm-segmented" role="group" aria-label="Canal de la gestión">{contactChannels.map((item) => <button key={item.value} type="button" aria-pressed={channel === item.value} onClick={() => setChannel(item.value)}>{item.label}</button>)}</div>
         </div>
         <div className="adm-outcomes" role="radiogroup" aria-label="Resultado">
-          {outcomes.map((item) => <button key={item.value} type="button" role="radio" aria-checked={outcome === item.value} data-outcome={item.value} className={outcome === item.value ? "is-active" : undefined} onClick={() => pick(item.value)}><strong>{item.label}</strong><small>{item.hint}</small></button>)}
+          {outcomes.map((item, index) => <button key={item.value} type="button" role="radio" aria-checked={outcome === item.value} data-outcome={item.value} className={outcome === item.value ? "is-active" : undefined} onClick={() => pick(item.value)}><strong><kbd>{index + 1}</kbd> {item.label}</strong><small>{item.hint}</small></button>)}
         </div>
         {outcome && <div className="adm-outcome-detail">
           {outcome === "not_interested" && <div className="adm-chip-row" role="radiogroup" aria-label="Motivo">{lostReasons.map((item) => <button key={item} type="button" role="radio" aria-checked={reason === item} className={`adm-chip${reason === item ? " is-active" : ""}`} onClick={() => setReason(item)}>{item}</button>)}</div>}

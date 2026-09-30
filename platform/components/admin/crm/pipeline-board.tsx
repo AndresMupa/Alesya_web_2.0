@@ -4,9 +4,12 @@ import { useRef, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { send } from "@/components/admin/kit";
 import { leadPriorityLabel, lostReasons } from "@/lib/crm/constants";
-import { bogotaDay, formatDay, formatMoneyCompact } from "@/lib/format";
+import { bogotaDay, daysSince, formatDay, formatMoneyCompact } from "@/lib/format";
 
-export type PipelineCard = { id: string; name: string; organization: string; city: string | null; stage: string; priority: string; owner: string | null; estimatedValueInCents: number; nextFollowUp: string | null; lastContact: string | null; source: string; phone: string | null; email: string | null };
+/** Días en la misma etapa a partir de los cuales una oportunidad abierta se marca como estancada. */
+const STALE_DAYS = 14;
+
+export type PipelineCard = { id: string; name: string; organization: string; city: string | null; stage: string; priority: string; owner: string | null; estimatedValueInCents: number; nextFollowUp: string | null; lastContact: string | null; source: string; phone: string | null; email: string | null; stageChangedAt: string | null };
 export type PipelineColumn = { stage: string; label: string; cards: PipelineCard[]; total: number; valueInCents: number };
 
 const hints: Record<string, string> = { new: "Entrantes sin atender", contacted: "Primer contacto hecho", meeting: "Reunión agendada o hecha", proposal: "Propuesta enviada", won: "Últimos 60 días", lost: "Últimos 60 días" };
@@ -54,7 +57,9 @@ export function PipelineBoard({ columns, onOpen, onMoved }: { columns: PipelineC
           <div className="adm-pipe-cards">
             {cards.map((card) => {
               const due = card.nextFollowUp && card.nextFollowUp <= today && !["won", "lost"].includes(card.stage);
-              return <article key={card.id} className="adm-pipe-card" draggable data-priority={card.priority}
+              const inStage = daysSince(card.stageChangedAt);
+              const stale = inStage >= STALE_DAYS && ["contacted", "meeting", "proposal"].includes(card.stage);
+              return <article key={card.id} className={`adm-pipe-card${stale ? " is-stale" : ""}`} draggable data-priority={card.priority}
                 onDragStart={(event) => { dragged.current = card; event.dataTransfer.effectAllowed = "move"; }}
                 onDragEnd={() => { dragged.current = null; setTarget(null); }}
                 onClick={() => onOpen(card.id)} onKeyDown={(event) => { if (event.key === "Enter") onOpen(card.id); }} tabIndex={0} role="button" aria-label={`Abrir ${card.organization}`}>
@@ -64,6 +69,7 @@ export function PipelineBoard({ columns, onOpen, onMoved }: { columns: PipelineC
                   <i title={`Prioridad ${leadPriorityLabel(card.priority).toLowerCase()}`} data-priority={card.priority} />
                   {card.estimatedValueInCents > 0 && <b>{formatMoneyCompact(card.estimatedValueInCents)}</b>}
                   {card.nextFollowUp && <em className={due ? "is-due" : undefined}><CalendarClock size={12} /> {formatDay(card.nextFollowUp)}</em>}
+                  {stale && <em className="is-stale" title={`${inStage} días en ${column.label.toLowerCase()} sin avanzar`}>{inStage} d</em>}
                   {card.owner && <small title={card.owner}>{card.owner.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}</small>}
                 </div>
               </article>;
