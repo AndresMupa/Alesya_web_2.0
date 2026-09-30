@@ -44,8 +44,8 @@ export async function getAdminSummary() {
 
   return {
     sales: { totalInCents: monthTotal, orders: Number(month?.orders ?? 0), changePct: lastTotal ? ((monthTotal - lastTotal) / lastTotal) * 100 : null },
-    leads: { active: (byStage.new ?? 0) + (byStage.contacted ?? 0) + (byStage.proposal ?? 0), unattended: byStage.new ?? 0 },
-    funnel: [["Nuevos", byStage.new ?? 0], ["Contactados", byStage.contacted ?? 0], ["Propuesta", byStage.proposal ?? 0], ["Ganados", byStage.won ?? 0]] as const,
+    leads: { active: (byStage.new ?? 0) + (byStage.contacted ?? 0) + (byStage.meeting ?? 0) + (byStage.proposal ?? 0), unattended: byStage.new ?? 0 },
+    funnel: [["Nuevos", byStage.new ?? 0], ["Contactados", byStage.contacted ?? 0], ["Reunión", byStage.meeting ?? 0], ["Propuesta", byStage.proposal ?? 0], ["Ganados", byStage.won ?? 0]] as const,
     orders: { toPrepare: (byStatus.paid ?? 0) + (byStatus.preparing ?? 0), awaitingPayment: byStatus.payment_pending ?? 0, inReview: byStatus.payment_review ?? 0 },
     products: { active: Number(productStats?.active ?? 0), lowStock: Number(productStats?.lowStock ?? 0) },
     activity,

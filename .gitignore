@@ -10,3 +10,5 @@ node_modules/
 .next/
 dist/
 .demo/
+outputs/*.tar.gz
+outputs/*.sha256

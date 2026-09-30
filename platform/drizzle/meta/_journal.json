@@ -15,6 +15,20 @@
       "when": 1790227374069,
       "tag": "0001_regular_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790750950866,
+      "tag": "0002_careless_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790837351000,
+      "tag": "0003_shiny_product_board",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,33 @@
+# Verificación: lint + build de platform/ en cada PR hacia producción.
+# deploy.yml también la reutiliza antes de empaquetar.
+name: CI
+
+on:
+  pull_request:
+    branches: [main-rzbi9x]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint y build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.2"
+          cache: npm
+          cache-dependency-path: platform/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

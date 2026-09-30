@@ -1,0 +1,125 @@
+# Despliegue a cPanel en cada push a la rama de producción (o a mano desde Actions).
+#
+# La cuenta de cPanel solo permite SFTP (sin shell), así que todo se hace por SFTP con lftp:
+#   1. Reutiliza ci.yml (lint + build).
+#   2. npm run package:cpanel: paquete linux x64 validado y con smoke test (Docker del runner).
+#   3. Lo extrae en el runner y sube la carpeta a <APP_DIR>.release-<commit>.
+#   4. Intercambia carpetas con dos renombrados (la versión anterior queda en <APP_DIR>.previous).
+#   5. Sube tmp/restart.txt para que la app reinicie; bootstrap.mjs aplica las migraciones al arrancar.
+#   6. Comprueba que el sitio sirva archivos del build nuevo.
+#
+# Volver atrás a mano (Administrador de archivos): renombrar <APP_DIR> a otro nombre,
+# <APP_DIR>.previous a <APP_DIR>, y reiniciar la app en "Setup Node.js App".
+#
+# Secrets requeridos (Settings → Secrets and variables → Actions):
+#   CPANEL_SSH_HOST, CPANEL_SSH_PORT, CPANEL_SSH_USER, CPANEL_SSH_KEY (clave privada),
+#   CPANEL_SSH_KNOWN_HOSTS (salida de `ssh-keyscan -p <puerto> <host>`),
+#   CPANEL_APP_DIR (ruta absoluta de la raíz de la app, p. ej. /home/usuario/alesya-platform).
+# Variable opcional: PRODUCTION_URL (p. ej. https://nueva.alesyaediciones.com).
+name: Deploy cPanel
+
+on:
+  push:
+    branches: [main-rzbi9x]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Empaquetar y desplegar
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.2"
+
+      - name: Empaquetar para cPanel
+        working-directory: platform
+        run: npm run package:cpanel
+
+      - name: Extraer paquete
+        id: pkg
+        run: |
+          archive=$(ls outputs/alesya-cpanel-linux-x64-*.tar.gz | head -n 1)
+          mkdir -p pkg
+          tar -xzf "$archive" -C pkg
+          mkdir -p pkg/tmp
+          date -u +%FT%TZ > pkg/tmp/restart.txt
+          build_id=$(cat pkg/.next/BUILD_ID)
+          # Preferir un archivo de .next/static/<BUILD_ID>/: solo existe en este build.
+          probe=$(cd pkg && { find ".next/static/$build_id" -type f 2>/dev/null; find .next/static -type f -name '*.js'; } | head -n 1)
+          echo "build_id=$build_id" >> "$GITHUB_OUTPUT"
+          echo "probe=${probe#.next/}" >> "$GITHUB_OUTPUT"
+          echo "Build $build_id, $(find pkg -type f | wc -l) archivos"
+
+      - name: Configurar SSH y lftp
+        env:
+          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Subir y activar por SFTP
+        env:
+          HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          USER: ${{ secrets.CPANEL_SSH_USER }}
+          APP_DIR: ${{ secrets.CPANEL_APP_DIR }}
+        run: |
+          # Protege los rm/mv remotos: APP_DIR debe ser una carpeta directa del home.
+          [[ "$APP_DIR" =~ ^/home/[A-Za-z0-9_-]+/[A-Za-z0-9._-]+$ ]] || { echo "CPANEL_APP_DIR inválido: $APP_DIR" >&2; exit 1; }
+          release="$APP_DIR.release-${GITHUB_SHA::12}"
+          lftp <<EOF
+          set cmd:fail-exit yes
+          set net:max-retries 3
+          set net:timeout 30
+          set sftp:connect-program "ssh -a -x -i $HOME/.ssh/deploy_key -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
+          open -u "$USER," -p "$PORT" "sftp://$HOST"
+          rm -r -f "$release"
+          mirror -R --parallel=8 --no-perms pkg "$release"
+          rm -r -f "$APP_DIR.previous"
+          mv "$APP_DIR" "$APP_DIR.previous"
+          mv "$release" "$APP_DIR"
+          put pkg/tmp/restart.txt -o "$APP_DIR/tmp/restart.txt"
+          bye
+          EOF
+          echo "Desplegado ${GITHUB_SHA::12} en $APP_DIR"
+
+      - name: Chequeo de salud
+        if: vars.PRODUCTION_URL != ''
+        env:
+          URL: ${{ vars.PRODUCTION_URL }}
+          PROBE: ${{ steps.pkg.outputs.probe }}
+        run: |
+          # Un archivo estático del build nuevo solo responde 200 cuando la app nueva ya arrancó.
+          curl -fsS -o /dev/null "$URL/" || true
+          for i in $(seq 1 36); do
+            if curl -fsS -o /dev/null "$URL/_next/$PROBE" && curl -fsS -o /dev/null "$URL/api/products"; then
+              echo "OK: $URL sirve el build nuevo"; exit 0
+            fi
+            sleep 5
+          done
+          echo "El sitio no sirve el build nuevo tras 3 minutos. Revisa la app en 'Setup Node.js App' (Restart) o vuelve a la versión anterior." >&2
+          exit 1
+
+      - name: Limpiar clave
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -2,10 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { ContactRound, Database, LayoutDashboard, Package, PlugZap, ReceiptText, ShoppingCart, Store } from "lucide-react";
+import { ContactRound, TrendingUp, Database, LayoutDashboard, Package, PlugZap, ReceiptText, ShoppingCart, Store } from "lucide-react";
 import { demoDatabase } from "@/db";
 import { getAdmin } from "@/lib/admin-auth";
 import { getAdminSummary, type AdminSummary } from "@/lib/admin-summary";
+import { SalesWorkbench } from "@/components/sales-workbench";
 import { AdminWorkbench, type WorkspaceTab } from "@/components/admin-workbench";
 import { BrandLockup } from "@/components/brand-lockup";
 
@@ -14,6 +15,7 @@ export const metadata = { title: "Centro de operaciones | Alesya", robots: { ind
 
 const nav = [
   [LayoutDashboard, "Resumen", "/admin#resumen"],
+  [TrendingUp, "Ventas", "/admin#ventas"],
   [ContactRound, "CRM", "/admin?vista=crm#gestion"],
   [ShoppingCart, "Pedidos", "/admin?vista=pedidos#gestion"],
   [Package, "Productos", "/admin?vista=productos#gestion"],
@@ -45,7 +47,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <Link className="admin-back" href="/">← Volver al sitio</Link>
     </aside>
     <main className="admin-main">
-      <header className="admin-topbar"><h1>Centro de operaciones</h1><div className="admin-user"><span>{admin.email}</span><form action="/api/admin/logout" method="post"><button className="refresh-button">Cerrar sesión</button></form></div></header>
+      <header className="admin-topbar"><h1>Ventas y operaciones</h1><div className="admin-user"><span>{admin.email}</span><form action="/api/admin/logout" method="post"><button className="refresh-button">Cerrar sesión</button></form></div></header>
       <div className="admin-content">
         {demo && <p className="checkout-status admin-demo-banner"><strong>Entorno de pruebas.</strong> Todos los datos son ficticios. Los cambios que hagas pueden reiniciarse cuando Vercel recicle el servidor.</p>}
         {!summary && <p className="checkout-status">No fue posible calcular el resumen. Revisa la conexión de la base de datos.</p>}
@@ -61,6 +63,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             <article className="panel"><div className="panel-header"><h2>Actividad reciente</h2><span>Contactos y pedidos</span></div><div className="activity-list">{summary.activity.length ? summary.activity.map((item, index) => <div className="activity-item" key={index}><i className="activity-dot" data-kind={item.kind} /><span>{item.label}</span><small>{formatDistanceToNow(item.at, { locale: es })}</small></div>) : <p>Todavía no hay actividad. Los contactos del sitio y los pedidos aparecerán aquí.</p>}</div></article>
           </section>
         </>}
+        <SalesWorkbench />
         <AdminWorkbench key={tab} initialTab={tab} />
         <section className="admin-grid" id="integraciones"><article className="panel"><div className="panel-header"><h2>Arquitectura operativa</h2><span>Modelo modular</span></div><p>Web, catálogo, contenidos, CRM, pedidos, inventario y pagos comparten un modelo de datos modular. Los pagos solo se confirman con el evento firmado de Wompi y cada venta confirmada descuenta inventario con trazabilidad.</p></article><article className="panel"><div className="panel-header"><h2>Integraciones</h2><span>Estado</span></div><div className="activity-list">
           <div className="activity-item"><ReceiptText /><span>Wompi · {wompiReady ? `conectado (${wompiMode})` : "faltan credenciales"}</span><small>{wompiReady ? "Activo" : "Configurar"}</small></div>

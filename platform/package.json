@@ -10,12 +10,15 @@
     "dev": "next dev --hostname 127.0.0.1 --port 5173",
     "prebuild": "node scripts/prepare-demo-db.mjs",
     "build": "next build",
-    "start": "next start",
+    "postbuild": "node scripts/prepare-standalone.mjs",
+    "start": "node --env-file-if-exists=.env.local scripts/start-standalone.mjs",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate-db.mjs",
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs",
+    "inventory:import": "node --env-file-if-exists=.env.local scripts/import-inventory.mjs",
     "admin:setup": "node scripts/setup-admin.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "package:cpanel": "node scripts/package-cpanel.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

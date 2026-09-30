@@ -1,6 +1,7 @@
 export const leadStages = [
   { value: "new", label: "Nuevo" },
   { value: "contacted", label: "Contactado" },
+  { value: "meeting", label: "Reunión" },
   { value: "proposal", label: "Propuesta" },
   { value: "won", label: "Ganado" },
   { value: "lost", label: "Perdido" },
