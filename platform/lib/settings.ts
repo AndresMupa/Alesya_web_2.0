@@ -9,6 +9,7 @@ export const settingDefaults = {
   "store.shipping_default_cop": "0",
   "store.shipping_note": "Envíos a toda Colombia. Coordinamos la entrega al confirmar el pago.",
   "mail.notify_to": "comercial@alesyaediciones.com",
+  "crm.daily_goal": "20",
 } as const;
 
 export type SettingKey = keyof typeof settingDefaults;

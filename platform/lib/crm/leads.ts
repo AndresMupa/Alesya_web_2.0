@@ -214,7 +214,8 @@ export async function getSalesMetrics() {
   const monthStart = bogotaMonthStart();
   const weekAgo = new Date(Date.now() - 7 * 86_400_000);
   const today = bogotaDay();
-  const [[open], [won], [lost], [closedAll], [due], [inbound], [prospects], [touches]] = await Promise.all([
+  const todayStart = new Date(Date.parse(`${today}T05:00:00Z`)); // medianoche en Bogotá (UTC-5)
+  const [[open], [won], [lost], [closedAll], [due], [inbound], [prospects], [touches], [touchesToday]] = await Promise.all([
     db.select({ total: count(), value: sum(leads.estimatedValueInCents) }).from(leads).where(inArray(leads.stage, ["contacted", "meeting", "proposal"])),
     db.select({ total: count(), value: sum(leads.estimatedValueInCents) }).from(leads).where(and(eq(leads.stage, "won"), gte(leads.stageChangedAt, monthStart))),
     db.select({ total: count() }).from(leads).where(and(eq(leads.stage, "lost"), gte(leads.stageChangedAt, monthStart))),
@@ -223,6 +224,7 @@ export async function getSalesMetrics() {
     db.select({ total: count() }).from(leads).where(and(eq(leads.stage, "new"), not(isProspect))),
     db.select({ total: count() }).from(leads).where(and(eq(leads.stage, "new"), isProspect)),
     db.select({ total: count() }).from(leadActivities).where(and(inArray(leadActivities.type, workActivityTypes), gte(leadActivities.createdAt, weekAgo))),
+    db.select({ total: count() }).from(leadActivities).where(and(inArray(leadActivities.type, workActivityTypes), gte(leadActivities.createdAt, todayStart))),
   ]);
   const closed = Number(closedAll?.won ?? 0) + Number(closedAll?.lost ?? 0);
   return {
@@ -234,6 +236,7 @@ export async function getSalesMetrics() {
     inboundNew: inbound.total,
     prospectsUntouched: prospects.total,
     touchesThisWeek: touches.total,
+    touchesToday: touchesToday.total,
   };
 }
 
@@ -376,7 +379,9 @@ export async function getTeamStats() {
   const monthAgo = new Date(Date.now() - 30 * 86_400_000);
   const ownerKey = sql<string>`coalesce(nullif(${leads.owner}, ''), '—')`;
   const channelKey = sql<string>`case when instr(${leads.source}, ' / ') > 0 then substr(${leads.source}, 1, instr(${leads.source}, ' / ') - 1) else ${leads.source} end`;
-  const [byOwner, touchesByOwner, bySource, lostReasons] = await Promise.all([
+  const twoWeeksAgo = new Date(Date.now() - 14 * 86_400_000);
+  const bogotaDate = sql<string>`date(${leadActivities.createdAt} / 1000 - 18000, 'unixepoch')`;
+  const [byOwner, touchesByOwner, bySource, lostReasons, byDay] = await Promise.all([
     db.select({
       owner: ownerKey, assigned: count(),
       open: sql<number>`sum(case when ${leads.stage} in ('contacted','meeting','proposal') then 1 else 0 end)`,
@@ -396,9 +401,13 @@ export async function getTeamStats() {
       lost: sql<number>`sum(case when ${leads.stage} = 'lost' then 1 else 0 end)`,
     }).from(leads).groupBy(channelKey).orderBy(desc(count())),
     db.select({ reason: sql<string>`coalesce(${leads.lostReason}, 'Sin motivo')`, total: count() }).from(leads).where(eq(leads.stage, "lost")).groupBy(leads.lostReason).orderBy(desc(count())).limit(10),
+    db.select({ day: bogotaDate, total: count() }).from(leadActivities).where(and(inArray(leadActivities.type, workActivityTypes), gte(leadActivities.createdAt, twoWeeksAgo))).groupBy(bogotaDate),
   ]);
   const touches = new Map(touchesByOwner.map((row) => [row.owner, row]));
+  const perDay = new Map(byDay.map((row) => [row.day, row.total]));
   return {
+    // Últimos 14 días con cero donde no hubo gestiones, para la gráfica de actividad.
+    activityByDay: Array.from({ length: 14 }, (_, index) => { const day = bogotaDay(index - 13); return { day, total: perDay.get(day) ?? 0 }; }),
     owners: byOwner.map((row) => ({ owner: row.owner, assigned: row.assigned, open: Number(row.open), valueInCents: Number(row.value), won30: Number(row.won30), wonValueInCents30: Number(row.wonValue30), lost30: Number(row.lost30), due: Number(row.due), touchesWeek: Number(touches.get(row.owner)?.week ?? 0), touchesMonth: Number(touches.get(row.owner)?.month ?? 0) }))
       .sort((a, b) => b.touchesWeek - a.touchesWeek || b.open - a.open),
     sources: bySource.map((row) => ({ source: row.source, label: leadSourceLabel(row.source), total: row.total, open: Number(row.open), won: Number(row.won), lost: Number(row.lost), winRate: Number(row.won) + Number(row.lost) ? Math.round((Number(row.won) / (Number(row.won) + Number(row.lost))) * 100) : null })),

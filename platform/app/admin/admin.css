@@ -1,5 +1,76 @@
 /* Panel de operaciones: módulos CRM, ventas, pedidos y productos. Complementa las reglas .admin-* de globals.css. */
 
+/* ── Tema del panel (v3): superficies suaves, acentos de marca, gráficas ── */
+:root {
+  --adm-bg:#f2f4f7; --adm-surface:#ffffff; --adm-line:#e3e7ee; --adm-radius:14px;
+  --adm-shadow:0 1px 2px rgba(16,24,40,.04), 0 6px 20px rgba(16,24,40,.05);
+  --adm-chart:#1a5fc2; --adm-chart-strong:#0b3d8c;
+}
+.admin-shell { background:var(--adm-bg); }
+.admin-sidebar { background:linear-gradient(180deg,#0b1324 0%,#141f36 100%); box-shadow:inset -1px 0 0 rgba(255,255,255,.05); }
+.adm-nav a { border-radius:10px; transition:background .15s, color .15s; }
+.adm-nav a.is-active { box-shadow:0 6px 16px rgba(215,255,67,.25); }
+.admin-topbar { position:sticky; top:0; z-index:30; background:rgba(255,255,255,.82); backdrop-filter:blur(10px); border-bottom-color:var(--adm-line); }
+.adm-page-head h1 { font-size:30px; letter-spacing:-.035em; }
+.panel, .metric-card, .adm-card, .adm-pipe-col, .adm-prospect-card, .adm-prospect-work .adm-composer, .adm-warning-box, .adm-callout, .adm-inline-panel, .adm-dupes, .adm-bulk-bar { border-radius:var(--adm-radius); }
+.panel, .metric-card { border-color:var(--adm-line); box-shadow:var(--adm-shadow); }
+.adm-card { border-color:var(--adm-line); }
+.metric-card { position:relative; overflow:hidden; padding:20px 20px 18px 24px; transition:transform .15s, box-shadow .15s; }
+.metric-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--signal-cyan); }
+.metric-card:nth-child(2)::before { background:var(--signal-lime); }
+.metric-card:nth-child(3)::before { background:var(--signal-yellow); }
+.metric-card:nth-child(4)::before { background:var(--signal-violet); }
+.metric-card:nth-child(5)::before { background:var(--signal-coral); }
+.metric-card:hover { transform:translateY(-2px); box-shadow:0 10px 26px rgba(16,24,40,.08); }
+.metric-card p { margin-bottom:12px; }
+.metric-card strong { font-size:30px; letter-spacing:-.03em; line-height:1.1; }
+.panel-header h2 svg { color:#5d6775; }
+.admin-table th { color:#8a94a3; letter-spacing:.1em; font-size:10px; }
+.admin-table td { padding:13px 8px; }
+.adm-table tbody tr { transition:background .12s; }
+.admin-tabs { border-radius:12px; background:#e9edf3; }
+.admin-tabs button { border-radius:9px; }
+.admin-tabs button.is-active { box-shadow:0 1px 4px rgba(16,24,40,.12); }
+.refresh-button, a.refresh-button { border-radius:9px; transition:border-color .15s, background .15s, transform .1s; }
+.refresh-button:hover:not(:disabled) { border-color:#9aa3ad; background:#f7f9fb; }
+.admin-shell .button { border-radius:10px; }
+.admin-inline-input, .adm-search input, .adm-form input, .adm-form select, .adm-form textarea, .adm-log textarea, .adm-composer textarea, .adm-order-composer textarea, .adm-outcome-detail textarea, .adm-bulk-bar input, .adm-bulk-bar select, .adm-inline-form input, .adm-paylink input, .adm-stock-form input, .adm-stock-form select, .adm-search-line, .adm-asesor { border-radius:8px; }
+.adm-form input:focus, .adm-form select:focus, .adm-form textarea:focus, .adm-search input:focus, .admin-inline-input:focus { outline:2px solid rgba(26,95,194,.35); outline-offset:1px; border-color:#1a5fc2; }
+.status-pill { border-radius:8px; letter-spacing:.06em; }
+.adm-priority { border-radius:8px; }
+.adm-chip { transition:background .12s, border-color .12s; }
+.adm-drawer { border-radius:18px 0 0 18px; }
+.adm-drawer-head { border-radius:18px 0 0 0; }
+.adm-pipe-card { border-radius:10px; transition:transform .12s, box-shadow .12s; }
+.adm-pipe-card:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(16,24,40,.08); }
+.adm-pipe-card.is-stale { border-color:#f1d98a; background:#fffdf3; }
+.adm-pipe-meta em.is-stale { color:#a55a00; font-weight:700; }
+.adm-outcomes button, .adm-picker, .adm-lines, .adm-prospect-notes { border-radius:10px; }
+.adm-outcomes button kbd, .adm-kbd-hint kbd { display:inline-block; min-width:18px; padding:1px 5px; border-radius:5px; border:1px solid #cfd6df; background:#f4f6f9; font:inherit; font-size:10px; font-weight:800; color:#5d6775; text-align:center; }
+.adm-kbd-hint { font-weight:400; color:#8a94a3; font-size:11px; margin-left:8px; }
+.pcard, .pboard-col { border-radius:12px; }
+.adm-empty { display:grid; justify-items:center; gap:4px; text-align:center; padding:26px 12px; color:#7b8490; font-size:13px; }
+.adm-empty strong { color:#3a4452; }
+.adm-empty svg { color:#b4bcc6; margin-bottom:4px; }
+
+/* Hoy: meta diaria */
+.adm-today { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; background:linear-gradient(120deg,#0d1626 0%,#1b2a48 60%,#23385f 100%); color:white; border-radius:var(--adm-radius); padding:20px 24px; margin-bottom:16px; box-shadow:var(--adm-shadow); }
+.adm-today-label { display:inline-flex; align-items:center; gap:6px; margin:0 0 6px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.65); font-weight:800; }
+.adm-today h2 { margin:0 0 10px; font-size:24px; letter-spacing:-.02em; }
+.adm-today p:last-child { margin:8px 0 0; font-size:13px; color:rgba(255,255,255,.75); }
+.adm-today .button { min-height:44px; padding:0 18px; font-size:12px; }
+.adm-progress { height:10px; border-radius:6px; background:rgba(255,255,255,.14); overflow:hidden; max-width:520px; }
+.adm-progress > i { display:block; height:100%; border-radius:6px; background:linear-gradient(90deg,#9fdc3d,#d7ff43); transition:width .4s ease; }
+
+/* Gráficas */
+.adm-chart { position:relative; width:100%; }
+.adm-chart-empty { position:absolute; inset:0; display:grid; place-items:center; margin:0; font-size:12px; color:#8a94a3; pointer-events:none; }
+.adm-chart-tip { background:white; border:1px solid var(--adm-line); border-radius:8px; padding:8px 10px; box-shadow:0 6px 18px rgba(16,24,40,.12); display:grid; gap:2px; }
+.adm-chart-tip strong { font-size:14px; }
+.adm-chart-tip span { font-size:11px; color:#6a7482; }
+.recharts-wrapper .recharts-cartesian-axis-tick text { font-family:var(--font-sans); }
+.recharts-tooltip-wrapper { outline:none; }
+
 /* ── Navegación ─────────────────────────────────────────────────────────── */
 .admin-sidebar { overflow-y:auto; display:flex; flex-direction:column; }
 .adm-nav { gap:18px; margin-bottom:60px; }

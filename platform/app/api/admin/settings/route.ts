@@ -10,6 +10,7 @@ const schema = z.object({
   "store.shipping_default_cop": z.string().trim().regex(/^\d{0,9}$/).optional(),
   "store.shipping_note": z.string().trim().max(300).optional(),
   "mail.notify_to": z.union([z.string().trim().email().max(180), z.literal("")]).optional(),
+  "crm.daily_goal": z.string().trim().regex(/^\d{1,4}$/).optional(),
 });
 
 export async function GET() {
