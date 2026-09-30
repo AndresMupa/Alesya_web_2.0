@@ -42,6 +42,10 @@ El correo, la contraseña y las líneas `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` y `
 | `WOMPI_EVENTS_SECRET` | Verificación de la firma del webhook `/api/webhooks/wompi`. |
 | `ALESYA_DATA_DIR` | Carpeta privada para SQLite en cPanel; por defecto `~/alesya-data` (con `npm start` en local, `.local`). |
 | `TRUSTED_PROXY_IP_HEADER` | Cabecera de IP saneada por el proxy. En cPanel: `x-forwarded-for`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Correo transaccional (pedido recibido, pago confirmado, envío, avisos al equipo). En cPanel: una cuenta de correo del dominio, puerto 465. Sin ellas no se envía nada; en desarrollo el correo se imprime en la consola. |
+| `PRODUCTION_URL` | Dominio público para los enlaces de correos y pagos (`https://nueva.alesyaediciones.com`). |
+
+La configuración que no es secreta (WhatsApp comercial, instrucciones de pago manual, envío por defecto, correo de avisos) se edita en **`/admin/configuracion`** y se guarda en la tabla `settings`.
 
 Todas son secretos: configúralas en Vercel y en `.env.local`, nunca en el repositorio.
 
@@ -74,7 +78,10 @@ Cada módulo tiene su ruta; todas exigen sesión:
   - **Modo prospección:** recorre la cola colegio por colegio. Muestra los datos de contacto, una plantilla de WhatsApp o correo lista para enviar (`lib/crm/templates.ts`, editable antes de abrir la app) y cinco resultados de un clic: *Contestó · interesado* (pasa a Contactado y programa seguimiento a 3 días), *Reunión agendada* (pasa a Reunión con la fecha), *Sin respuesta* (queda como intento y vuelve a la cola en 2 días; al tercer intento sugiere marcarlo perdido), *No interesa* y *Datos errados* (pasan a Perdido con el motivo). La cola prioriza alta prioridad y colegios con celular.
   - **Asesor activo:** varios asesores comparten la cuenta de administración; cada uno escribe su nombre una vez (queda en el navegador) y con eso firma sus gestiones, filtra "mis oportunidades" y queda como responsable de los contactos que registra o gestiona primero.
 - **CRM** (`/admin/crm`): toda la base con búsqueda (institución, persona, ciudad, teléfono, DANE) y filtros (etapa, prioridad, origen, ciudad, responsable, seguimientos pendientes); alta manual con detección de duplicados (avisa si la institución, el correo o el teléfono ya existen); acciones en lote (asignar responsable, prioridad, programar seguimiento); importar y exportar CSV. La **ficha del contacto** registra gestiones (llamada, WhatsApp, correo, reunión, visita, intento sin respuesta, nota) con el próximo seguimiento, redacta mensajes con plantilla y muestra el historial, los intentos acumulados y los pedidos de la tienda hechos con el mismo correo.
-- **Pedidos** (`/admin/pedidos`): bandejas por preparar, esperando pago, enviados, cerrados; ficha con productos, cliente, pagos, notas internas y trazabilidad.
+- **Pedidos** (`/admin/pedidos`): bandejas por preparar, esperando pago, enviados, cerrados; exportación CSV de la bandeja; ficha con productos, cliente, pagos, notas internas y trazabilidad (incluye los correos enviados y los avisos de inventario cuando se vendió más de lo que había).
+  - **Nuevo pedido:** ventas por WhatsApp, colegios o ferias. Se eligen productos del catálogo (publicados con precio), costo de envío y datos del cliente; queda *esperando pago* y, si hay correo, el cliente recibe el resumen con las instrucciones de pago o el enlace de Wompi.
+  - **Cobrar:** en un pedido sin pagar se puede cambiar el costo de envío (actualiza el total y el cobro), generar un **enlace de pago de Wompi** para enviarlo por WhatsApp, escribir al cliente con una plantilla según el estado (instrucciones de pago, pago confirmado, enviado con guía, entregado) o **registrar el pago recibido** (transferencia, Nequi directo, efectivo, datáfono).
+- **Configuración** (`/admin/configuracion`): WhatsApp comercial, instrucciones de pago manual (aparecen en la página de resultado, el correo y la plantilla), envío por defecto (0 = se coordina), nota de envío y correo de avisos del equipo; botón para enviar un correo de prueba.
 - **Productos e inventario** (`/admin/productos`): tablero por categorías (arrastrar ordena la tienda) o tabla para poner precios rápido (al asignar el primer precio a un borrador se publica), acciones masivas, destacados de la portada, venta bajo pedido, fotos subidas desde el panel, ajustes de stock con motivo e historial, importar y exportar CSV.
 - **Integraciones** (`/admin/integraciones`): estado de Wompi, base de datos, fotos y canales.
 

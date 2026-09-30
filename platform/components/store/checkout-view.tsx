@@ -53,7 +53,8 @@ export function CheckoutView({ wompiReady, buyNow }: { wompiReady: boolean; buyN
   </section>;
 
   const blocked = !data || data.missing.length > 0 || data.lines.some((line) => line.problem);
-  const total = data?.subtotalInCents ?? 0;
+  const shipping = data?.shippingInCents ?? 0;
+  const total = (data?.subtotalInCents ?? 0) + shipping;
 
   return <div className="checkout-wrap store-checkout">
     <form className="checkout-card" onSubmit={submit}>
@@ -83,8 +84,9 @@ export function CheckoutView({ wompiReady, buyNow }: { wompiReady: boolean; buyN
       {data?.lines.map((line) => <div className="order-line" key={line.slug}><div><strong>{line.quantity} × {line.name}</strong>{line.problem && <p className="form-error">{line.problem}</p>}</div><strong>{formatMoney(line.lineTotalInCents)}</strong></div>)}
       {!data && <p>{loading ? "Calculando…" : ""}</p>}
       {data && data.missing.length > 0 && <div className="checkout-status">Un producto del carrito ya no está disponible. <Link href="/carrito">Revisa el carrito</Link>.</div>}
-      <div className="order-line"><span>Envío</span><span>Se coordina al confirmar</span></div>
+      <div className="order-line"><span>Envío</span><span>{shipping ? formatMoney(shipping) : "Se coordina al confirmar"}</span></div>
       <div className="order-total"><strong>Total</strong><strong>{formatMoney(total)}</strong></div>
+      {data?.shippingNote && <p className="store-shipping-note">{data.shippingNote}</p>}
       <Link href="/carrito" className="underlined-link">Editar carrito</Link>
     </aside>
   </div>;

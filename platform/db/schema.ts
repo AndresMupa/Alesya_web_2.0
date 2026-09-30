@@ -52,6 +52,13 @@ export const contentItems = sqliteTable("content_items", {
   id: text("id").primaryKey(), slug: text("slug").notNull(), title: text("title").notNull(), type: text("type").notNull(), status: text("status").notNull().default("draft"), excerpt: text("excerpt").notNull().default(""), body: text("body").notNull().default(""), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(), updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [uniqueIndex("idx_content_slug_unique").on(table.slug), index("idx_content_status_type").on(table.status, table.type)]);
 
+/** Configuración editable desde el panel (WhatsApp, instrucciones de pago, envío, correo de avisos). */
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   count: integer("count").notNull().default(0),

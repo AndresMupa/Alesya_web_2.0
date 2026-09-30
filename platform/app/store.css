@@ -86,6 +86,10 @@
 .store-result-items li:last-child { font-size:16px; }
 .store-result-actions { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:20px; }
 
+.store-shipping-note { margin:10px 0 0; font-size:12px; color:var(--muted); line-height:1.5; }
+.store-instructions { text-align:left; background:#f5f6f2; border:1px solid var(--line); padding:16px 18px; margin:18px 0; white-space:pre-line; line-height:1.6; font-size:14px; }
+.store-instructions strong { display:block; margin-bottom:6px; }
+
 /* Logos de colegios clientes */
 .clients-logos-title { margin:34px 0 12px; font-size:11px!important; text-transform:uppercase; letter-spacing:.12em; font-weight:800; color:#77808c!important; }
 .clients-logos { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }

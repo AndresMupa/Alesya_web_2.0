@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { cartItemsSchema } from "@/lib/commerce/catalog";
+import { notifyOrder } from "@/lib/commerce/notifications";
 import { createOrder } from "@/lib/commerce/orders";
 import { handleError, ok, readBody } from "@/lib/http";
-import { wompiCheckoutUrl, wompiStatus } from "@/lib/payments/wompi";
+import { publicOrigin, wompiCheckoutUrl, wompiStatus } from "@/lib/payments/wompi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const checkoutSchema = z.object({
@@ -23,9 +24,11 @@ export async function POST(request: Request) {
   const body = await readBody(request, checkoutSchema, "Los datos del pedido no están completos."); if (body instanceof Response) return body;
   const wompi = wompiStatus();
   try {
-    const order = await createOrder(body.items, body.customer, wompi.ready ? "wompi" : "manual");
-    const origin = new URL(request.url).origin;
+    const order = await createOrder(body.items, body.customer, wompi.ready ? "wompi" : "manual", { channel: "web" });
+    const origin = publicOrigin(request);
     const checkoutUrl = wompi.ready ? wompiCheckoutUrl({ reference: order.reference, amountInCents: order.totalInCents, redirectUrl: `${origin}/checkout/resultado?referencia=${encodeURIComponent(order.reference)}`, customer: body.customer }) : null;
-    return ok({ ok: true, orderReference: order.reference, totalInCents: order.totalInCents, checkoutUrl, resultUrl: `/checkout/resultado?referencia=${encodeURIComponent(order.reference)}` }, 201);
+    // El correo nunca bloquea la compra: si falla queda en la trazabilidad del pedido.
+    await notifyOrder("received", order.orderId, { origin, checkoutUrl }).catch((error) => console.error("checkout_notify_failed", error));
+    return ok({ ok: true, orderReference: order.reference, totalInCents: order.totalInCents, shippingInCents: order.shippingInCents, checkoutUrl, resultUrl: `/checkout/resultado?referencia=${encodeURIComponent(order.reference)}` }, 201);
   } catch (error) { return handleError(error, "checkout_order_create_failed", "No fue posible registrar el pedido."); }
 }

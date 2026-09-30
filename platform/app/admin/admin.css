@@ -269,6 +269,42 @@ a.activity-item:hover span { text-decoration:underline; }
 .adm-lead-facts .adm-link-button { justify-self:start; }
 .adm-lead-facts small { font-size:11px; color:#a55a00; }
 
+/* ── Pedidos 2: cobro, nuevo pedido, configuración ─────────────────────── */
+.adm-warning-box { display:flex; gap:10px; align-items:flex-start; background:#fff6d6; border:1px solid #f1d98a; padding:12px 14px; font-size:13px; }
+.adm-warning-box svg { flex:none; color:#a55a00; margin-top:2px; }
+.adm-warning-box p { margin:4px 0 0; color:#5d4a10; }
+.adm-inline-form { display:flex; flex-wrap:wrap; align-items:end; gap:10px; }
+.adm-inline-form label { display:grid; gap:4px; font-size:12px; font-weight:700; color:#5d6775; }
+.adm-inline-form input { border:1px solid var(--line); background:white; padding:8px 10px; font:inherit; font-size:13px; width:140px; }
+.adm-inline-form small { flex-basis:100%; }
+.adm-card h4 { margin:6px 0 0; font-size:13px; }
+.adm-paylink { display:flex; gap:6px; align-items:center; }
+.adm-paylink input { flex:1; min-width:0; border:1px solid var(--line); background:#f7f9f6; padding:8px 10px; font:inherit; font-size:12px; }
+.adm-order-composer textarea { width:100%; border:1px solid var(--line); background:white; padding:10px; font:inherit; font-size:13px; line-height:1.5; }
+.adm-search-line { display:flex; align-items:center; gap:8px; border:1px solid var(--line); background:white; padding:0 10px; }
+.adm-search-line input { flex:1; border:0; padding:9px 0; font:inherit; font-size:13px; outline:0; background:transparent; }
+.adm-picker { list-style:none; margin:0; padding:0; border:1px solid var(--line); background:white; max-height:280px; overflow-y:auto; }
+.adm-picker button { width:100%; display:grid; grid-template-columns:36px 1fr auto; gap:10px; align-items:center; border:0; border-bottom:1px solid #eceeeb; background:transparent; padding:8px 10px; text-align:left; cursor:pointer; font:inherit; }
+.adm-picker button:hover { background:#f4fbdc; }
+.adm-picker img, .adm-picker-icon { width:36px; height:36px; object-fit:cover; background:#f3f5f1; display:grid; place-items:center; color:#8a939e; }
+.adm-picker small { display:block; color:#8a939e; font-size:11px; }
+.adm-lines { list-style:none; margin:0; padding:0; display:grid; }
+.adm-lines li { display:grid; grid-template-columns:1fr auto auto 28px; gap:10px; align-items:center; padding:9px 0; border-bottom:1px solid #eceeeb; font-size:13px; }
+.adm-lines small { display:block; color:#8a939e; font-size:11px; }
+.adm-lines em { color:#b3261e; font-style:normal; }
+.adm-lines .store-qty { height:32px; }
+.adm-lines .store-qty button { width:28px; }
+.adm-lines .store-qty input { width:32px; font-size:13px; }
+.adm-totals-inline { justify-self:end; align-self:end; min-width:0; }
+.adm-check { display:flex !important; align-items:center; gap:8px; font-weight:600 !important; }
+.adm-check input { width:auto !important; }
+.adm-settings h2 { font-size:17px; margin:8px 0 0; display:flex; align-items:center; gap:8px; }
+.adm-settings small { font-weight:400; color:#7b8490; }
+.adm-callout.is-ok { background:#e3f8e7; border-color:#a9dfb6; }
+.adm-callout code { font-size:11px; background:rgba(0,0,0,.06); padding:1px 4px; }
+.adm-timeline li[data-type="stock_warning"]::before { background:#e0473a; }
+.adm-timeline li[data-type="notification"]::before, .adm-timeline li[data-type="payment_link"]::before { background:#7aa6d8; }
+
 /* ── Integraciones y diálogos ───────────────────────────────────────────── */
 .adm-integrations { list-style:none; margin:0; padding:0; display:grid; }
 .adm-integrations li { display:grid; grid-template-columns:24px 1fr auto; gap:14px; align-items:start; padding:14px 0; border-bottom:1px solid #eceeeb; }

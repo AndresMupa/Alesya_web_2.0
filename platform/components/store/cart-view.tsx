@@ -50,8 +50,9 @@ export function CartView() {
     <aside className="checkout-card">
       <h2>Resumen</h2>
       <div className="order-line"><span>Subtotal</span><strong>{data ? formatMoney(data.subtotalInCents) : "…"}</strong></div>
-      <div className="order-line"><span>Envío</span><span>Se coordina al confirmar</span></div>
-      <div className="order-total"><strong>Total</strong><strong>{data ? formatMoney(data.subtotalInCents) : "…"}</strong></div>
+      <div className="order-line"><span>Envío</span><span>{data ? (data.shippingInCents ? formatMoney(data.shippingInCents) : "Se coordina al confirmar") : "…"}</span></div>
+      <div className="order-total"><strong>Total</strong><strong>{data ? formatMoney(data.subtotalInCents + data.shippingInCents) : "…"}</strong></div>
+      {data?.shippingNote && <p className="store-shipping-note">{data.shippingNote}</p>}
       {error && <div className="checkout-status">No pudimos verificar el carrito. Revisa tu conexión.</div>}
       {blocked && data && <div className="checkout-status">Ajusta los productos marcados para continuar.</div>}
       {blocked || loading ? <span className="button button-primary is-disabled" aria-disabled="true">Finalizar compra <ArrowRight size={18} /></span>

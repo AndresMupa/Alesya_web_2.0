@@ -69,7 +69,7 @@ export const inventoryReasons: Record<string, string> = {
 
 /** Eventos de la trazabilidad del pedido. */
 export const orderEventLabels: Record<string, string> = {
-  created: "Pedido creado", payment_approved: "Pago aprobado", payment_declined: "Pago rechazado", payment_error: "Error de pago", payment_voided: "Pago anulado", payment_review: "Pago en revisión", manual_payment: "Pago manual registrado", status: "Cambio de estado", note: "Nota interna",
+  created: "Pedido creado", payment_approved: "Pago aprobado", payment_declined: "Pago rechazado", payment_error: "Error de pago", payment_voided: "Pago anulado", payment_review: "Pago en revisión", manual_payment: "Pago manual registrado", status: "Cambio de estado", note: "Nota interna", stock_warning: "Aviso de inventario", notification: "Notificación", payment_link: "Enlace de pago",
 };
 
 const labelOf = (list: readonly { value: string; label: string }[], value: string) => list.find((item) => item.value === value)?.label ?? value;

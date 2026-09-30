@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Download, Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader, useDebounced, useJson } from "@/components/admin/kit";
+import { useAsesor } from "@/components/admin/asesor";
+import { NewOrderDrawer } from "@/components/admin/commerce/new-order-drawer";
 import { OrderDrawer, StatusPill } from "@/components/admin/commerce/order-drawer";
 import { orderQueues } from "@/lib/commerce/constants";
 import { formatDateTime, formatMoney } from "@/lib/format";
@@ -11,11 +14,13 @@ type Row = { id: string; reference: string; customerName: string; customerEmail:
 type Result = { rows: Row[]; total: number; page: number; pageSize: number; queue: string; counts: Record<string, number> };
 
 export function OrdersExplorer({ initialOrder }: { initialOrder?: string }) {
+  const asesor = useAsesor();
   const [queue, setQueue] = useState<string>(initialOrder ? "all" : "prepare");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
   const [openOrder, setOpenOrder] = useState<string | null>(initialOrder ?? null);
+  const [creating, setCreating] = useState(false);
   const term = useDebounced(search.trim(), 300);
   const params = new URLSearchParams({ queue, page: String(page), ...(term && { search: term }) });
   const { data, error, loading } = useJson<Result>(`/api/admin/commerce/orders?${params}`, revision);
@@ -29,6 +34,8 @@ export function OrdersExplorer({ initialOrder }: { initialOrder?: string }) {
 
   return <>
     <PageHeader title="Pedidos" description="Pagos confirmados, preparación, envío y entrega. Cada paso queda en la trazabilidad del pedido.">
+      <button className="refresh-button" onClick={() => setCreating(true)}><Plus size={15} /> Nuevo pedido</button>
+      <a className="refresh-button" href={`/api/admin/commerce/orders/export?queue=${queue}`}><Download size={15} /> Exportar CSV</a>
       <button className="refresh-button" onClick={reload} disabled={loading}><RefreshCw size={15} /> {loading ? "Cargando…" : "Actualizar"}</button>
     </PageHeader>
     <section className="panel adm-section">
@@ -52,7 +59,9 @@ export function OrdersExplorer({ initialOrder }: { initialOrder?: string }) {
         </table>
       </div>
       <div className="sales-pagination"><span>{data?.total ?? 0} pedidos · página {page} de {pages}</span><div><button className="refresh-button" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>Anterior</button><button className="refresh-button" disabled={page >= pages || loading} onClick={() => setPage(page + 1)}>Siguiente</button></div></div>
+      <p className="adm-hint">“Nuevo pedido” registra ventas por WhatsApp o a colegios: el pedido queda esperando pago y desde su ficha envías el enlace de Wompi o registras el pago recibido. El CSV exporta la bandeja activa.</p>
     </section>
+    <NewOrderDrawer open={creating} asesor={asesor} onClose={() => setCreating(false)} onCreated={(id, checkoutUrl) => { setCreating(false); setQueue("unpaid"); setPage(1); reload(); setOpenOrder(id); if (checkoutUrl) toast.info("Enlace de pago listo en la ficha del pedido."); }} />
     <OrderDrawer orderId={openOrder} onClose={closeOrder} onChanged={reload} />
   </>;
 }

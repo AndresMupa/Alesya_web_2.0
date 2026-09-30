@@ -52,36 +52,40 @@ const allowedFrom: Record<string, string[]> = { approved: ["pending"], declined:
  * Aplica una transacción `transaction.updated`. Idempotente: eventos repetidos o fuera de orden se ignoran.
  * Una aprobación con monto o moneda distintos queda en revisión y no mueve inventario.
  */
-export async function applyWompiTransaction(transaction: Record<string, unknown> | undefined) {
+export async function applyWompiTransaction(transaction: Record<string, unknown> | undefined): Promise<{ orderId: string; status: string } | null> {
   const reference = String(transaction?.reference ?? ""), wompiStatusValue = String(transaction?.status ?? "").toUpperCase(), outcome = outcomes[wompiStatusValue];
-  if (!reference || !outcome) return;
+  if (!reference || !outcome) return null;
   const [paymentStatus, orderStatus, eventType] = outcome;
   const providerId = String(transaction?.id ?? ""), method = transaction?.payment_method_type ? String(transaction.payment_method_type) : null;
 
-  await getDb().transaction(async (tx) => {
+  return getDb().transaction(async (tx) => {
     const [payment] = await tx.select().from(payments).where(eq(payments.reference, reference)).limit(1);
-    if (!payment) { console.warn("wompi_unknown_reference", reference); return; }
+    if (!payment) { console.warn("wompi_unknown_reference", reference); return null; }
     const now = new Date();
     // El pedido ya se pagó a mano o se canceló: un cobro aprobado en Wompi no cambia el pedido, pero queda
     // registrado en revisión para devolver el dinero o reactivar el pedido.
     if ((payment.status === "superseded" || payment.status === "cancelled") && paymentStatus === "approved") {
       await tx.update(payments).set({ status: "review", providerTransactionId: providerId, method, updatedAt: now }).where(eq(payments.id, payment.id));
       await recordOrderEvent(tx, payment.orderId, "payment_review", payment.status === "cancelled" ? "Wompi aprobó un cobro de un pedido cancelado. Revisar devolución." : "Wompi aprobó un cobro de un pedido que ya tenía pago manual. Revisar posible doble pago.", null, now);
-      return;
+      return null;
     }
-    if (payment.status === paymentStatus || !allowedFrom[paymentStatus]?.includes(payment.status)) return;
+    if (payment.status === paymentStatus || !allowedFrom[paymentStatus]?.includes(payment.status)) return null;
     if (paymentStatus === "approved" && (Number(transaction?.amount_in_cents) !== payment.amountInCents || String(transaction?.currency ?? "COP") !== "COP")) {
       console.error("wompi_amount_mismatch", reference, transaction?.amount_in_cents, payment.amountInCents);
       await tx.update(payments).set({ status: "review", providerTransactionId: providerId, method, updatedAt: now }).where(eq(payments.id, payment.id));
       await tx.update(orders).set({ status: "payment_review", updatedAt: now }).where(eq(orders.id, payment.orderId));
       await recordOrderEvent(tx, payment.orderId, "payment_review", `Monto o moneda no coinciden (${String(transaction?.amount_in_cents)} ${String(transaction?.currency ?? "")}).`, null, now);
-      return;
+      return null;
     }
     const updated = await tx.update(payments).set({ status: paymentStatus, providerTransactionId: providerId, method, updatedAt: now }).where(and(eq(payments.id, payment.id), eq(payments.status, payment.status)));
-    if (!updated.rowsAffected) return;
+    if (!updated.rowsAffected) return null;
     await tx.update(orders).set({ status: orderStatus, updatedAt: now }).where(eq(orders.id, payment.orderId));
     await recordOrderEvent(tx, payment.orderId, eventType, `Wompi ${wompiStatusValue}${method ? ` · ${method}` : ""}${providerId ? ` · ${providerId}` : ""}`, null, now);
     if (paymentStatus === "approved") await moveOrderStock(tx, payment.orderId, -1, "sale");
     if (paymentStatus === "voided" && payment.status === "approved") await moveOrderStock(tx, payment.orderId, 1, "payment_voided");
+    return { orderId: payment.orderId, status: paymentStatus };
   });
 }
+
+/** Origen público para enlaces en correos y pagos: el dominio de producción si está definido, si no el de la petición. */
+export const publicOrigin = (request: Request) => (process.env.PRODUCTION_URL?.replace(/\/$/, "") || new URL(request.url).origin);

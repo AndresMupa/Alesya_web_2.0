@@ -6,12 +6,19 @@ import { resolveCart } from "@/lib/commerce/catalog";
 import { manualOrderTransitions, orderQueues, orderStatusLabel, paymentMethodLabel, unpaidOrderStatuses, type OrderStatus } from "@/lib/commerce/constants";
 import { moveOrderStock, type Tx } from "@/lib/commerce/inventory";
 import { DomainError } from "@/lib/http";
+import { storeConfig } from "@/lib/settings";
 
-/** El envío se coordina con el cliente después del pago; el total cobrado es el de los productos. */
-export const SHIPPING_IN_CENTS = 0;
 export const ORDERS_PAGE_SIZE = 30;
 
 export type Customer = { name: string; email: string; phone: string; document?: string; city: string; address: string; notes?: string };
+export type OrderOrigin = {
+  /** Costo de envío en centavos. Si no se indica, se usa el valor por defecto de la configuración (0 = se coordina). */
+  shippingInCents?: number;
+  /** "web": lo hizo el cliente en la tienda; "admin": lo registró el equipo (venta por WhatsApp, colegio…). */
+  channel?: "web" | "admin";
+  actor?: string | null;
+  internalNotes?: string;
+};
 
 export async function recordOrderEvent(tx: Tx | ReturnType<typeof getDb>, orderId: string, type: string, detail: string, actor: string | null = null, at = new Date()) {
   await tx.insert(orderEvents).values({ id: crypto.randomUUID(), orderId, type, detail, createdBy: actor, createdAt: at });
@@ -21,7 +28,7 @@ export async function recordOrderEvent(tx: Tx | ReturnType<typeof getDb>, orderI
  * Crea un pedido `payment_pending` a partir del carrito. Precios y stock salen de la base; si alguna
  * línea ya no se puede vender, se rechaza el pedido completo con un mensaje para el cliente.
  */
-export async function createOrder(items: { slug: string; quantity: number }[], customer: Customer, provider: "wompi" | "manual") {
+export async function createOrder(items: { slug: string; quantity: number }[], customer: Customer, provider: "wompi" | "manual", origin: OrderOrigin = {}) {
   const cart = await resolveCart(items);
   if (cart.missing.length) throw new DomainError("Uno de los productos del carrito ya no está disponible. Revisa el carrito.");
   const blocked = cart.lines.find((line) => line.problem);
@@ -32,15 +39,58 @@ export async function createOrder(items: { slug: string; quantity: number }[], c
   const now = new Date();
   const orderId = crypto.randomUUID();
   const reference = `ALESYA-${Date.now().toString(36).toUpperCase()}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-  const totalInCents = cart.subtotalInCents + SHIPPING_IN_CENTS;
+  const shippingInCents = origin.shippingInCents ?? (await storeConfig()).shippingDefaultInCents;
+  const totalInCents = cart.subtotalInCents + shippingInCents;
   const summary = cart.lines.map((line) => `${line.quantity} × ${line.name}`).join(", ");
+  const where = origin.channel === "admin" ? "Registrado desde el panel" : "Pedido desde la tienda";
   await db.batch([
-    db.insert(orders).values({ id: orderId, reference, customerName: customer.name.trim(), customerEmail: customer.email.trim().toLowerCase(), customerPhone: customer.phone.trim(), customerDocument: customer.document?.trim() || null, shippingCity: customer.city.trim(), shippingAddress: customer.address.trim(), customerNotes: customer.notes?.trim() ?? "", subtotalInCents: cart.subtotalInCents, shippingInCents: SHIPPING_IN_CENTS, totalInCents, status: "payment_pending", createdAt: now, updatedAt: now }),
+    db.insert(orders).values({ id: orderId, reference, customerName: customer.name.trim(), customerEmail: customer.email.trim().toLowerCase(), customerPhone: customer.phone.trim(), customerDocument: customer.document?.trim() || null, shippingCity: customer.city.trim(), shippingAddress: customer.address.trim(), customerNotes: customer.notes?.trim() ?? "", internalNotes: origin.internalNotes?.trim() ?? "", subtotalInCents: cart.subtotalInCents, shippingInCents, totalInCents, status: "payment_pending", createdAt: now, updatedAt: now }),
     ...cart.lines.map((line) => db.insert(orderItems).values({ id: crypto.randomUUID(), orderId, productSlug: line.slug, productName: line.name, quantity: line.quantity, unitPriceInCents: line.priceInCents, lineTotalInCents: line.lineTotalInCents })),
     db.insert(payments).values({ id: crypto.randomUUID(), orderId, provider, reference, status: "pending", amountInCents: totalInCents, createdAt: now, updatedAt: now }),
-    db.insert(orderEvents).values({ id: crypto.randomUUID(), orderId, type: "created", detail: `${summary}. Pago: ${provider === "wompi" ? "Wompi" : "a coordinar con el equipo"}.`, createdAt: now }),
+    db.insert(orderEvents).values({ id: crypto.randomUUID(), orderId, type: "created", detail: `${where}: ${summary}. Envío: ${shippingInCents ? `$${Math.round(shippingInCents / 100).toLocaleString("es-CO")}` : "a coordinar"}. Pago: ${provider === "wompi" ? "Wompi" : "manual o enlace de pago"}.`, createdBy: origin.actor ?? null, createdAt: now }),
   ]);
-  return { orderId, reference, totalInCents, lines: cart.lines };
+  return { orderId, reference, totalInCents, shippingInCents, lines: cart.lines };
+}
+
+/** Cambia el costo de envío de un pedido sin pagar: actualiza el total y el monto del pago pendiente. */
+export async function updateOrderShipping(id: string, shippingInCents: number, actor: string) {
+  await getDb().transaction(async (tx) => {
+    const [order] = await tx.select({ status: orders.status, subtotalInCents: orders.subtotalInCents, shippingInCents: orders.shippingInCents }).from(orders).where(eq(orders.id, id)).limit(1);
+    if (!order) throw new DomainError("El pedido no existe.", 404);
+    if (!unpaidOrderStatuses.includes(order.status as OrderStatus)) throw new DomainError("El envío solo se puede cambiar antes de confirmar el pago.");
+    const now = new Date();
+    const totalInCents = order.subtotalInCents + shippingInCents;
+    await tx.update(orders).set({ shippingInCents, totalInCents, updatedAt: now }).where(eq(orders.id, id));
+    await tx.update(payments).set({ amountInCents: totalInCents, updatedAt: now }).where(and(eq(payments.orderId, id), eq(payments.status, "pending")));
+    await recordOrderEvent(tx, id, "note", `Envío: ${shippingInCents ? `$${Math.round(shippingInCents / 100).toLocaleString("es-CO")}` : "sin costo / a coordinar"} (antes ${order.shippingInCents ? `$${Math.round(order.shippingInCents / 100).toLocaleString("es-CO")}` : "a coordinar"}). Total: $${Math.round(totalInCents / 100).toLocaleString("es-CO")}.`, actor, now);
+  });
+}
+
+/** Datos mínimos para construir un enlace de pago o un mensaje al cliente. */
+export async function getOrderForPayment(id: string) {
+  const [order] = await getDb().select({ id: orders.id, reference: orders.reference, status: orders.status, totalInCents: orders.totalInCents, customerName: orders.customerName, customerEmail: orders.customerEmail, customerPhone: orders.customerPhone }).from(orders).where(eq(orders.id, id)).limit(1);
+  return order ?? null;
+}
+
+export const orderCsvHeader = ["referencia", "fecha", "estado", "cliente", "correo", "celular", "documento", "ciudad", "direccion", "productos", "subtotal_cop", "envio_cop", "total_cop", "pago", "notas_cliente", "notas_internas"];
+
+export async function exportOrders(filters: { queue?: string; search?: string }) {
+  const db = getDb();
+  const queue = orderQueues.find((item) => item.value === filters.queue) ?? orderQueues[4];
+  const rows = await db.select().from(orders).where(queue.statuses.length ? inArray(orders.status, [...queue.statuses]) : undefined).orderBy(desc(orders.createdAt)).limit(10_000);
+  if (!rows.length) return [];
+  const ids = rows.map((row) => row.id);
+  const [items, paymentRows] = await Promise.all([
+    db.select().from(orderItems).where(inArray(orderItems.orderId, ids)),
+    db.select({ orderId: payments.orderId, provider: payments.provider, method: payments.method, status: payments.status }).from(payments).where(and(inArray(payments.orderId, ids), eq(payments.status, "approved"))),
+  ]);
+  const itemsByOrder = new Map<string, string[]>();
+  for (const item of items) itemsByOrder.set(item.orderId, [...(itemsByOrder.get(item.orderId) ?? []), `${item.quantity} × ${item.productName}`]);
+  const paymentByOrder = new Map(paymentRows.map((row) => [row.orderId, `${row.provider === "manual" ? "Manual" : "Wompi"} · ${paymentMethodLabel(row.method)}`]));
+  return rows.map((order) => [
+    order.reference, order.createdAt.toISOString().slice(0, 16).replace("T", " "), orderStatusLabel(order.status), order.customerName, order.customerEmail, order.customerPhone, order.customerDocument, order.shippingCity, order.shippingAddress,
+    (itemsByOrder.get(order.id) ?? []).join("; "), Math.round(order.subtotalInCents / 100), Math.round(order.shippingInCents / 100), Math.round(order.totalInCents / 100), paymentByOrder.get(order.id) ?? "", order.customerNotes, order.internalNotes,
+  ]);
 }
 
 // ── Bandeja del panel ────────────────────────────────────────────────────────
