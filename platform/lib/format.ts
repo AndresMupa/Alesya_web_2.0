@@ -30,16 +30,20 @@ export function bogotaMonthStart(offsetMonths = 0, now = Date.now()) {
   return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + offsetMonths, 1) + BOGOTA_OFFSET_MS);
 }
 
-export const plural =(value: number, one: string, many: string) => `${value.toLocaleString("es-CO")} ${value === 1 ? one : many}`;
+export const plural = (value: number, one: string, many: string) => `${value.toLocaleString("es-CO")} ${value === 1 ? one : many}`;
 
 export function slugify(value: string) {
   return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-/** Enlace de WhatsApp a un número colombiano (acepta 300 000 0000, +57…, varios separados por `;`). */
+/**
+ * Enlace de WhatsApp a un número colombiano. Acepta varios separados por `;` y elige el primer celular
+ * (10 dígitos que empiezan por 3, con o sin +57); los fijos no sirven para WhatsApp.
+ */
 export function whatsappLink(phone: string | null | undefined, text = "") {
-  const digits = (phone ?? "").split(/[;,/]/)[0].replace(/\D/g, "");
-  if (digits.length < 10) return null;
-  const number = digits.length === 10 ? `57${digits}` : digits;
+  const candidates = (phone ?? "").split(/[;,/]/).map((value) => value.replace(/\D/g, "").replace(/^57(?=3\d{9}$)/, ""));
+  const mobile = candidates.find((digits) => /^3\d{9}$/.test(digits)) ?? candidates.find((digits) => digits.length > 10);
+  if (!mobile) return null;
+  const number = mobile.length === 10 ? `57${mobile}` : mobile;
   return `https://wa.me/${number}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
 }

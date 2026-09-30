@@ -50,13 +50,39 @@ export const activityTypes = [
   { value: "email", label: "Correo", contact: true },
   { value: "meeting", label: "Reunión", contact: true },
   { value: "visit", label: "Visita", contact: true },
+  { value: "attempt", label: "Intento sin respuesta", contact: false },
   { value: "note", label: "Nota interna", contact: false },
 ] as const;
 export type ActivityType = (typeof activityTypes)[number]["value"];
 export const activityTypeValues = activityTypes.map((type) => type.value) as [ActivityType, ...ActivityType[]];
+/** Gestiones que cuentan como trabajo comercial (contactos e intentos), a diferencia de las notas. */
+export const workActivityTypes: ActivityType[] = ["call", "whatsapp", "email", "meeting", "visit", "attempt"];
+/** Canales por los que se hace una gestión de prospección. */
+export const contactChannels = [
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "call", label: "Llamada" },
+  { value: "email", label: "Correo" },
+] as const;
+export type ContactChannel = (typeof contactChannels)[number]["value"];
+
+/** Resultado de una gestión de prospección: en un solo paso registra la gestión, la etapa y el seguimiento. */
+export const outcomes = [
+  { value: "answered", label: "Contestó · interesado", hint: "Pasa a Contactado y programa seguimiento" },
+  { value: "meeting", label: "Reunión agendada", hint: "Pasa a Reunión con la fecha acordada" },
+  { value: "no_answer", label: "Sin respuesta", hint: "Queda como intento; vuelve a la cola en 2 días" },
+  { value: "not_interested", label: "No interesa", hint: "Pasa a Perdido con el motivo" },
+  { value: "wrong_data", label: "Datos errados", hint: "Pasa a Perdido por datos de contacto" },
+] as const;
+export type Outcome = (typeof outcomes)[number]["value"];
+export const outcomeValues = outcomes.map((item) => item.value) as [Outcome, ...Outcome[]];
+/** Intentos sin respuesta antes de sugerir marcar el colegio como perdido. */
+export const MAX_ATTEMPTS = 3;
 
 /** Actividades automáticas que escribe el sistema. */
 const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación" };
+
+/** Quién hizo la gestión: el asesor activo del panel (varios asesores comparten la cuenta de administración) o el correo de la sesión. */
+export const actorName = (email: string, asesor?: string | null) => asesor?.trim() ? asesor.trim().slice(0, 80) : email;
 
 export const lostReasons = ["Precio", "Sin presupuesto este año", "Eligió otro proveedor", "Sin respuesta", "No es el momento", "Datos de contacto errados", "Otro"] as const;
 
