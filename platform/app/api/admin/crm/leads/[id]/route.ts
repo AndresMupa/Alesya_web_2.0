@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authorizeAdmin } from "@/lib/admin-auth";
-import { leadPriorityValues, leadStageValues } from "@/lib/crm/constants";
+import { actorName, leadPriorityValues, leadStageValues } from "@/lib/crm/constants";
 import { getLeadDetail, updateLead } from "@/lib/crm/leads";
 import { fail, handleError, noStore, ok, readBody } from "@/lib/http";
 
@@ -14,7 +14,7 @@ const patchSchema = z.object({
   phone: nullableText(60), city: nullableText(100), website: nullableText(300), owner: nullableText(120),
   priority: z.enum(leadPriorityValues), stage: z.enum(leadStageValues), notes: z.string().trim().max(4000),
   lastContact: day, nextFollowUp: day, estimatedValue: z.coerce.number().int().min(0).max(10_000_000_000), lostReason: nullableText(160),
-}).partial().refine((value) => Object.keys(value).length > 0);
+}).partial().extend({ asesor: z.string().trim().max(80).optional() }).refine((value) => Object.keys(value).some((key) => key !== "asesor"));
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = await authorizeAdmin(); if (admin instanceof Response) return admin;
@@ -31,9 +31,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   if (!uuid.safeParse(id).success) return fail("Contacto no válido.", 404);
   const body = await readBody(request, patchSchema, "Revisa los datos del contacto."); if (body instanceof Response) return body;
-  const { estimatedValue, ...patch } = body;
+  const { estimatedValue, asesor, ...patch } = body;
   try {
-    const lead = await updateLead(id, { ...patch, ...(estimatedValue !== undefined && { estimatedValueInCents: estimatedValue * 100 }) }, admin.email);
+    const lead = await updateLead(id, { ...patch, ...(estimatedValue !== undefined && { estimatedValueInCents: estimatedValue * 100 }) }, actorName(admin.email, asesor));
     return ok({ ok: true, lead });
   } catch (error) { return handleError(error, "crm_lead_update_failed", "No se pudo actualizar la oportunidad."); }
 }

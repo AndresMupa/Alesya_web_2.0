@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authorizeAdmin } from "@/lib/admin-auth";
-import { leadPriorityValues, manualLeadSources } from "@/lib/crm/constants";
+import { actorName, leadPriorityValues, manualLeadSources } from "@/lib/crm/constants";
 import { createLead, leadFiltersFrom, listLeads } from "@/lib/crm/leads";
 import { fail, handleError, noStore, ok, readBody } from "@/lib/http";
 
@@ -24,6 +24,7 @@ const createSchema = z.object({
   notes: optional(4000),
   estimatedValue: z.coerce.number().int().min(0).max(10_000_000_000).default(0),
   nextFollowUp: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")]).default(""),
+  asesor: z.string().trim().max(80).optional(),
 });
 
 export async function POST(request: Request) {
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
   const body = await readBody(request, createSchema, "Revisa los datos del nuevo contacto."); if (body instanceof Response) return body;
   if (!body.email && !body.phone) return fail("Registra al menos un correo o un teléfono para poder hacer seguimiento.");
   try {
-    const id = await createLead({ ...body, estimatedValueInCents: body.estimatedValue * 100, nextFollowUp: body.nextFollowUp || null }, { type: "created", actor: admin.email });
+    const { asesor, ...input } = body;
+    const id = await createLead({ ...input, estimatedValueInCents: input.estimatedValue * 100, nextFollowUp: input.nextFollowUp || null }, { type: "created", actor: actorName(admin.email, asesor) });
     return ok({ ok: true, id }, 201);
   } catch (error) { return handleError(error, "crm_lead_create_failed", "No se pudo crear la oportunidad."); }
 }
