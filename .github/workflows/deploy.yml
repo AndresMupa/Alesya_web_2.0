@@ -111,10 +111,13 @@ jobs:
           EOF
           }
 
-          # API2 Fileman::fileop de cPanel. Falla si cPanel no confirma la operación.
+          # API2 Fileman::fileop de cPanel. Falla si cPanel no confirma la operación; en ese caso
+          # muestra el código HTTP y el inicio de la respuesta (p. ej. un bloqueo de Imunify360).
           fileop() {
-            local response
-            response=$(curl -fsS --max-time 600 -H "Authorization: cpanel $USER:$API_TOKEN" \
+            local body code
+            body=$(mktemp)
+            if ! code=$(curl -sS --max-time 600 -o "$body" -w '%{http_code}' \
+              -H "Authorization: cpanel $USER:$API_TOKEN" \
               --data-urlencode "cpanel_jsonapi_user=$USER" \
               --data-urlencode "cpanel_jsonapi_apiversion=2" \
               --data-urlencode "cpanel_jsonapi_module=Fileman" \
@@ -123,29 +126,43 @@ jobs:
               --data-urlencode "sourcefiles=$2" \
               ${3:+--data-urlencode "destfiles=$3"} \
               --data-urlencode "doubledecode=0" \
-              "$API_URL/json-api/cpanel")
-            if ! jq -e '.cpanelresult.error == null and .cpanelresult.data[0].result == 1' <<<"$response" >/dev/null; then
-              echo "cPanel $1 falló: $(jq -c '.cpanelresult.error // .cpanelresult.data' <<<"$response")" >&2
-              return 1
+              "$API_URL/json-api/cpanel"); then
+              echo "cPanel $1: error de red" >&2; rm -f "$body"; return 1
             fi
+            if ! jq -e '.cpanelresult.error == null and .cpanelresult.data[0].result == 1' "$body" >/dev/null 2>&1; then
+              echo "cPanel $1 falló (HTTP $code): $(jq -c '.cpanelresult.error // .cpanelresult.data' "$body" 2>/dev/null || head -c 300 "$body" | tr -s '\r\n\t ' ' ')" >&2
+              rm -f "$body"; return 1
+            fi
+            rm -f "$body"
           }
 
-          if [ -n "$API_TOKEN" ]; then
-            [ -n "$API_URL" ] || { echo "Falta la variable CPANEL_API_URL" >&2; exit 1; }
+          # Modo rápido si hay token; si la API falla, se sigue con la subida archivo por archivo.
+          mode=slow
+          if [ -n "$API_TOKEN" ] && [ -n "$API_URL" ]; then
             echo "Modo rápido: un solo archivo + extracción en cPanel"
             sftp_run "rm -r -f \"$release\"
           mkdir -p \"$release\"
           put \"$ARCHIVE\" -o \"$remote_archive\""
-            fileop extract "$remote_archive" "$release"
             # Confirma que la extracción dejó la app completa antes de activarla.
-            sftp_run "cls \"$release/server.js\" \"$release/.next/BUILD_ID\"
-          rm \"$remote_archive\""
-            fileop unlink "$APP_DIR.previous" || echo "(no había versión anterior que borrar)"
-          else
-            echo "Modo lento: subida archivo por archivo (configura CPANEL_API_TOKEN para acelerarlo)"
+            if fileop extract "$remote_archive" "$release" && sftp_run "cls \"$release/server.js\" \"$release/.next/BUILD_ID\""; then
+              mode=fast
+            else
+              echo "::warning::La API de cPanel falló; se continúa con la subida archivo por archivo."
+            fi
+            sftp_run "rm -f \"$remote_archive\""
+          fi
+
+          if [ "$mode" = slow ]; then
+            echo "Modo lento: subida archivo por archivo"
             sftp_run "rm -r -f \"$release\"
-          mirror -R --parallel=1 --no-perms pkg \"$release\"
-          rm -r -f \"$APP_DIR.previous\""
+          mirror -R --parallel=1 --no-perms pkg \"$release\""
+          fi
+
+          # Borra la versión anterior (por API es una sola llamada; por SFTP, archivo por archivo).
+          if [ "$mode" = fast ] && fileop unlink "$APP_DIR.previous"; then
+            :
+          else
+            sftp_run "rm -r -f \"$APP_DIR.previous\""
           fi
 
           sftp_run "mkdir -p \"$release/tmp\"
