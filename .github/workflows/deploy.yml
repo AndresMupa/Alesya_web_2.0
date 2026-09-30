@@ -89,12 +89,15 @@ jobs:
           release="$APP_DIR.release-${GITHUB_SHA::12}"
           lftp <<EOF
           set cmd:fail-exit yes
-          set net:max-retries 3
+          set net:max-retries 5
           set net:timeout 30
+          set net:reconnect-interval-base 5
+          # El hosting limita las sesiones SFTP simultáneas: una sola conexión.
+          set net:connection-limit 1
           set sftp:connect-program "ssh -a -x -i $HOME/.ssh/deploy_key -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
           open -u "$USER," -p "$PORT" "sftp://$HOST"
           rm -r -f "$release"
-          mirror -R --parallel=8 --no-perms pkg "$release"
+          mirror -R --parallel=1 --no-perms pkg "$release"
           rm -r -f "$APP_DIR.previous"
           mv "$APP_DIR" "$APP_DIR.previous"
           mv "$release" "$APP_DIR"
