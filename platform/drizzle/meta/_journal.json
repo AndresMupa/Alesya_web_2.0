@@ -43,6 +43,13 @@
       "when": 1790900001000,
       "tag": "0005_store_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790900002000,
+      "tag": "0006_sales_process_quotes",
+      "breakpoints": true
     }
   ]
 }

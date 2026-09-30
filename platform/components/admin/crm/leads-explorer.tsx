@@ -7,9 +7,10 @@ import { Drawer, Metric, PageHeader, readTextFile, send, useDebounced, useJson }
 import { AsesorPicker, useAsesor } from "@/components/admin/asesor";
 import { LeadDrawer } from "@/components/admin/crm/lead-drawer";
 import { leadPriorities, leadPriorityLabel, leadSourceLabel, leadSources, leadStageLabel, leadStages, manualLeadSources } from "@/lib/crm/constants";
+import { scoreGrade } from "@/lib/crm/score";
 import { bogotaDay, formatDay, formatMoney } from "@/lib/format";
 
-type Lead = { id: string; name: string; organization: string; email: string | null; phone: string | null; city: string | null; externalId: string | null; source: string; stage: string; owner: string | null; priority: string; lastContact: string | null; nextFollowUp: string | null; estimatedValueInCents: number };
+type Lead = { id: string; name: string; organization: string; email: string | null; phone: string | null; city: string | null; externalId: string | null; source: string; stage: string; owner: string | null; priority: string; lastContact: string | null; nextFollowUp: string | null; estimatedValueInCents: number; score: number; nextAction: string | null; students: number };
 type Result = { rows: Lead[]; page: number; pageSize: number; total: number; metrics: { all: number; due: number; new: number }; owners: string[]; cities: string[] };
 
 export function LeadsExplorer({ initialLead }: { initialLead?: string }) {
@@ -85,17 +86,18 @@ export function LeadsExplorer({ initialLead }: { initialLead?: string }) {
       {selected.size > 0 && <BulkBar count={selected.size} owners={data?.owners ?? []} asesor={asesor} onDone={() => { setSelected(new Set()); reload(); }} ids={Array.from(selected)} onClear={() => setSelected(new Set())} />}
       <div className="sales-table-scroll">
         <table className="admin-table adm-table adm-clickable">
-          <thead><tr><th><input type="checkbox" aria-label="Seleccionar la página" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(pageIds))} /></th><th>Institución</th><th>Contacto</th><th>Etapa</th><th>Prioridad</th><th>Responsable</th><th>Seguimiento</th><th>Valor</th></tr></thead>
+          <thead><tr><th><input type="checkbox" aria-label="Seleccionar la página" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(pageIds))} /></th><th>Institución</th><th>Contacto</th><th>Etapa</th><th title="Puntaje: ajuste del colegio + avance de la relación">Puntaje</th><th>Prioridad</th><th>Responsable</th><th>Seguimiento</th><th>Valor</th></tr></thead>
           <tbody>{data?.rows.length ? data.rows.map((lead) => <tr key={lead.id} className={selected.has(lead.id) ? "is-selected" : undefined} onClick={() => setOpenLead(lead.id)}>
             <td onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`Seleccionar ${lead.organization}`} checked={selected.has(lead.id)} onChange={() => setSelected((current) => { const next = new Set(current); if (next.has(lead.id)) next.delete(lead.id); else next.add(lead.id); return next; })} /></td>
             <td><strong>{lead.organization}</strong><small>{lead.city ?? "Ciudad sin registrar"} · {lead.externalId ? `DANE ${lead.externalId}` : leadSourceLabel(lead.source)}</small></td>
             <td>{lead.name}<small>{lead.email ?? lead.phone?.split(";")[0] ?? "Sin datos de contacto"}</small></td>
-            <td onClick={(event) => event.stopPropagation()}><select className="admin-inline-input" aria-label={`Etapa de ${lead.organization}`} value={lead.stage} onChange={(event) => void quickStage(lead, event.target.value)} data-stage={lead.stage}>{leadStages.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></td>
+            <td onClick={(event) => event.stopPropagation()}><select className="admin-inline-input" aria-label={`Etapa de ${lead.organization}`} value={lead.stage} onChange={(event) => void quickStage(lead, event.target.value)} data-stage={lead.stage}>{leadStages.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>{lead.nextAction && !["won", "lost"].includes(lead.stage) && <small>→ {lead.nextAction}</small>}</td>
+            <td><b className="adm-score" data-grade={scoreGrade(lead.score)} title={`${lead.score}/100`}>{scoreGrade(lead.score)}</b> <small className="adm-inline">{lead.score}</small></td>
             <td><span className="adm-priority" data-priority={lead.priority}>{leadPriorityLabel(lead.priority)}</span></td>
             <td>{lead.owner ?? <span className="adm-muted">Sin asignar</span>}</td>
             <td><span className={lead.nextFollowUp && lead.nextFollowUp <= today && !["won", "lost"].includes(lead.stage) ? "is-due" : undefined}>{formatDay(lead.nextFollowUp)}</span><small>Último: {formatDay(lead.lastContact)}</small></td>
             <td>{lead.estimatedValueInCents ? formatMoney(lead.estimatedValueInCents) : "—"}</td>
-          </tr>) : <tr><td colSpan={8}>{loading ? "Cargando contactos…" : "No hay contactos con estos filtros."}</td></tr>}</tbody>
+          </tr>) : <tr><td colSpan={9}>{loading ? "Cargando contactos…" : "No hay contactos con estos filtros."}</td></tr>}</tbody>
         </table>
       </div>
       <div className="sales-pagination"><span>{(data?.total ?? 0).toLocaleString("es-CO")} resultados · página {page} de {pages}</span><div><button className="refresh-button" disabled={page <= 1 || loading} onClick={() => setPage(page - 1)}>Anterior</button><button className="refresh-button" disabled={page >= pages || loading} onClick={() => setPage(page + 1)}>Siguiente</button></div></div>

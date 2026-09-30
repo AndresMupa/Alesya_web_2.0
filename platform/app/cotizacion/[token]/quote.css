@@ -1,0 +1,42 @@
+/* Cotización pública: documento imprimible con la identidad de Alesya. */
+.quote-page { min-height:100vh; background:#edf0ea; padding:32px 16px 60px; font-family:var(--font-sans); color:var(--ink); }
+.quote-doc { max-width: 820px; margin:0 auto; background:white; border:1px solid var(--line); padding:40px 44px; display:grid; gap:26px; box-shadow:0 20px 50px rgba(16,24,40,.08); }
+.quote-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; padding-bottom:22px; border-bottom:2px solid var(--ink); }
+.quote-head .brand-family { color:var(--ink); }
+.quote-meta { text-align:right; }
+.quote-meta h1 { margin:2px 0 8px; font-size:30px; letter-spacing:-.03em; }
+.quote-meta dl { display:grid; grid-template-columns:auto auto; gap:2px 12px; margin:0; font-size:13px; }
+.quote-meta dt { color:var(--muted); }
+.quote-meta dd { margin:0; font-weight:700; }
+.quote-page .eyebrow { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:800; margin:0 0 6px; }
+.quote-banner { margin:0; padding:12px 16px; border-radius:10px; background:#e3f8e7; color:#247341; font-weight:700; }
+.quote-banner[data-status="rejected"], .quote-banner[data-status="expired"] { background:#fff2c8; color:#855f00; }
+.quote-for { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.quote-for div { display:grid; gap:2px; }
+.quote-for strong { font-size:17px; }
+.quote-for span { color:var(--muted); font-size:13px; }
+.quote-items { width:100%; border-collapse:collapse; font-size:14px; }
+.quote-items th { text-align:left; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:10px 8px; border-bottom:1px solid var(--line); }
+.quote-items td { padding:12px 8px; border-bottom:1px solid #eef0ec; vertical-align:top; }
+.quote-items th:not(:first-child), .quote-items td:not(:first-child) { text-align:right; white-space:nowrap; }
+.quote-items tfoot td { border-bottom:0; padding:8px; color:var(--muted); }
+.quote-items tfoot .quote-total td { font-size:18px; font-weight:800; color:var(--ink); border-top:2px solid var(--ink); padding-top:14px; }
+.quote-notes p:last-child, .quote-terms p:last-child { margin:0; line-height:1.65; white-space:pre-line; font-size:14px; }
+.quote-terms p:last-child { color:#48525f; font-size:13px; }
+.quote-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:18px; background:#f5f6f2; border-radius:12px; }
+.quote-actions .button { min-height:46px; }
+.quote-actions .refresh-button { margin-left:auto; }
+.quote-reject { display:grid; gap:8px; flex-basis:100%; }
+.quote-reject textarea { border:1px solid var(--line); padding:10px; font:inherit; border-radius:8px; }
+.quote-decided { display:flex; align-items:center; gap:10px; padding:16px 18px; border-radius:12px; background:#e3f8e7; color:#247341; font-weight:700; }
+.quote-decided[data-decision="rejected"] { background:#f0f2ef; color:#3a4452; }
+.quote-foot { border-top:1px solid var(--line); padding-top:16px; font-size:12px; color:var(--muted); display:grid; gap:4px; }
+.quote-foot p { margin:0; }
+.quote-foot a { color:var(--ink); text-decoration:underline; }
+@media (max-width:640px) { .quote-doc { padding:24px 18px; } .quote-head { flex-direction:column; } .quote-meta { text-align:left; } .quote-for { grid-template-columns:1fr; } .quote-actions .refresh-button { margin-left:0; } }
+@media print {
+  .quote-page { background:white; padding:0; }
+  .quote-doc { border:0; box-shadow:none; padding:0; max-width:none; }
+  .print-hide, .robot-chat { display:none !important; }
+  .quote-banner { border:1px solid #ccc; }
+}

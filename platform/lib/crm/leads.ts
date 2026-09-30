@@ -1,13 +1,14 @@
 import "server-only";
 import { and, asc, count, desc, eq, gte, inArray, isNull, like, lte, not, or, sql, sum, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
-import { leadActivities, leads, orders } from "@/db/schema";
+import { leadActivities, leads, orders, quotes } from "@/db/schema";
 import { bogotaDay, bogotaMonthStart } from "@/lib/format";
 import { DomainError } from "@/lib/http";
 import {
-  MAX_ATTEMPTS, PROSPECT_SOURCE, activityTypes, isContactActivity, leadPriorities, leadPriorityValues, leadSourceLabel, leadSourceValues, leadStageLabel, leadStages, leadStageValues, openLeadStages, workActivityTypes,
+  MAX_ATTEMPTS, PROSPECT_SOURCE, activityTypes, isContactActivity, leadPriorities, leadPriorityValues, leadSourceLabel, leadSourceValues, leadStageLabel, leadStages, leadStageValues, openLeadStages, stagePlaybook, workActivityTypes,
   type ActivityType, type ContactChannel, type LeadPriority, type LeadStage, type Outcome,
 } from "@/lib/crm/constants";
+import { scoreLead } from "@/lib/crm/score";
 
 export type Lead = typeof leads.$inferSelect;
 export type LeadActivity = typeof leadActivities.$inferSelect;
@@ -73,11 +74,21 @@ export async function getLeadDetail(id: string) {
   const db = getDb();
   const [lead] = await db.select().from(leads).where(eq(leads.id, id)).limit(1);
   if (!lead) return null;
-  const [activities, relatedOrders] = await Promise.all([
+  const [activities, relatedOrders, leadQuotes, [{ contacts }]] = await Promise.all([
     db.select().from(leadActivities).where(eq(leadActivities.leadId, id)).orderBy(desc(leadActivities.createdAt)).limit(100),
     lead.email ? db.select({ id: orders.id, reference: orders.reference, status: orders.status, totalInCents: orders.totalInCents, createdAt: orders.createdAt }).from(orders).where(sql`lower(${orders.customerEmail}) = lower(${lead.email})`).orderBy(desc(orders.createdAt)).limit(20) : Promise.resolve([]),
+    db.select({ id: quotes.id, number: quotes.number, status: quotes.status, title: quotes.title, totalInCents: quotes.totalInCents, validUntil: quotes.validUntil, token: quotes.token, createdAt: quotes.createdAt }).from(quotes).where(eq(quotes.leadId, id)).orderBy(desc(quotes.createdAt)).limit(20),
+    db.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, id), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, new Date(Date.now() - 90 * 86_400_000)))),
   ]);
-  return { lead, activities, orders: relatedOrders };
+  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay() });
+  return { lead, activities, orders: relatedOrders, quotes: leadQuotes, score, playbook: stagePlaybook[lead.stage as LeadStage] ?? null };
+}
+
+/** Oportunidades abiertas sin siguiente acción programada: el proceso exige que toda oportunidad tenga una. */
+export async function getWithoutNextAction(filters: { owner?: string } = {}, limit = 40) {
+  return getDb().select(pipelineCard).from(leads)
+    .where(and(inArray(leads.stage, ["contacted", "meeting", "proposal"]), isNull(leads.nextFollowUp), ownerCondition(filters.owner)))
+    .orderBy(desc(leads.score), desc(leads.updatedAt)).limit(limit);
 }
 
 // ── Escrituras ───────────────────────────────────────────────────────────────
@@ -113,7 +124,21 @@ export async function createLead(input: LeadInput, origin: { type: "created" | "
 export type LeadPatch = Partial<{
   name: string; organization: string; email: string | null; phone: string | null; city: string | null; website: string | null; owner: string | null; priority: LeadPriority; stage: LeadStage;
   notes: string; lastContact: string | null; nextFollowUp: string | null; estimatedValueInCents: number; lostReason: string | null;
+  nextAction: string | null; expectedClose: string | null; students: number; program: string | null; decisionMaker: string | null;
+  grades: string | null; sector: string | null; calendar: string | null; techLevel: string | null; budgetRange: string | null; painPoints: string; competitors: string | null;
 }>;
+
+const CONTACT_TYPES = activityTypes.filter((type) => type.contact).map((type) => type.value);
+
+/** Recalcula el puntaje (ajuste del colegio + avance de la relación) y lo guarda en el contacto. */
+async function refreshScore(tx: Tx, leadId: string) {
+  const [lead] = await tx.select().from(leads).where(eq(leads.id, leadId)).limit(1);
+  if (!lead) return 0;
+  const [{ contacts }] = await tx.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, new Date(Date.now() - 90 * 86_400_000))));
+  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay() }).total;
+  if (score !== lead.score) await tx.update(leads).set({ score }).where(eq(leads.id, leadId));
+  return score;
+}
 
 async function insertActivity(tx: Tx, leadId: string, type: string, summary: string, actor: string | null, at: Date) {
   await tx.insert(leadActivities).values({ id: crypto.randomUUID(), leadId, type, summary, createdBy: actor, createdAt: at });
@@ -142,12 +167,17 @@ export async function updateLead(id: string, patch: LeadPatch, actor: string | n
       if (patch.stage !== "lost") changes.lostReason = null;
       const reason = patch.stage === "lost" && patch.lostReason ? ` · Motivo: ${patch.lostReason}` : "";
       await insertActivity(tx, id, "stage_change", `${leadStageLabel(current.stage)} → ${leadStageLabel(patch.stage)}${reason}`, actor, now);
+      // Proceso comercial: al cambiar de etapa se propone la siguiente acción y su fecha, salvo que el asesor las indique.
+      const play = stagePlaybook[patch.stage];
+      if (patch.nextAction === undefined) changes.nextAction = play.nextAction || null;
+      if (patch.nextFollowUp === undefined) changes.nextFollowUp = patch.stage === "lost" ? null : play.days > 0 ? bogotaDay(play.days) : current.nextFollowUp;
     }
     if (patch.owner !== undefined && (changes.owner ?? null) !== current.owner) {
       await insertActivity(tx, id, "assignment", changes.owner ? `Responsable: ${changes.owner}` : "Se quitó el responsable.", actor, now);
     }
     await tx.update(leads).set(changes).where(eq(leads.id, id));
-    return { ...current, ...changes } as Lead;
+    const score = await refreshScore(tx, id);
+    return { ...current, ...changes, score } as Lead;
   });
 }
 
@@ -174,13 +204,14 @@ export async function logActivity(id: string, input: { type: ActivityType; summa
     if (input.nextFollowUp !== undefined) changes.nextFollowUp = input.nextFollowUp;
     if (input.type !== "note") await claimIfUnowned(tx, id, current.owner, actor, changes, now);
     await tx.update(leads).set(changes).where(eq(leads.id, id));
+    await refreshScore(tx, id);
   });
 }
 
 // ── Máquina de ventas ────────────────────────────────────────────────────────
 
 const PIPELINE_COLUMN_LIMIT = 60;
-const pipelineCard = { id: leads.id, name: leads.name, organization: leads.organization, city: leads.city, phone: leads.phone, email: leads.email, source: leads.source, stage: leads.stage, priority: leads.priority, owner: leads.owner, estimatedValueInCents: leads.estimatedValueInCents, lastContact: leads.lastContact, nextFollowUp: leads.nextFollowUp, stageChangedAt: leads.stageChangedAt };
+const pipelineCard = { id: leads.id, name: leads.name, organization: leads.organization, city: leads.city, phone: leads.phone, email: leads.email, source: leads.source, stage: leads.stage, priority: leads.priority, owner: leads.owner, estimatedValueInCents: leads.estimatedValueInCents, lastContact: leads.lastContact, nextFollowUp: leads.nextFollowUp, stageChangedAt: leads.stageChangedAt, score: leads.score, nextAction: leads.nextAction, expectedClose: leads.expectedClose, students: leads.students, program: leads.program };
 export type PipelineCard = { [K in keyof typeof pipelineCard]: Lead[K] };
 
 /**
@@ -338,10 +369,12 @@ export async function recordOutcome(id: string, input: OutcomeInput, actor: stri
     if (stage && stage !== current.stage) {
       changes.stage = stage;
       changes.stageChangedAt = now;
+      changes.nextAction = stagePlaybook[stage].nextAction || null;
       await insertActivity(tx, id, "stage_change", `${leadStageLabel(current.stage)} → ${leadStageLabel(stage)}${changes.lostReason ? ` · Motivo: ${changes.lostReason}` : ""}`, actor, new Date(now.getTime() + 1));
     }
     if (stage !== "lost") await claimIfUnowned(tx, id, current.owner, actor, changes, now);
     await tx.update(leads).set(changes).where(eq(leads.id, id));
+    await refreshScore(tx, id);
     return { stage: stage ?? current.stage, nextFollowUp: (changes.nextFollowUp as string | null | undefined) ?? null };
   });
 }

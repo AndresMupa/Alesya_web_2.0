@@ -5,8 +5,20 @@ import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqli
 export const leads = sqliteTable("leads", {
   id: text("id").primaryKey(), name: text("name").notNull(), organization: text("organization").notNull(), email: text("email"), phone: text("phone"), message: text("message").notNull(), source: text("source").notNull().default("website"), stage: text("stage").notNull().default("new"), owner: text("owner"), externalId: text("external_id"), city: text("city"), priority: text("priority").notNull().default("medium"), website: text("website"), notes: text("notes").notNull().default(""), lastContact: text("last_contact"), nextFollowUp: text("next_follow_up"),
   estimatedValueInCents: integer("estimated_value_in_cents").notNull().default(0), lostReason: text("lost_reason"), stageChangedAt: integer("stage_changed_at", { mode: "timestamp_ms" }),
+  /** Proceso comercial: qué sigue, cuándo se espera cerrar y datos de calificación del colegio. */
+  nextAction: text("next_action"), expectedClose: text("expected_close"), students: integer("students").notNull().default(0), program: text("program"), decisionMaker: text("decision_maker"),
+  /** Estudio del colegio: niveles, sector, calendario, nivel tecnológico actual, presupuesto, dolores, proveedor actual. `score` (0–100) se recalcula al guardar. */
+  grades: text("grades"), sector: text("sector"), calendar: text("calendar"), techLevel: text("tech_level"), budgetRange: text("budget_range"), painPoints: text("pain_points").notNull().default(""), competitors: text("competitors"), score: integer("score").notNull().default(0),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(), updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [index("idx_leads_stage_created").on(table.stage, table.createdAt), index("idx_leads_email").on(table.email), uniqueIndex("idx_leads_external_id").on(table.externalId), index("idx_leads_follow_up").on(table.nextFollowUp), index("idx_leads_stage_changed").on(table.stage, table.stageChangedAt)]);
+
+/** Cotizaciones formales para colegios: numeradas, con vigencia, enlace público para aceptar e impresión. */
+export const quotes = sqliteTable("quotes", {
+  id: text("id").primaryKey(), leadId: text("lead_id").notNull().references(() => leads.id), number: text("number").notNull(), status: text("status").notNull().default("draft"),
+  title: text("title").notNull(), items: text("items").notNull().default("[]"), subtotalInCents: integer("subtotal_in_cents").notNull().default(0), discountInCents: integer("discount_in_cents").notNull().default(0), totalInCents: integer("total_in_cents").notNull().default(0),
+  validUntil: text("valid_until"), notes: text("notes").notNull().default(""), terms: text("terms").notNull().default(""), token: text("token").notNull(), createdBy: text("created_by"),
+  sentAt: integer("sent_at", { mode: "timestamp_ms" }), decidedAt: integer("decided_at", { mode: "timestamp_ms" }), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(), updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [uniqueIndex("idx_quotes_number").on(table.number), uniqueIndex("idx_quotes_token").on(table.token), index("idx_quotes_lead").on(table.leadId), index("idx_quotes_status_created").on(table.status, table.createdAt)]);
 
 /** Timeline of a lead: calls, messages, meetings, notes and automatic stage changes. */
 export const leadActivities = sqliteTable("lead_activities", {
