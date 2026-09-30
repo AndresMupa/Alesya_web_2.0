@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./store.css";
 import { RobotChat } from "@/components/robot-chat";
 
 export const metadata: Metadata = {

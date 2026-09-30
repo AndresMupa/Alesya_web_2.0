@@ -102,6 +102,17 @@ https://www.alesyaediciones.com/api/webhooks/wompi
 
 Correcciones: tabla persistente `rate_limits` (migración `0001_regular_boomerang.sql`) y limitador compartido en `lib/rate-limit.ts` para `POST /api/leads`, `POST /api/checkout` y `POST /api/admin/login`; en producción, una cabecera de IP ausente o inválida falla de forma segura; cabeceras HTTP de seguridad desde `next.config.ts`.
 
+## Carga inicial de datos en producción
+
+La base de producción (`/home/alesyaed/alesya-data/alesya.db`) es independiente de la local: el inventario y la base de colegios no viajan con el despliegue. Sin shell en cPanel, se cargan desde el panel, una sola vez, después de desplegar la migración `0004`:
+
+1. **Productos:** `/admin/productos` → **Importar CSV** → `inventario-alesya.csv` (raíz del repositorio). Crea los 65 productos con stock inicial, descripción y foto (`/media/productos/…`, incluidas en el despliegue). Responder *Cancelar* a la pregunta de conteo físico. Quedan en borrador hasta tener precio: asignarlo en la vista **Tabla · Sin precio** los publica.
+2. **Colegios:** `/admin/crm` → **Importar CSV** → el archivo exportado de la base local (`platform/.local/produccion/colegios-2026.csv`, o **Exportar CSV** en el CRM local). Crea los 2.435 colegios; repetir la importación no duplica. Ese archivo tiene datos personales: no se sube al repositorio.
+
+Probado en una instalación vacía con el servidor standalone: 65 productos (62 con foto) y 2.435 colegios; una segunda importación crea cero.
+
+La migración `0004` también pasa a la tabla `products` los cuatro destacados que antes estaban fijos en el código (conservan su slug, se venden bajo pedido y se pueden despublicar desde el panel).
+
 ## Próximos pasos
 
 1. Confirmar en el hosting que `x-forwarded-for` llega como una IP válida y saneada antes de abrir formularios al público.

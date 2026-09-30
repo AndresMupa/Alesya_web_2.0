@@ -1,0 +1,66 @@
+cantidad,nombre,categoria,sku_ref,precio_cop,revisar,notas,imagen
+2,Sensor de sonido (alto),Electrónica,ELE-SND-HI,,,Módulo de detección de sonido/aplauso,/media/productos/sensores-arduino.jpg
+2,Joystick XY,Electrónica,ELE-JOY-XY,,,Joystick analógico de 2 ejes + botón,/media/productos/sensores-arduino.jpg
+3,Sensor táctil,Electrónica,ELE-TOUCH,,,Botón/sensor de contacto,/media/productos/sensores-arduino.jpg
+2,Sensor lineal,Electrónica,ELE-LINEAR,,SI,Aclarar: ¿potenciómetro lineal / sensor de posición?,/media/productos/sensores-arduino.jpg
+2,Sensor de llama (flame),Electrónica,ELE-FLAME,,,Detección de fuego/infrarrojo,/media/productos/sensores-arduino.jpg
+1,Sensor de temperatura (analógico),Electrónica,ELE-TEMP-AN,,,Termistor analógico,/media/productos/sensores-arduino.jpg
+2,Módulo relé,Electrónica,ELE-RELAY,,,Relé 5V,/media/productos/sensores-arduino.jpg
+5,LED RGB,Electrónica,ELE-LED-RGB,,,Módulo LED RGB,/media/productos/sensores-arduino.jpg
+3,Emisor láser,Electrónica,ELE-LASER,,,Módulo emisor láser,/media/productos/sensores-arduino.jpg
+1,Módulo fotointerruptor (light blocking),Electrónica,ELE-LIGHTBLK,,,Sensor de interrupción de luz,/media/productos/sensores-arduino.jpg
+2,Sensor evasión de obstáculos (avoid),Electrónica,ELE-AVOID,,,Sensor IR de obstáculos,/media/productos/sensores-arduino.jpg
+1,Sensor Hall analógico,Electrónica,ELE-HALL-AN,,,Campo magnético analógico,/media/productos/sensores-arduino.jpg
+2,Fotorresistencia (photoresistor),Electrónica,ELE-PHOTOR,,,Unificados 1+1 de la lista,/media/productos/sensores-arduino.jpg
+1,Sensor infrarrojo,Electrónica,ELE-IR,,SI,Aclarar: ¿receptor / obstáculo / línea?,/media/productos/sensores-arduino.jpg
+1,Sensor de lluvia,Electrónica,ELE-RAIN,,,Detección de agua/lluvia,/media/productos/sensor-agua.jpg
+1,Protoboard,Electrónica,ELE-BREADBOARD,,,Protoboard,/media/productos/sensores-arduino.jpg
+2,Buzzer activo,Electrónica,ELE-BUZZ-A,,,Zumbador activo,/media/productos/sensores-arduino.jpg
+2,Botón (push button),Electrónica,ELE-BUTTON,,,Pulsador con módulo,/media/productos/sensores-arduino.jpg
+1,Encoder rotatorio,Electrónica,ELE-ENCODER,,,Encoder rotatorio KY-040,/media/productos/sensores-arduino.jpg
+2,Sensor de seguimiento de línea (tracking),Electrónica,ELE-TRACK,,,Seguidor de línea,/media/productos/sensores-arduino.jpg
+1,Reed switch,Electrónica,ELE-REED,,,Interruptor magnético,/media/productos/sensores-arduino.jpg
+1,Sensor temperatura y humedad (DHT11),Electrónica,ELE-DHT11,,,Temp + humedad,/media/productos/sensores-arduino.jpg
+2,Buzzer pasivo,Electrónica,ELE-BUZZ-P,,,Zumbador pasivo,/media/productos/sensores-arduino.jpg
+2,Ball switch (interruptor de bola),Electrónica,ELE-BALLSW,,,Sensor de inclinación por bola,/media/productos/sensores-arduino.jpg
+1,LED RGB SMD,Electrónica,ELE-RGB-SMD,,,LED RGB SMD,/media/productos/sensores-arduino.jpg
+3,Sensor Hall magnético,Electrónica,ELE-HALL-DIG,,,Hall digital,/media/productos/sensores-arduino.jpg
+2,Light cup (inclinación),Electrónica,ELE-LIGHTCUP,,,Módulo de inclinación tipo copa,/media/productos/light-cup.jpg
+1,LED RGB 7 colores,Electrónica,ELE-RGB-7,,,LED de 7 colores automático,/media/productos/sensores-arduino.jpg
+1,LED RGB 2 colores,Electrónica,ELE-RGB-2,,,LED bicolor,/media/productos/sensores-arduino.jpg
+2,Receptor infrarrojo,Electrónica,ELE-IR-RX-490,,,Ref. 490,/media/productos/sensores-arduino.jpg
+2,Sensor de inclinación de mercurio,Electrónica,ELE-TILT-499,,,Ref. 499,/media/productos/light-cup.jpg
+2,HW-502 sensor de pulso/frecuencia,Electrónica,HW-502,,,Sensor de ritmo cardiaco,/media/productos/sensores-arduino.jpg
+1,Adaptador lector/escritor tarjeta SD,Electrónica,ELE-SD-230,,,Ref. 230,/media/productos/sensores-arduino.jpg
+1,Transmisor infrarrojo,Electrónica,ELE-IR-TX-484,,,Ref. 484,/media/productos/sensores-arduino.jpg
+2,Sensor de temperatura,Electrónica,ELE-TEMP-498,,,Ref. 498,/media/productos/sensores-arduino.jpg
+2,HW-505,Electrónica,HW-505,,SI,Nombre dudoso: la lista dice 'SunSun HW-505A filtro externo' (¿confusión de autocompletar?). Confirmar módulo real.,/media/productos/sensores-arduino.jpg
+2,Sensor de vibración,Electrónica,ELE-VIB-513,,,Ref. 513,/media/productos/sensores-arduino.jpg
+2,HW-497 interruptor de láminas (reed),Electrónica,HW-497,,,Módulo reed magnético,/media/productos/sensores-arduino.jpg
+2,Sensor de temperatura digital (DS18B20),Electrónica,ELE-TEMP-506,,,Ref. 506,/media/productos/sensores-arduino.jpg
+1,Fotorresistencia,Electrónica,ELE-PHOTOR-486,,,Ref. 486,/media/productos/sensores-arduino.jpg
+2,HW-487 fotointerruptor,Electrónica,HW-487,,,Sensor de interrupción de luz,/media/productos/sensores-arduino.jpg
+1,HW-495 sensor Hall analógico,Electrónica,HW-495,,,Efecto Hall analógico,/media/productos/sensores-arduino.jpg
+2,HW-133A regulador reductor de voltaje,Electrónica,HW-133A,,,Convertidor step-down,/media/productos/sensores-arduino.jpg
+1,HM serie S línea,Electrónica,HM-S,,SI,Nombre incompleto: aclarar producto,/media/productos/sensores-arduino.jpg
+1,Adaptador tarjeta SD,Electrónica,ELE-SD-203,,,Ref. 203,/media/productos/sensores-arduino.jpg
+2,MPU-6050 (acelerómetro/giroscopio),Electrónica,MPU-6050,,,Giroscopio + acelerómetro,/media/productos/sensores-arduino.jpg
+2,Reloj de tiempo real (MH RTC),Electrónica,MH-RTC,,,Módulo RTC,/media/productos/sensores-arduino.jpg
+1,Sensor de voltaje (0-25V),Electrónica,ELE-VOLT-25V,,,Divisor de voltaje,/media/productos/sensor-voltaje.jpg
+1,Sensor touch capacitivo,Electrónica,ELE-TOUCH-CAP,,,Táctil capacitivo,/media/productos/sensores-arduino.jpg
+2,Paquete de pulsadores,Electrónica,ELE-BTN-PACK,,,Paquete de botones,/media/productos/sensores-arduino.jpg
+1,Arduino Uno,Electrónica,ELE-ARD-UNO,,,Placa Arduino Uno,/media/productos/arduino-uno.jpg
+13,Display LED,Electrónica,ELE-DISPLAY,,SI,13 uds: aclarar tipo (7 seg / matriz / LCD),/media/productos/sensores-arduino.jpg
+3,Sensor ultrasónico HC-SR04,Electrónica,HC-SR04,,,Medición de distancia,/media/productos/sensores-arduino.jpg
+1,Sensor de lluvia (MH-RD raindrops),Electrónica,MH-RD,,,Módulo de gotas de lluvia,/media/productos/sensor-agua.jpg
+4,Sensor ultrasónico EV3,Robótica,ROB-EV3-ULTRA,,,LEGO Mindstorms EV3,/media/productos/ev3-ultrasonico.jpg
+3,Batería EV3,Robótica,ROB-EV3-BAT,,,Batería recargable EV3,/media/productos/ev3-bateria.jpg
+4,Sensor de color EV3,Robótica,ROB-EV3-COLOR,,,LEGO Mindstorms EV3,/media/productos/ev3-color.jpg
+2,Set WeDo (cerrado/nuevo),Robótica,ROB-WEDO-NEW,,,LEGO WeDo sellado,/media/productos/wedo-nuevo.jpg
+2,Set WeDo (abierto/usado),Robótica,ROB-WEDO-USED,,,LEGO WeDo abierto,/media/productos/wedo-usado.jpg
+1,Tablet,Robótica,ROB-TABLET,,SI,Aclarar marca/modelo y si se vende,
+1,Talebot,Robótica,ROB-TALEBOT,,,Robot Talebot,/media/productos/talebot.jpg
+1,Activity Box Talebot,Robótica,ROB-TALEBOT-BOX,,,Caja de actividades Talebot,/media/productos/talebot-activity-box.jpg
+2,Motor amarillo (TT/DC),Robótica,ROB-MOTOR-TT,,,Motor amarillo con caja reductora,
+3,Rueda grande,Robótica,ROB-WHEEL-L,,,Rueda grande,
+6,Máquinas simples completas,Bricolaje,BRI-MAQ-SIMPLES,,,Unificados 4+2 de la lista,/media/productos/maquinas-simples.jpg

@@ -1,39 +1,42 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
-import { CheckCircle2, Clock3, XCircle } from "lucide-react";
-import { getDb } from "@/db";
-import { orders } from "@/db/schema";
-import { paidOrderStatuses, type OrderStatus } from "@/lib/statuses";
+import { CheckCircle2, Clock3, MessageCircle, XCircle } from "lucide-react";
+import { SiteHeader } from "@/components/site-header";
+import { failedOrderStatuses, paidOrderStatuses, type OrderStatus } from "@/lib/commerce/constants";
+import { findPublicOrder } from "@/lib/commerce/orders";
+import { formatMoney } from "@/lib/format";
+import { wompiStatus } from "@/lib/payments/wompi";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Estado del pago | Alesya", robots: { index: false, follow: false } };
+export const metadata = { title: "Estado del pedido | Alesya", robots: { index: false, follow: false } };
 
-async function findStatus(reference?: string) {
-  if (!reference || reference.length > 80) return null;
-  try {
-    const [order] = await getDb().select({ status: orders.status }).from(orders).where(eq(orders.reference, reference)).limit(1);
-    return order?.status ?? null;
-  } catch (error) { console.error("checkout_result_lookup_failed", error); return null; }
-}
-
+/** Estado real del pedido. La redirección del navegador desde Wompi nunca confirma un pago por sí sola. */
 export default async function ResultPage({ searchParams }: { searchParams: Promise<{ referencia?: string }> }) {
   const { referencia } = await searchParams;
-  const status = await findStatus(referencia);
-  const paid = !!status && paidOrderStatuses.includes(status as OrderStatus);
-  const failed = !!status && ["payment_declined", "payment_voided", "payment_error", "cancelled"].includes(status);
-  const Icon = paid ? CheckCircle2 : failed ? XCircle : Clock3;
-  const title = paid ? "¡Pago confirmado!" : failed ? "El pago no se completó" : "Estamos verificando tu pago";
-  const copy = paid ? "Recibimos la confirmación de Wompi. Te contactaremos para coordinar la entrega." : failed ? "Wompi no aprobó la transacción. Puedes intentarlo de nuevo con otro medio de pago o escribirnos si necesitas ayuda." : "Wompi nos enviará la confirmación segura en unos segundos. Puedes recargar esta página para ver el estado actualizado.";
-  return <main className="checkout-page" style={{ display: "grid", placeItems: "center", padding: 24 }}>
-    <section className="checkout-card" style={{ maxWidth: 560, textAlign: "center" }}>
-      <Icon size={54} style={{ margin: "0 auto 18px", color: paid ? "#278250" : failed ? "#b3261e" : "#855f00" }} />
-      <h1>{title}</h1>
-      <p>{copy}</p>
-      <p>Referencia del pedido: <strong>{referencia ?? "—"}</strong></p>
-      <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginTop: 20 }}>
-        {failed && <Link href="/catalogo" className="button button-primary">Volver a la tienda</Link>}
-        <Link href="/" className="button button-dark">Volver a Alesya</Link>
-      </div>
-    </section>
-  </main>;
+  const order = await findPublicOrder(referencia).catch((error) => { console.error("checkout_result_lookup_failed", error); return null; });
+  const status = order?.status as OrderStatus | undefined;
+  const paid = !!status && paidOrderStatuses.includes(status);
+  const failed = !!status && failedOrderStatuses.includes(status);
+  const manual = !!order && status === "payment_pending" && !wompiStatus().ready;
+  const Icon = paid ? CheckCircle2 : failed ? XCircle : manual ? MessageCircle : Clock3;
+  const title = !order ? "No encontramos el pedido" : paid ? "¡Pago confirmado!" : failed ? "El pago no se completó" : manual ? "¡Pedido recibido!" : "Estamos verificando tu pago";
+  const copy = !order ? "Revisa el enlace o escríbenos con la referencia de tu compra." : paid ? "Recibimos la confirmación del pago. Te contactaremos para coordinar la entrega." : failed ? "El pago no fue aprobado o el pedido se canceló. Puedes intentarlo de nuevo o escribirnos si necesitas ayuda." : manual ? "Te escribiremos por WhatsApp para coordinar el pago y el envío. Si prefieres, escríbenos ya con tu referencia." : "Wompi nos enviará la confirmación segura en unos segundos. Recarga esta página para ver el estado actualizado.";
+  const whatsapp = order ? `https://wa.me/573005937840?text=${encodeURIComponent(`Hola, hice el pedido ${order.reference} por ${formatMoney(order.totalInCents)} y quiero coordinar el pago y el envío.`)}` : "https://wa.me/573005937840";
+
+  return <div className="checkout-page"><div className="interior-header is-solid"><SiteHeader /></div>
+    <main className="store-result">
+      <section className="checkout-card">
+        <Icon size={54} className="store-result-icon" data-state={paid ? "ok" : failed ? "error" : "pending"} />
+        <h1>{title}</h1>
+        <p>{copy}</p>
+        {order && <>
+          <p>Referencia del pedido: <strong>{order.reference}</strong></p>
+          <ul className="store-result-items">{order.items.map((item, index) => <li key={index}><span>{item.quantity} × {item.name}</span><strong>{formatMoney(item.lineTotalInCents)}</strong></li>)}<li><span>Total</span><strong>{formatMoney(order.totalInCents)}</strong></li></ul>
+        </>}
+        <div className="store-result-actions">
+          {(manual || failed || !order) && <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="button button-primary"><MessageCircle size={18} /> Escribir por WhatsApp</a>}
+          <Link href="/catalogo" className="button button-dark">Volver a la tienda</Link>
+        </div>
+      </section>
+    </main>
+  </div>;
 }

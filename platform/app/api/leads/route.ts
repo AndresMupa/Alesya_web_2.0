@@ -1,34 +1,27 @@
 import { z } from "zod";
-import { getDb } from "@/db";
-import { leads } from "@/db/schema";
+import { campaignChannels } from "@/lib/crm/constants";
+import { createLead } from "@/lib/crm/leads";
+import { handleError, ok, readBody } from "@/lib/http";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const leadSchema = z.object({
   name: z.string().trim().min(2).max(120),
   organization: z.string().trim().min(2).max(160),
-  email: z.string().email().max(180),
+  email: z.string().trim().email().max(180),
   phone: z.string().trim().max(30).optional().transform((value) => value || undefined),
   message: z.string().trim().min(8).max(2000),
-  source: z.enum(["website", "linkedin", "instagram", "facebook", "whatsapp"]).default("website"),
+  source: z.enum(["website", ...campaignChannels]).default("website"),
   campaign: z.string().trim().regex(/^[a-zA-Z0-9_-]{0,40}$/).default(""),
 });
+
+/** Formularios públicos (portada, colegios): cada envío entra al CRM como oportunidad nueva. */
 export async function POST(request: Request) {
   const limited = await enforceRateLimit(request, { name: "lead", limit: 5, globalLimit: 100, windowMs: 15 * 60_000 });
   if (limited) return limited;
-  const parsed = leadSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return Response.json({ message: "Revisa los datos del formulario." }, { status: 400 });
-  const now = new Date();
+  const body = await readBody(request, leadSchema, "Revisa los datos del formulario."); if (body instanceof Response) return body;
+  const { source, campaign, ...contact } = body;
   try {
-    const { source, campaign, ...contact } = parsed.data;
-    await getDb().insert(leads).values({
-      id: crypto.randomUUID(),
-      ...contact,
-      source: campaign ? `${source} / ${campaign}` : source,
-      stage: "new",
-      createdAt: now,
-      updatedAt: now,
-    });
-    return Response.json({ ok: true }, { status: 201 });
-  }
-  catch (error) { console.error("lead_create_failed", error); return Response.json({ message: "El CRM no está disponible temporalmente." }, { status: 503 }); }
+    await createLead({ ...contact, source: campaign ? `${source} / ${campaign}` : source, priority: "high" }, { type: "form" });
+    return ok({ ok: true }, 201);
+  } catch (error) { return handleError(error, "lead_create_failed", "El CRM no está disponible temporalmente."); }
 }
