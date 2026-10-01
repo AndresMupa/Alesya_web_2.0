@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ContactRound, Kanban, LayoutDashboard, Package, PlugZap, Settings2, ShoppingCart } from "lucide-react";
+import { ContactRound, Kanban, LayoutDashboard, LayoutTemplate, Package, PlugZap, Settings2, ShoppingCart } from "lucide-react";
 
 const sections = [
   { group: "General", items: [{ href: "/admin", label: "Resumen", icon: LayoutDashboard }] },
+  { group: "Sitio web", items: [{ href: "/admin/portada", label: "Portada", icon: LayoutTemplate }] },
   { group: "Ventas", items: [{ href: "/admin/ventas", label: "Máquina de ventas", icon: Kanban }, { href: "/admin/crm", label: "CRM · Contactos", icon: ContactRound }] },
   { group: "Tienda", items: [{ href: "/admin/pedidos", label: "Pedidos", icon: ShoppingCart }, { href: "/admin/productos", label: "Productos e inventario", icon: Package }] },
   { group: "Sistema", items: [{ href: "/admin/configuracion", label: "Configuración", icon: Settings2 }, { href: "/admin/integraciones", label: "Integraciones", icon: PlugZap }] },

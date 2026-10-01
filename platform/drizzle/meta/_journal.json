@@ -50,6 +50,13 @@
       "when": 1790900002000,
       "tag": "0006_sales_process_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790900003000,
+      "tag": "0007_site_pages",
+      "breakpoints": true
     }
   ]
 }
