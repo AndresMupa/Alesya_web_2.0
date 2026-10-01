@@ -4,6 +4,11 @@ import path from "node:path";
 import { DomainError } from "@/lib/http";
 import { UPLOAD_NAME, uploadsAvailable, uploadsDirectory } from "@/lib/storage";
 
+// Todas las rutas de archivo de este módulo llevan `/* turbopackIgnore: true */`. Sin el comentario, el rastreo de
+// archivos de Next no puede saber qué se leerá o escribirá en tiempo de ejecución y mete el proyecto entero (código
+// fuente, scripts, .env.example) en el paquete standalone, que el empaquetado de cPanel rechaza. Ninguna de estas
+// carpetas hace falta en el rastreo: los subidos viven fuera de la app y `public/` se copia aparte (prepare-standalone.mjs).
+
 export type MediaKind = "image" | "video";
 export const MEDIA_LIMITS: Record<MediaKind, number> = { image: 5 * 1024 * 1024, video: 60 * 1024 * 1024 };
 const kindByExtension: Record<string, MediaKind> = { jpg: "image", jpeg: "image", png: "image", webp: "image", svg: "image", gif: "image", mp4: "video", webm: "video" };
@@ -35,7 +40,7 @@ export async function storeUpload(file: File, kinds: MediaKind[] = ["image"]) {
   const name = `${crypto.randomUUID()}.${detected.extension}`;
   const directory = uploadsDirectory();
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  await writeFile(path.join(directory, name), bytes, { mode: 0o600, flag: "wx" });
+  await writeFile(path.join(/* turbopackIgnore: true */ directory, name), bytes, { mode: 0o600, flag: "wx" });
   return { url: `/uploads/${name}`, kind: detected.kind };
 }
 
@@ -45,27 +50,27 @@ export type MediaItem = { url: string; name: string; kind: MediaKind; size: numb
 export async function listMediaLibrary(kind?: MediaKind): Promise<MediaItem[]> {
   const uploads: (MediaItem & { modifiedAt: number })[] = [];
   const directory = uploadsDirectory();
-  for (const entry of await readdir(directory).catch(() => [] as string[])) {
+  for (const entry of await readdir(/* turbopackIgnore: true */ directory).catch(() => [] as string[])) {
     if (!UPLOAD_NAME.test(entry)) continue;
-    const info = await stat(path.join(directory, entry)).catch(() => null);
+    const info = await stat(path.join(/* turbopackIgnore: true */ directory, entry)).catch(() => null);
     if (!info) continue;
     uploads.push({ url: `/uploads/${entry}`, name: entry, kind: kindByExtension[entry.split(".").pop()!], size: info.size, source: "uploads", modifiedAt: info.mtimeMs });
   }
   const bundled: MediaItem[] = [];
-  await walk(path.join(process.cwd(), "public", "media"), "", bundled);
+  await walk(path.join(/* turbopackIgnore: true */ process.cwd(), "public", "media"), "", bundled);
   const items = [...uploads.sort((a, b) => b.modifiedAt - a.modifiedAt).map(({ url, name, kind, size, source }) => ({ url, name, kind, size, source })), ...bundled.sort((a, b) => a.name.localeCompare(b.name))];
   return kind ? items.filter((item) => item.kind === kind) : items;
 }
 
 async function walk(root: string, relative: string, into: MediaItem[], depth = 0) {
   if (depth > 3) return;
-  const entries = await readdir(path.join(root, relative), { withFileTypes: true }).catch(() => []);
+  const entries = await readdir(path.join(/* turbopackIgnore: true */ root, relative), { withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     const name = relative ? `${relative}/${entry.name}` : entry.name;
     if (entry.isDirectory()) { await walk(root, name, into, depth + 1); continue; }
     const kind = kindByExtension[entry.name.split(".").pop()!.toLowerCase()];
     if (!kind) continue;
-    const info = await stat(path.join(root, name)).catch(() => null);
+    const info = await stat(path.join(/* turbopackIgnore: true */ root, name)).catch(() => null);
     if (info) into.push({ url: `/media/${name}`, name, kind, size: info.size, source: "media" });
   }
 }
