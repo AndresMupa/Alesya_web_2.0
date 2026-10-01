@@ -11,7 +11,8 @@ La plataforma integra la experiencia pública, la operación comercial y el come
 - **CRM y máquina de ventas:** contactos e instituciones, historial de gestiones, embudo por etapas, agenda de seguimientos, cola de prospección e importación/exportación CSV.
 - **Comercio:** catálogo administrable, carrito, pedidos con trazabilidad, inventario por eventos y fotos de producto.
 - **Pagos:** adaptador Wompi (Nequi, Botón Bancolombia, PSE, tarjetas) y pagos manuales confirmados por el equipo (transferencia, Nequi directo, efectivo, datáfono). Las claves se guardan exclusivamente como secretos del entorno.
-- **Operaciones:** panel `/admin` con una ruta por módulo: Resumen, Máquina de ventas, CRM, Pedidos, Productos e inventario, Integraciones.
+- **Portada editable:** la página de inicio se compone de bloques guardados como un documento JSON (`lib/pages/home-schema.ts`: esquema, valores por defecto y catálogo de bloques). El panel edita un borrador, lo previsualiza y lo publica; cada publicación deja una versión recuperable. Imágenes y videos se suben a la carpeta privada de datos y se sirven desde `/uploads`.
+- **Operaciones:** panel `/admin` con una ruta por módulo: Resumen, Portada, Máquina de ventas, CRM, Pedidos, Productos e inventario, Configuración, Integraciones.
 
 ## Organización del código (`platform/`)
 
@@ -21,11 +22,13 @@ La plataforma integra la experiencia pública, la operación comercial y el come
 | API | `app/api/admin/crm/*` | `app/api/admin/commerce/*`, `app/api/store/cart`, `app/api/checkout` | `app/api/webhooks/wompi` |
 | Interfaz | `components/admin/crm/*`, `app/admin/(panel)/ventas`, `…/crm` | `components/admin/commerce/*`, `components/store/*`, `app/catalogo`, `app/carrito`, `app/checkout` | — |
 
+Portada editable: dominio en `lib/pages/home-schema.ts` (documento, validación y diseño original, compartido con el navegador) y `lib/pages/home.ts` (borrador, publicación, versiones); medios en `lib/media.ts`; API en `app/api/admin/pages/home` y `app/api/admin/media`; interfaz en `components/home/*` (dibuja el documento en `app/page.tsx`) y `components/admin/pages/*` (editor en `app/admin/(panel)/portada`).
+
 Compartido: `lib/format.ts` (moneda, fechas en Bogotá, WhatsApp), `lib/csv.ts`, `lib/http.ts` (errores de dominio y respuestas), `lib/storage.ts` (carpeta de datos y fotos subidas), `lib/admin-auth.ts`, `lib/rate-limit.ts`. Las constantes de cada módulo no importan código de servidor, así que sirven igual en el panel y en las APIs.
 
 ## Modelo de datos
 
-La primera migración crea `leads`, `products`, `orders`, `order_items`, `payments`, `inventory_events` y `content_items`; la `0004` añade `lead_activities` (historial del CRM) y `order_events` (trazabilidad del pedido), el valor estimado y motivo de pérdida de las oportunidades, y las banderas `featured`/`backorder` de los productos. Los pagos en línea solo se cierran con el webhook firmado del proveedor, que además valida monto y moneda y es idempotente; la redirección del navegador es informativa. Un pago manual solo lo registra el equipo desde el panel y deja reemplazados (`superseded`) los cobros de Wompi pendientes; si Wompi aprueba después un cobro de un pedido ya pagado o cancelado, queda en revisión. Cada venta aprobada descuenta inventario y cada anulación lo repone, siempre con un evento en `inventory_events`.
+La primera migración crea `leads`, `products`, `orders`, `order_items`, `payments`, `inventory_events` y `content_items`; la `0004` añade `lead_activities` (historial del CRM) y `order_events` (trazabilidad del pedido), el valor estimado y motivo de pérdida de las oportunidades, y las banderas `featured`/`backorder` de los productos; la `0007` añade `pages` (borrador y versión publicada de la portada como JSON) y `page_revisions` (historial de publicaciones). Los pagos en línea solo se cierran con el webhook firmado del proveedor, que además valida monto y moneda y es idempotente; la redirección del navegador es informativa. Un pago manual solo lo registra el equipo desde el panel y deja reemplazados (`superseded`) los cobros de Wompi pendientes; si Wompi aprueba después un cobro de un pedido ya pagado o cancelado, queda en revisión. Cada venta aprobada descuenta inventario y cada anulación lo repone, siempre con un evento en `inventory_events`.
 
 ## Escalabilidad
 

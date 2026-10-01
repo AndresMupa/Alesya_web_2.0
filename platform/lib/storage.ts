@@ -17,5 +17,5 @@ export const uploadsDirectory = () => path.join(dataDirectory(), "uploads");
 /** En Vercel o con Turso remoto el disco no es persistente: no se aceptan archivos. */
 export const uploadsAvailable = () => !process.env.VERCEL;
 
-export const UPLOAD_NAME = /^[a-z0-9-]{8,80}\.(jpg|png|webp)$/;
-export const uploadContentType: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
+export const UPLOAD_NAME = /^[a-z0-9-]{8,80}\.(jpg|png|webp|mp4|webm)$/;
+export const uploadContentType: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp", mp4: "video/mp4", webm: "video/webm" };

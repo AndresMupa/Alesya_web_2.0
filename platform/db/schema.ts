@@ -71,6 +71,28 @@ export const settings = sqliteTable("settings", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+/**
+ * Páginas editables desde el panel (por ahora la portada). `draft` es lo que edita el equipo y
+ * `published` lo que ve el público; ambos son el documento de secciones en JSON (ver lib/pages/home-schema.ts).
+ */
+export const pages = sqliteTable("pages", {
+  slug: text("slug").primaryKey(),
+  draft: text("draft").notNull(),
+  published: text("published"),
+  draftUpdatedAt: integer("draft_updated_at", { mode: "timestamp_ms" }).notNull(),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+  updatedBy: text("updated_by"),
+});
+
+/** Versiones publicadas de cada página, para volver a una anterior. */
+export const pageRevisions = sqliteTable("page_revisions", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull(),
+  body: text("body").notNull(),
+  createdBy: text("created_by"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [index("idx_page_revisions_slug_created").on(table.slug, table.createdAt)]);
+
 export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").primaryKey(),
   count: integer("count").notNull().default(0),
