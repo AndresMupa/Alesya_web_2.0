@@ -1,25 +1,25 @@
 # Despliegue a cPanel en cada push a la rama de producción (o a mano desde Actions).
 #
-# La cuenta de cPanel no tiene shell: se usa SFTP (lftp) y, si hay token, la API de cPanel.
-#   1. Reutiliza ci.yml (lint + build).
+# Todo va por HTTPS con la API de cPanel (sin SFTP ni SSH): el hosting llegó a cortar las conexiones SFTP
+# desde GitHub. El detalle está en .github/scripts/cpanel-deploy.mjs y sus pruebas en cpanel-deploy.test.mjs.
+#   1. Reutiliza ci.yml (lint, pruebas del despliegue y build).
 #   2. npm run package:cpanel: paquete linux x64 validado y con smoke test (Docker del runner).
-#   3. Lleva el paquete a <APP_DIR>.release-<commit>:
-#      - con CPANEL_API_TOKEN: sube un solo .tar.gz por SFTP y cPanel lo extrae (rápido);
-#      - sin token: sube los ~2000 archivos uno a uno por SFTP (lento).
-#   4. Intercambia carpetas con dos renombrados (la versión anterior queda en <APP_DIR>.previous).
-#   5. Sube tmp/restart.txt para que la app reinicie; bootstrap.mjs aplica las migraciones al arrancar.
-#   6. Comprueba que el sitio sirva archivos del build nuevo.
+#   3. Autoprueba en el servidor: sube, renombra, lee y borra una carpeta temporal sin tocar la app.
+#   4. Sube el .tar.gz a <APP_DIR>.release-<commit>, cPanel lo extrae y se verifica su BUILD_ID.
+#   5. Intercambia carpetas con dos renombrados (la versión anterior queda en <APP_DIR>.previous); si el
+#      segundo falla, restaura la anterior.
+#   6. Sube tmp/restart.txt para que la app reinicie; bootstrap.mjs aplica las migraciones al arrancar.
+#   7. Comprueba que el sitio sirva archivos del build nuevo; si no, vuelve solo a la versión anterior.
 #
 # Volver atrás a mano (Administrador de archivos): renombrar <APP_DIR> a otro nombre,
 # <APP_DIR>.previous a <APP_DIR>, y reiniciar la app en "Setup Node.js App".
 #
 # Secrets del entorno "production":
-#   CPANEL_SSH_HOST, CPANEL_SSH_PORT, CPANEL_SSH_USER, CPANEL_SSH_KEY (clave privada),
-#   CPANEL_SSH_KNOWN_HOSTS (salida de `ssh-keyscan -p <puerto> <host>`),
-#   CPANEL_APP_DIR (ruta absoluta de la raíz de la app, p. ej. /home/usuario/alesya-platform),
-#   CPANEL_API_TOKEN (opcional; cPanel → Seguridad → Manage API Tokens).
-# Variables: PRODUCTION_URL (p. ej. https://nueva.alesyaediciones.com),
-#   CPANEL_API_URL (p. ej. https://alesyaediciones.com:2083; necesaria con el token).
+#   CPANEL_API_TOKEN (cPanel → Seguridad → Manage API Tokens),
+#   CPANEL_USER o, si no existe, CPANEL_SSH_USER (el usuario de la cuenta de cPanel),
+#   CPANEL_APP_DIR (ruta absoluta de la raíz de la app, p. ej. /home/usuario/alesya-platform).
+#   Los secrets CPANEL_SSH_* restantes ya no se usan.
+# Variables: CPANEL_API_URL (p. ej. https://alesyaediciones.com:2083), PRODUCTION_URL (para el chequeo de salud).
 name: Deploy cPanel
 
 on:
@@ -61,8 +61,6 @@ jobs:
           archive=$(ls outputs/alesya-cpanel-linux-x64-*.tar.gz | head -n 1)
           mkdir -p pkg
           tar -xzf "$archive" -C pkg
-          mkdir -p pkg/tmp
-          date -u +%FT%TZ > pkg/tmp/restart.txt
           build_id=$(cat pkg/.next/BUILD_ID)
           # Preferir un archivo de .next/static/<BUILD_ID>/: solo existe en este build.
           probe=$(cd pkg && { find ".next/static/$build_id" -type f 2>/dev/null; find .next/static -type f -name '*.js'; } | head -n 1)
@@ -70,107 +68,18 @@ jobs:
           echo "probe=${probe#.next/}" >> "$GITHUB_OUTPUT"
           echo "Build $build_id, $(find pkg -type f | wc -l) archivos, $(du -h "$archive" | cut -f1)"
 
-      - name: Configurar SSH y lftp
-        env:
-          SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
-          KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-
       - name: Subir y activar
+        id: deploy
+        # El token solo se entrega a los pasos que hablan con cPanel.
         env:
-          HOST: ${{ secrets.CPANEL_SSH_HOST }}
-          PORT: ${{ secrets.CPANEL_SSH_PORT }}
-          USER: ${{ secrets.CPANEL_SSH_USER }}
-          APP_DIR: ${{ secrets.CPANEL_APP_DIR }}
-          API_TOKEN: ${{ secrets.CPANEL_API_TOKEN }}
           API_URL: ${{ vars.CPANEL_API_URL }}
+          API_TOKEN: ${{ secrets.CPANEL_API_TOKEN }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER || secrets.CPANEL_SSH_USER }}
+          APP_DIR: ${{ secrets.CPANEL_APP_DIR }}
+          COMMIT: ${{ github.sha }}
           ARCHIVE: ${{ steps.pkg.outputs.archive }}
-        run: |
-          # Protege los rm/mv remotos: APP_DIR debe ser una carpeta directa del home.
-          [[ "$APP_DIR" =~ ^/home/[A-Za-z0-9_-]+/[A-Za-z0-9._-]+$ ]] || { echo "CPANEL_APP_DIR inválido" >&2; exit 1; }
-          release="$APP_DIR.release-${GITHUB_SHA::12}"
-          remote_archive="$(dirname "$APP_DIR")/alesya-deploy-${GITHUB_SHA::12}.tar.gz"
-
-          sftp_run() {
-            lftp <<EOF
-          set cmd:fail-exit yes
-          set net:max-retries 5
-          set net:timeout 30
-          set net:reconnect-interval-base 5
-          # El hosting limita las sesiones SFTP simultáneas: una sola conexión.
-          set net:connection-limit 1
-          set sftp:connect-program "ssh -a -x -i $HOME/.ssh/deploy_key -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
-          open -u "$USER," -p "$PORT" "sftp://$HOST"
-          $1
-          bye
-          EOF
-          }
-
-          # API2 Fileman::fileop de cPanel. Falla si cPanel no confirma la operación; en ese caso
-          # muestra el código HTTP y el inicio de la respuesta (p. ej. un bloqueo de Imunify360).
-          fileop() {
-            local body code
-            body=$(mktemp)
-            if ! code=$(curl -sS --max-time 600 -o "$body" -w '%{http_code}' \
-              -H "Authorization: cpanel $USER:$API_TOKEN" \
-              --data-urlencode "cpanel_jsonapi_user=$USER" \
-              --data-urlencode "cpanel_jsonapi_apiversion=2" \
-              --data-urlencode "cpanel_jsonapi_module=Fileman" \
-              --data-urlencode "cpanel_jsonapi_func=fileop" \
-              --data-urlencode "op=$1" \
-              --data-urlencode "sourcefiles=$2" \
-              ${3:+--data-urlencode "destfiles=$3"} \
-              --data-urlencode "doubledecode=0" \
-              "$API_URL/json-api/cpanel"); then
-              echo "cPanel $1: error de red" >&2; rm -f "$body"; return 1
-            fi
-            if ! jq -e '.cpanelresult.error == null and .cpanelresult.data[0].result == 1' "$body" >/dev/null 2>&1; then
-              echo "cPanel $1 falló (HTTP $code): $(jq -c '.cpanelresult.error // .cpanelresult.data' "$body" 2>/dev/null || head -c 300 "$body" | tr -s '\r\n\t ' ' ')" >&2
-              rm -f "$body"; return 1
-            fi
-            rm -f "$body"
-          }
-
-          # Modo rápido si hay token; si la API falla, se sigue con la subida archivo por archivo.
-          mode=slow
-          if [ -n "$API_TOKEN" ] && [ -n "$API_URL" ]; then
-            echo "Modo rápido: un solo archivo + extracción en cPanel"
-            sftp_run "rm -r -f \"$release\"
-          mkdir -p \"$release\"
-          put \"$ARCHIVE\" -o \"$remote_archive\""
-            # Confirma que la extracción dejó la app completa antes de activarla.
-            if fileop extract "$remote_archive" "$release" && sftp_run "cls \"$release/server.js\" \"$release/.next/BUILD_ID\""; then
-              mode=fast
-            else
-              echo "::warning::La API de cPanel falló; se continúa con la subida archivo por archivo."
-            fi
-            sftp_run "rm -f \"$remote_archive\""
-          fi
-
-          if [ "$mode" = slow ]; then
-            echo "Modo lento: subida archivo por archivo"
-            sftp_run "rm -r -f \"$release\"
-          mirror -R --parallel=1 --no-perms pkg \"$release\""
-          fi
-
-          # Borra la versión anterior (por API es una sola llamada; por SFTP, archivo por archivo).
-          if [ "$mode" = fast ] && fileop unlink "$APP_DIR.previous"; then
-            :
-          else
-            sftp_run "rm -r -f \"$APP_DIR.previous\""
-          fi
-
-          sftp_run "mkdir -p \"$release/tmp\"
-          put pkg/tmp/restart.txt -o \"$release/tmp/restart.txt\"
-          mv \"$APP_DIR\" \"$APP_DIR.previous\"
-          mv \"$release\" \"$APP_DIR\"
-          put pkg/tmp/restart.txt -o \"$APP_DIR/tmp/restart.txt\""
-          echo "Desplegado ${GITHUB_SHA::12} en la app"
+          PKG_DIR: pkg
+        run: node .github/scripts/cpanel-deploy.mjs deploy
 
       - name: Chequeo de salud
         if: vars.PRODUCTION_URL != ''
@@ -187,9 +96,16 @@ jobs:
             fi
             sleep 5
           done
-          echo "El sitio no sirve el build nuevo tras 3 minutos. Revisa la app en 'Setup Node.js App' (Restart) o vuelve a la versión anterior." >&2
+          echo "El sitio no sirve el build nuevo tras 3 minutos." >&2
           exit 1
 
-      - name: Limpiar clave
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+      - name: Volver a la versión anterior
+        # Solo si la versión nueva llegó a activarse y algo falló después (chequeo de salud o reinicio).
+        if: failure() && steps.deploy.outputs.swapped == 'true'
+        env:
+          API_URL: ${{ vars.CPANEL_API_URL }}
+          API_TOKEN: ${{ secrets.CPANEL_API_TOKEN }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER || secrets.CPANEL_SSH_USER }}
+          APP_DIR: ${{ secrets.CPANEL_APP_DIR }}
+          COMMIT: ${{ github.sha }}
+        run: node .github/scripts/cpanel-deploy.mjs rollback
