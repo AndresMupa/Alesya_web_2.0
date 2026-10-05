@@ -3,16 +3,25 @@ import { ArrowRight, GraduationCap, School, ShieldCheck, Sparkles } from "lucide
 import { LeadForm } from "@/components/lead-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { pageMetadata } from "@/lib/seo";
+import { jsonLd, siteUrl } from "@/lib/site";
 
-export const metadata = {
-  title: "Programas de robótica para colegios | Alesya",
-  description: "Diagnóstico, dotación, formación docente y rutas de proyectos para implementar robótica y cultura maker en colegios de Colombia.",
-};
+// Dinámica para que el enlace canónico use el dominio de PRODUCTION_URL del servidor (no el del momento de compilar).
+export const dynamic = "force-dynamic";
+
+const description = "Diagnóstico, dotación, formación docente y rutas de proyectos para implementar robótica educativa y cultura maker en colegios de Colombia.";
+export const generateMetadata = () => pageMetadata({ title: "Programas de robótica educativa para colegios", description, path: "/colegios", image: { url: "/media/clientes-robotica-ev3.jpeg", alt: "Estudiantes presentando proyectos de robótica educativa" } });
+
+const serviceJsonLd = () => ({
+  "@context": "https://schema.org", "@type": "Service", name: "Programa de robótica educativa para colegios", serviceType: "Robótica educativa y cultura maker", description,
+  provider: { "@id": `${siteUrl()}/#organizacion` }, areaServed: { "@type": "Country", name: "Colombia" }, audience: { "@type": "EducationalAudience", educationalRole: "school" }, url: `${siteUrl()}/colegios`,
+});
 
 const whatsapp = "https://wa.me/573005937840?text=Hola%2C%20quiero%20conocer%20el%20programa%20de%20rob%C3%B3tica%20para%20mi%20colegio.%20Vengo%20de%20la%20p%C3%A1gina%20de%20colegios.";
 
 export default function SchoolsPage() {
   return <div className="site-shell schools-page">
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(serviceJsonLd()) }} />
     <div className="interior-header"><SiteHeader /></div>
     <main>
       <section className="page-hero schools-hero"><div className="page-width">

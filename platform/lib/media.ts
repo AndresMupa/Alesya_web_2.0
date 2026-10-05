@@ -38,10 +38,36 @@ export async function storeUpload(file: File, kinds: MediaKind[] = ["image"]) {
   if (!detected || !kinds.includes(detected.kind)) throw new DomainError(kinds.includes("video") ? "Formato no admitido. Usa JPG, PNG, WebP, MP4 o WebM." : "Formato no admitido. Usa JPG, PNG o WebP.", 415);
   if (file.size > MEDIA_LIMITS[detected.kind]) throw new DomainError(`${detected.kind === "video" ? "El video" : "La imagen"} supera ${megabytes(MEDIA_LIMITS[detected.kind])} MB. Redúcelo e intenta de nuevo.`, 413);
   const name = `${crypto.randomUUID()}.${detected.extension}`;
+  const content = detected.extension === "jpg" || detected.extension === "png" || detected.extension === "webp" ? await optimizeImage(bytes, detected.extension) : bytes;
   const directory = uploadsDirectory();
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  await writeFile(path.join(/* turbopackIgnore: true */ directory, name), bytes, { mode: 0o600, flag: "wx" });
+  await writeFile(path.join(/* turbopackIgnore: true */ directory, name), content, { mode: 0o600, flag: "wx" });
   return { url: `/uploads/${name}`, kind: detected.kind };
+}
+
+const MAX_SIDE = 2000;
+
+/**
+ * Prepara una foto subida para la web: la endereza según la orientación de la cámara, la reduce a 2000 px por lado
+ * como máximo y la recomprime sin metadatos (una foto de celular trae la ubicación GPS en el EXIF). Si sharp no está
+ * disponible o la imagen no se puede procesar, se guarda el archivo original: subir nunca falla por esto.
+ */
+async function optimizeImage(bytes: Uint8Array, extension: "jpg" | "png" | "webp"): Promise<Uint8Array> {
+  try {
+    const { default: sharp } = await import("sharp");
+    const meta = await sharp(bytes).metadata();
+    if ((meta.pages ?? 1) > 1) return bytes; // animaciones: se dejan tal cual
+    let image = sharp(bytes).rotate();
+    if ((meta.width ?? 0) > MAX_SIDE || (meta.height ?? 0) > MAX_SIDE) image = image.resize({ width: MAX_SIDE, height: MAX_SIDE, fit: "inside", withoutEnlargement: true });
+    const output = extension === "jpg" ? await image.jpeg({ quality: 80, mozjpeg: true, progressive: true }).toBuffer()
+      : extension === "png" ? await image.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer()
+      : await image.webp({ quality: 80 }).toBuffer();
+    // Con metadatos (posible GPS) siempre se usa la versión limpia; sin ellos, solo si quedó más liviana.
+    return meta.exif || meta.xmp || output.length < bytes.length ? new Uint8Array(output) : bytes;
+  } catch (error) {
+    console.warn("upload_optimize_skipped", error instanceof Error ? error.message : error);
+    return bytes;
+  }
 }
 
 export type MediaItem = { url: string; name: string; kind: MediaKind; size: number; source: "uploads" | "media" };

@@ -8,7 +8,7 @@ import { wompiStatus } from "@/lib/payments/wompi";
 import { storeConfig } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Estado del pedido | Alesya", robots: { index: false, follow: false } };
+export const metadata = { title: "Estado del pedido", robots: { index: false, follow: false } };
 
 /** Estado real del pedido. La redirección del navegador desde Wompi nunca confirma un pago por sí sola. */
 export default async function ResultPage({ searchParams }: { searchParams: Promise<{ referencia?: string }> }) {

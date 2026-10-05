@@ -25,11 +25,23 @@ function demoUrl() {
   return `file:${target}`;
 }
 
-export function getDb() {
+type Database = ReturnType<typeof drizzle<typeof schema>>;
+/** Una sola conexión por proceso (en globalThis para sobrevivir a la recarga en caliente de desarrollo). */
+const shared = globalThis as typeof globalThis & { __alesyaDb?: { url: string; db: Database } };
+
+/**
+ * Conexión compartida a la base. Antes se abría un cliente nuevo en cada consulta (abrir el archivo SQLite cuesta
+ * ~2 ms frente a ~0,2 ms de una consulta) y nunca se cerraba. Las transacciones y lotes de libSQL toman su propia
+ * conexión, así que compartir el cliente es seguro.
+ */
+export function getDb(): Database {
   const url = databaseUrl();
   if (process.env.VERCEL && !demoDatabase() && url.startsWith("file:")) {
     throw new Error("Configure a persistent TURSO_DATABASE_URL before enabling commerce.");
   }
-
-  return drizzle(createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN }), { schema });
+  const cached = shared.__alesyaDb;
+  if (cached?.url === url) return cached.db;
+  const db = drizzle(createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN }), { schema });
+  shared.__alesyaDb = { url, db };
+  return db;
 }

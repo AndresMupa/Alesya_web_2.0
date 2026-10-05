@@ -8,7 +8,7 @@ import { storeConfig } from "@/lib/settings";
 import "./quote.css";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Cotización | Alesya X-Tech", robots: { index: false, follow: false } };
+export const metadata = { title: "Cotización", robots: { index: false, follow: false } };
 
 /** Cotización pública por enlace: el colegio la revisa, la imprime o guarda en PDF y la acepta en línea. */
 export default async function QuotePage({ params }: { params: Promise<{ token: string }> }) {

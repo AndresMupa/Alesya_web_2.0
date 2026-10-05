@@ -1,7 +1,7 @@
 import { PackageSearch } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 
-export const metadata = { title: "Rastrear pedido | Alesya", robots: { index: false, follow: false } };
+export const metadata = { title: "Rastrear pedido", robots: { index: false, follow: false } };
 
 /** El cliente escribe la referencia de su pedido (ALESYA-…) y ve el estado real, sin datos de contacto. */
 export default function TrackOrderPage() {

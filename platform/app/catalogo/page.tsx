@@ -4,12 +4,28 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { ProductCard } from "@/components/store/product-card";
 import { listStoreCategories, listStoreProducts, storeSorts, type StoreProduct } from "@/lib/commerce/catalog";
+import { resolveCategory } from "@/lib/commerce/constants";
 import { categoryMeta } from "@/lib/content";
 import { plural } from "@/lib/format";
+import { pageMetadata } from "@/lib/seo";
 import { storeConfig } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Tienda educativa | Alesya X-Tech", description: "Kits de robótica, Arduino, sensores, impresión 3D, bricolaje y libros para aprender construyendo." };
+
+type Params = { categoria?: string; q?: string; orden?: string };
+
+/** Cada categoría es una página indexable con su canónica; las búsquedas no se indexan y el orden no cambia la canónica. */
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Params> }) {
+  const { categoria, q } = await searchParams;
+  const category = resolveCategory(categoria?.slice(0, 80) || undefined);
+  const detail = category ? categoryMeta(category).detail : "";
+  return pageMetadata({
+    title: category ? `${category}: tienda educativa` : "Tienda de robótica educativa, Arduino e impresión 3D",
+    description: category ? `${detail} Compra en línea con pago seguro y envíos a toda Colombia.` : "Kits de robótica LEGO, Arduino, sensores, impresión 3D, bricolaje y libros para aprender construyendo. Pago seguro y envíos a toda Colombia.",
+    path: category ? `/catalogo?categoria=${encodeURIComponent(category)}` : "/catalogo",
+    noindex: Boolean(q?.trim()),
+  });
+}
 
 type Category = { category: string; total: number };
 
@@ -20,9 +36,9 @@ async function load(category?: string, search?: string, sort?: string): Promise<
   } catch (error) { console.error("store_catalog_failed", error); return null; }
 }
 
-export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ categoria?: string; q?: string; orden?: string }> }) {
+export default async function CatalogPage({ searchParams }: { searchParams: Promise<Params> }) {
   const { categoria, q, orden } = await searchParams;
-  const category = categoria?.slice(0, 80) || undefined;
+  const category = resolveCategory(categoria?.slice(0, 80) || undefined);
   const search = q?.trim().slice(0, 80) || undefined;
   const sort = storeSorts.some((item) => item.value === orden) ? orden! : "relevancia";
   const [data, config] = await Promise.all([load(category, search, sort), storeConfig().catch(() => null)]);

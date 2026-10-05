@@ -5,7 +5,7 @@ import { stockState } from "@/lib/commerce/constants";
 import { wompiStatus } from "@/lib/payments/wompi";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Finalizar compra | Alesya", robots: { index: false, follow: false } };
+export const metadata = { title: "Finalizar compra", robots: { index: false, follow: false } };
 
 /** `/checkout?producto=<slug>` (enlaces de "comprar" antiguos y de campañas) agrega ese producto al carrito. */
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ producto?: string }> }) {

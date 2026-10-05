@@ -1,15 +1,31 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./store.css";
 import { Toaster } from "sonner";
-import { RobotChat } from "@/components/robot-chat";
+import { RobotChatLoader } from "@/components/robot-chat-loader";
+import { site, siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Alesya X Tech | Educación que se construye",
-  description: "Robótica, Arduino, LEGO, impresión 3D, libros y proyectos maker para colegios, docentes y familias.",
-  icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
+  metadataBase: new URL(siteUrl()),
+  title: { default: site.title, template: `%s | ${site.name}` },
+  description: site.description,
+  applicationName: site.name,
+  keywords: [...site.keywords],
+  authors: [{ name: site.publisher }],
+  creator: site.publisher,
+  publisher: site.publisher,
+  category: "education",
+  icons: {
+    icon: [{ url: "/favicon.ico", sizes: "48x48" }, { url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
+  openGraph: { type: "website", locale: site.locale, siteName: site.name, title: site.title, description: site.description, images: [site.ogImage] },
+  twitter: { card: "summary_large_image", title: site.title, description: site.description, images: [site.ogImage.url] },
 };
 
+export const viewport: Viewport = { themeColor: "#080f1b", colorScheme: "light" };
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es"><body>{children}<RobotChat /><Toaster position="bottom-center" richColors closeButton /></body></html>;
+  return <html lang="es-CO"><body>{children}<RobotChatLoader /><Toaster position="bottom-center" richColors closeButton /></body></html>;
 }

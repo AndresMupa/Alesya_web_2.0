@@ -12,6 +12,7 @@ La plataforma integra la experiencia pública, la operación comercial y el come
 - **Comercio:** catálogo administrable, carrito, pedidos con trazabilidad, inventario por eventos y fotos de producto.
 - **Pagos:** adaptador Wompi (Nequi, Botón Bancolombia, PSE, tarjetas) y pagos manuales confirmados por el equipo (transferencia, Nequi directo, efectivo, datáfono). Las claves se guardan exclusivamente como secretos del entorno.
 - **Portada editable:** la página de inicio se compone de bloques guardados como un documento JSON (`lib/pages/home-schema.ts`: esquema, valores por defecto y catálogo de bloques). El panel edita un borrador, lo previsualiza y lo publica; cada publicación deja una versión recuperable. Imágenes y videos se suben a la carpeta privada de datos y se sirven desde `/uploads`.
+- **SEO y dominio:** `lib/site.ts` define el dominio canónico (`PRODUCTION_URL`) y la identidad pública; `lib/seo.ts` arma los metadatos de cada página; `app/sitemap.ts`, `app/robots.ts` y `app/manifest.ts` los archivos para buscadores; `proxy.ts` unifica el dominio con `CANONICAL_REDIRECT=1`; `next.config.ts` redirige las direcciones del WordPress anterior. Las páginas legales viven en `lib/legal.ts`.
 - **Operaciones:** panel `/admin` con una ruta por módulo: Resumen, Portada, Máquina de ventas, CRM, Pedidos, Productos e inventario, Configuración, Integraciones.
 
 ## Organización del código (`platform/`)
@@ -49,4 +50,5 @@ El alojamiento definitivo es cPanel; el procedimiento vigente está en [`platfor
 5. Registrar `/api/webhooks/wompi` como URL de eventos en sandbox y producción.
 6. Ejecutar compras de prueba aprobadas, rechazadas y abandonadas.
 7. Importar productos, clientes y pedidos vigentes de WooCommerce.
-8. Definir roles del panel y separar el acceso administrativo antes de hacer pública la web.
+8. Definir roles del panel. El enlace público "Administrar" ya se quitó: el equipo entra por `/admin`.
+9. Revisar los textos legales y pasar al dominio principal (ver "Cambio al dominio principal" en `DEPLOYMENT_STATUS.md`).

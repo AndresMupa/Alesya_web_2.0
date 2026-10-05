@@ -78,6 +78,17 @@ export const productStatusLabel = (value: string) => labelOf(productStatuses, va
 export const paymentMethodLabel = (value: string | null) => !value ? "—" : labelOf([...manualPaymentMethods, { value: "NEQUI", label: "Nequi (Wompi)" }, { value: "PSE", label: "PSE" }, { value: "CARD", label: "Tarjeta" }, { value: "BANCOLOMBIA_TRANSFER", label: "Botón Bancolombia" }], value);
 export const isPendingStatus = (value: string) => !paidOrderStatuses.includes(value as OrderStatus);
 
+const plain = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/**
+ * Nombre real de una categoría escrita sin tildes o en otro formato (`?categoria=robotica` → "Robótica"). Las
+ * redirecciones de WordPress usan la forma sin tildes porque Next codifica mal los acentos en el destino.
+ */
+export function resolveCategory(value: string | undefined) {
+  if (!value) return undefined;
+  return categoryOrder.find((category) => category === value) ?? categoryOrder.find((category) => plain(category) === plain(value)) ?? value;
+}
+
 export function sortCategories(categories: Iterable<string>) {
   const present = Array.from(new Set(categories));
   const known = categoryOrder.filter((category) => present.includes(category));
