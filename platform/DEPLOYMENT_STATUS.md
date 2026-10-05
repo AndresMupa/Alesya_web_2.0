@@ -1,6 +1,6 @@
 # Estado del despliegue de Alesya en cPanel
 
-Última actualización: 30 de septiembre de 2026, zona horaria `America/Bogota`.
+Última actualización: 4 de octubre de 2026, zona horaria `America/Bogota`.
 
 ## Objetivo
 
@@ -82,7 +82,11 @@ SMTP_PORT=465
 SMTP_USER=comercial@alesyaediciones.com
 SMTP_PASS
 MAIL_FROM=Alesya X-Tech <comercial@alesyaediciones.com>
+# Solo al pasar al dominio principal (ver "Cambio al dominio principal"):
+# CANONICAL_REDIRECT=1
 ```
+
+`PRODUCTION_URL` es el dominio canónico del sitio: de ahí salen los enlaces canónicos, el sitemap, `robots.txt`, los datos estructurados para Google, los enlaces de los correos y la URL de regreso de Wompi. `robots.txt` solo permite rastrear ese dominio; cualquier otro nombre que sirva la app pide no indexar. Con `CANONICAL_REDIRECT=1` toda visita por otro nombre (sin www, `nueva.`) se redirige de forma permanente a `PRODUCTION_URL` (no afecta `/api`).
 
 ### Resumen diario del CRM (cron)
 
@@ -131,14 +135,53 @@ Probado en una instalación vacía con el servidor standalone: 65 productos (62 
 
 La migración `0004` también pasa a la tabla `products` los cuatro destacados que antes estaban fijos en el código (conservan su slug, se venden bajo pedido y se pueden despublicar desde el panel).
 
+## Cambio al dominio principal (www.alesyaediciones.com)
+
+El código ya está listo para servir el dominio principal: páginas legales con las mismas direcciones que WordPress, redirecciones permanentes de las demás direcciones de WordPress (`next.config.ts`), sitemap, `robots.txt`, datos estructurados y redirección opcional a un dominio único. Lo que falta son pasos de operación en cPanel, GitHub y Wompi.
+
+### Antes del cambio
+
+1. **Revisar los textos legales** (`/politica-de-privacidad`, `/politica-de-reembolsos-y-devoluciones`, `/aviso-legal`, contenido en `lib/legal.ts`) con quien lleve lo legal o contable: razón social, dirección y plazos.
+2. **Contenido:** productos con precio y foto, base de colegios importada y la portada publicada desde `/admin/portada`.
+3. **Pruebas de extremo a extremo** en `nueva.`: formulario de colegios, compra con Wompi (aprobada, rechazada y abandonada), pago manual, correo de prueba y rastreo de pedido.
+4. Confirmar que `x-forwarded-for` llega como una IP válida y saneada (si no, los formularios fallan de forma segura).
+5. Elegir una hora de poco tráfico. El cambio toma unos 30 minutos.
+
+### El cambio
+
+1. **Respaldo de WordPress:** cPanel → *Copia de seguridad* → descargar la copia de la carpeta de inicio y la de la base de datos MySQL de WordPress. Guardarlas fuera del servidor.
+2. **Sacar WordPress de la raíz sin borrarlo:** crear la carpeta `/home/alesyaed/wordpress-antiguo` y mover allí todo el contenido de `public_html` (incluido `.htaccess`). Si se quiere seguir consultando, crear el subdominio `antiguo.alesyaediciones.com` apuntando a esa carpeta y, en WordPress, *Ajustes → Lectura → Disuadir a los motores de búsqueda*.
+3. **Mover la app:** *Setup Node.js App* → editar la aplicación → *Application URL* = `alesyaediciones.com` (sin ruta). La raíz de la aplicación y `ALESYA_DATA_DIR` no cambian, así que la base de datos y las fotos subidas siguen igual.
+4. **Variables de la app:** `PRODUCTION_URL=https://www.alesyaediciones.com` y `CANONICAL_REDIRECT=1`. Guardar y pulsar **Restart**.
+5. **`nueva.` hacia el dominio principal:** cPanel → *Dominios → Redirecciones* → permanente (301) de `nueva.alesyaediciones.com` a `https://www.alesyaediciones.com/`, con la opción de redirigir con comodín para conservar la ruta.
+6. **SSL:** cPanel → *SSL/TLS Status* → confirmar (o ejecutar AutoSSL) para `alesyaediciones.com` y `www.alesyaediciones.com`.
+7. **GitHub:** variable `PRODUCTION_URL` del entorno `production` = `https://www.alesyaediciones.com` (la usa el chequeo de salud del despliegue).
+8. **Wompi:** URL de eventos = `https://www.alesyaediciones.com/api/webhooks/wompi`, en sandbox y en producción.
+9. **Cron del resumen diario:** cambiar la URL a `https://www.alesyaediciones.com/api/cron/daily?token=…`.
+
+### Verificación
+
+- `https://www.alesyaediciones.com` carga la tienda nueva; `https://alesyaediciones.com/colegios` y `https://nueva.alesyaediciones.com/colegios` redirigen a `https://www.alesyaediciones.com/colegios`.
+- `/robots.txt` muestra `Allow: /` y `Sitemap: https://www.alesyaediciones.com/sitemap.xml`; `/sitemap.xml` lista páginas, categorías y productos con `www`.
+- Direcciones viejas: `/shop/` → `/catalogo`, `/contacto/` → `/colegios#diagnostico`, `/product/robotica-educativa-modulo-2/` → `/catalogo` (todas en un salto, 308).
+- Una compra de prueba vuelve a `www` después de Wompi y el correo de confirmación enlaza a `www`.
+- **Google Search Console:** verificar la propiedad de dominio `alesyaediciones.com` (registro TXT en la zona DNS), enviar `https://www.alesyaediciones.com/sitemap.xml` e inspeccionar la portada. Como el dominio es el mismo no hace falta el "cambio de dirección". Actualizar también el sitio web en Google Business Profile y en las redes.
+
+### Volver atrás
+
+*Setup Node.js App* → *Application URL* de nuevo en `nueva.alesyaediciones.com`, devolver el contenido de `/home/alesyaed/wordpress-antiguo` a `public_html`, quitar la redirección de `nueva.`, restaurar `PRODUCTION_URL=https://nueva.alesyaediciones.com`, borrar `CANONICAL_REDIRECT` y **Restart**.
+
+### Lo que no se migra de WordPress
+
+Las cuentas de clientes y cursos (WooCommerce, LearnPress), los pedidos antiguos y las fotos en `/wp-content/uploads` no pasan al sitio nuevo; esas direcciones darán 404 (las de cuentas redirigen a `/pedido`). Las páginas de literatura, grados, módulos escolares, área de inglés y galería estaban vacías o eran plantilla y redirigen a la tienda (*Libros*) o a la portada. Los cuatro "Módulos de Robótica Educativa" de WordPress (95.000 COP) no existen en el catálogo nuevo: crearlos en `/admin/productos` si se siguen vendiendo.
+
 ## Próximos pasos
 
-1. Confirmar en el hosting que `x-forwarded-for` llega como una IP válida y saneada antes de abrir formularios al público.
-2. Probar catálogo, leads, administración, checkout, webhook, pedido e inventario de extremo a extremo.
-3. Solo después de aprobar todo, planificar el reemplazo de WordPress en el dominio principal y conservar un respaldo recuperable.
+1. Completar "Antes del cambio" y ejecutar "Cambio al dominio principal".
+2. Después del cambio, revisar en Search Console durante dos semanas la cobertura y los errores 404.
 
 ## Reglas operativas
 
-- No modificar ni eliminar WordPress.
+- No eliminar WordPress: en el cambio de dominio se mueve a `/home/alesyaed/wordpress-antiguo` con su respaldo descargado.
 - No publicar capturas que muestren secretos de Wompi o del administrador.
 - No subir a mano paquetes a `alesya-platform`: todo cambio pasa por pull request y el despliegue automático.

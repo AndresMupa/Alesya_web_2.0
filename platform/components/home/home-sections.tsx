@@ -3,18 +3,19 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { ImmersiveHero } from "@/components/immersive-hero";
 import { ImageSlider } from "@/components/home/image-slider";
+import { LazyVideo } from "@/components/lazy-video";
 import { LeadForm } from "@/components/lead-form";
 import { ProductCard } from "@/components/store/product-card";
 import type { StoreProduct } from "@/lib/commerce/catalog";
 import { homeIcon } from "@/lib/pages/icons";
+import { posterFor } from "@/lib/posters";
 import { paragraphs, type HomeDocument, type HomeSection, type SectionOf } from "@/lib/pages/home-schema";
 
 const pad = (index: number) => String(index).padStart(2, "0");
-const videoType = (src: string) => (src.endsWith(".webm") ? "video/webm" : "video/mp4");
 
-/** Video en bucle si lo hay; si no, la imagen; si no hay nada, nada. */
+/** Video en bucle (se descarga al acercarse a la pantalla) si lo hay; si no, la imagen; si no hay nada, nada. */
 function Media({ video, image, alt = "" }: { video: string; image: string; alt?: string }) {
-  if (video) return <video autoPlay muted loop playsInline preload="metadata" poster={image || undefined} aria-hidden="true"><source src={video} type={videoType(video)} /></video>;
+  if (video) return <LazyVideo src={video} poster={posterFor(video, image)} />;
   if (image) return <img src={image} alt={alt} loading="lazy" />;
   return null;
 }

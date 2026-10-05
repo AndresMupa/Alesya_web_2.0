@@ -50,6 +50,11 @@ export async function getFeaturedProducts(limit = 4) {
   return rows as StoreProduct[];
 }
 
+/** Productos a la venta para el sitemap: dirección, foto y fecha del último cambio. */
+export async function listSitemapProducts() {
+  return getDb().select({ slug: products.slug, imageUrl: products.imageUrl, updatedAt: products.updatedAt }).from(products).where(sellable).orderBy(desc(products.updatedAt)).limit(2000);
+}
+
 export async function getRelatedProducts(product: StoreProduct, limit = 4) {
   const rows = await getDb().select(storeFields).from(products)
     .where(and(sellable, eq(products.category, product.category), sql`${products.slug} <> ${product.slug}`))

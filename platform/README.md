@@ -43,7 +43,8 @@ El correo, la contraseña y las líneas `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` y `
 | `ALESYA_DATA_DIR` | Carpeta privada para SQLite en cPanel; por defecto `~/alesya-data` (con `npm start` en local, `.local`). |
 | `TRUSTED_PROXY_IP_HEADER` | Cabecera de IP saneada por el proxy. En cPanel: `x-forwarded-for`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Correo transaccional (pedido recibido, pago confirmado, envío, avisos al equipo). En cPanel: una cuenta de correo del dominio, puerto 465. Sin ellas no se envía nada; en desarrollo el correo se imprime en la consola. |
-| `PRODUCTION_URL` | Dominio público para los enlaces de correos y pagos (`https://nueva.alesyaediciones.com`). |
+| `PRODUCTION_URL` | Dominio canónico (`https://nueva.alesyaediciones.com`; tras el cambio, `https://www.alesyaediciones.com`): enlaces canónicos, sitemap, `robots.txt`, datos estructurados, correos y regreso de Wompi. |
+| `CANONICAL_REDIRECT` | `1` redirige de forma permanente cualquier otro nombre del sitio (sin www, `nueva.`) al dominio de `PRODUCTION_URL` (`proxy.ts`). Apagado por defecto; se activa en el cambio de dominio. |
 
 La configuración que no es secreta (WhatsApp comercial, instrucciones de pago manual, envío por defecto, correo de avisos) se edita en **`/admin/configuracion`** y se guarda en la tabla `settings`.
 
@@ -96,12 +97,22 @@ Cada módulo tiene su ruta; todas exigen sesión:
 - **Productos e inventario** (`/admin/productos`): tablero por categorías (arrastrar ordena la tienda) o tabla para poner precios rápido (al asignar el primer precio a un borrador se publica), acciones masivas, destacados de la portada, venta bajo pedido, fotos subidas desde el panel, ajustes de stock con motivo e historial, importar y exportar CSV.
 - **Integraciones** (`/admin/integraciones`): estado de Wompi, base de datos, fotos y canales.
 
-Las fotos y videos que se suben desde el panel se guardan en `ALESYA_DATA_DIR/uploads` (fuera de la app, sobreviven a los despliegues) y se sirven en `/uploads/<uuid>.jpg|png|webp|mp4|webm`; el formato se valida por su firma binaria (`lib/media.ts`) y la ruta responde por rangos (`Range`), necesario para reproducir y adelantar video en Safari.
+Las fotos y videos que se suben desde el panel se guardan en `ALESYA_DATA_DIR/uploads` (fuera de la app, sobreviven a los despliegues) y se sirven en `/uploads/<uuid>.jpg|png|webp|mp4|webm`; el formato se valida por su firma binaria (`lib/media.ts`) y la ruta responde por rangos (`Range`), necesario para reproducir y adelantar video en Safari. Las fotos se enderezan, se reducen a 2000 px por lado y se guardan sin metadatos (una foto de celular trae la ubicación GPS); si `sharp` fallara se guarda el original.
 
 ### Importar y exportar CSV
 
 - **Productos:** mismo formato que `../inventario-alesya.csv` (`cantidad, nombre, categoria, sku_ref, precio_cop`, más `imagen`, `estado`, `destacado`, `bajo_pedido`, `descripcion`/`notas` opcionales). Actualiza por SKU; en los existentes solo cambian las columnas presentes. El stock de los existentes solo cambia si se marca el archivo como conteo físico (queda un evento `stock_count`).
 - **Contactos:** el mismo formato que exporta el panel, o columnas equivalentes (`colegio`, `email`, `municipio`, `dane`…). Se deduplica por código DANE y, sin código, por correo. Acepta coma o punto y coma (Excel en español).
+
+## SEO y rendimiento
+
+- **Metadatos:** cada página pública arma título, descripción, canónica, Open Graph y tarjeta de X con `pageMetadata` (`lib/seo.ts`); el dominio sale de `PRODUCTION_URL` (`lib/site.ts`). Las categorías de la tienda son páginas indexables con su canónica; las búsquedas (`?q=`), el carrito, el checkout, el rastreo y las cotizaciones no se indexan.
+- **Datos estructurados (JSON-LD):** organización y sitio web con buscador en la portada, servicio en `/colegios`, producto con precio, disponibilidad y migas de pan en cada ficha. Todo se escapa con `jsonLd()`.
+- **Rastreo:** `/sitemap.xml` (páginas, categorías y productos a la venta con su foto) y `/robots.txt`, que solo deja rastrear el dominio canónico. Íconos (`favicon.ico`, `apple-touch-icon.png`, `icon-192/512.png`) y `manifest.webmanifest`.
+- **Páginas legales:** `/politica-de-privacidad`, `/politica-de-reembolsos-y-devoluciones` y `/aviso-legal` (texto en `lib/legal.ts`, Ley 1581 de 2012 y Ley 1480 de 2011). El formulario de colegios y el checkout piden la autorización de datos.
+- **WordPress:** las direcciones del sitio anterior redirigen en un solo salto a su equivalente (`next.config.ts`); el procedimiento de cambio de dominio está en `DEPLOYMENT_STATUS.md`.
+- **Velocidad:** el logo es una imagen de 6 KB (el vectorial de 10 MB quedó en `Recursos/`), las fotos están recomprimidas, los videos que no se ven al entrar se descargan al acercarse a la pantalla y se pausan al salir (`components/lazy-video.tsx`, con carátula), el asistente Bambú se carga cuando el navegador queda libre, `/media` se cachea una semana y la base de datos usa una sola conexión por proceso.
+- **Medios nuevos:** `node scripts/optimize-media.mjs` recomprime fotos de `public/media`, regenera logo, íconos, carátulas de video (requiere ffmpeg) y la imagen para compartir `og-alesya.jpg`. Si agregas un video a `public/media`, añádelo a `lib/posters.ts`.
 
 ## Comandos
 

@@ -74,6 +74,7 @@ export function CheckoutView({ wompiReady, buyNow }: { wompiReady: boolean; buyN
         <div className="payment-methods"><span className="payment-method"><Smartphone /> Nequi</span><span className="payment-method"><Building2 /> PSE o Botón Bancolombia</span><span className="payment-method"><CreditCard /> Tarjeta débito o crédito</span></div>
         <p className="secure-note"><LockKeyhole size={28} />Eliges el medio en el checkout seguro de Wompi. Alesya no almacena números de tarjeta ni claves bancarias.</p>
       </> : <p className="secure-note"><MessageCircle size={28} />Registramos tu pedido y te contactamos por WhatsApp para coordinar el pago (transferencia, Nequi o Daviplata) y el envío.</p>}
+      <label className="consent-check"><input type="checkbox" name="consent" required /><span>Autorizo a Alesya Ediciones a tratar mis datos para gestionar este pedido, según la <Link href="/politica-de-privacidad" target="_blank">Política de datos personales</Link>, y acepto las <Link href="/politica-de-reembolsos-y-devoluciones" target="_blank">condiciones de cambios y devoluciones</Link>.</span></label>
       {state === "error" && <div className="checkout-status" role="alert">{message}</div>}
       <button className="button button-primary" disabled={state === "saving" || loading || blocked} type="submit">
         {state === "saving" ? "Registrando pedido…" : wompiReady ? `Pagar ${formatMoney(total)}` : `Confirmar pedido por ${formatMoney(total)}`} <ArrowRight size={18} />
