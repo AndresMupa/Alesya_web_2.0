@@ -21,16 +21,17 @@ Publicar la nueva plataforma Next.js de Alesya directamente en Colombia Hosting/
 
 Cada merge a la rama `main-rzbi9x` se publica solo mediante GitHub Actions (`.github/workflows/deploy.yml`):
 
-1. `npm run lint` y `npm run build` (`.github/workflows/ci.yml`).
+1. `npm run lint`, las pruebas del despliegue y `npm run build` (`.github/workflows/ci.yml`).
 2. `npm run package:cpanel`: paquete Linux x86-64 construido en Docker, validado (sin secretos, bases de datos, `.env` ni binarios de otra arquitectura) y con smoke test.
-3. Se sube un único `.tar.gz` por SFTP y la API de cPanel (`Fileman::fileop extract`) lo extrae en `/home/alesyaed/alesya-platform.release-<commit>`.
-4. Se intercambian carpetas: la versión anterior queda en `/home/alesyaed/alesya-platform.previous`.
-5. `tmp/restart.txt` reinicia la aplicación; `bootstrap.mjs` aplica las migraciones pendientes al arrancar.
-6. Chequeo de salud: el sitio debe servir un archivo estático que solo existe en el build nuevo.
+3. **Autoprueba en el servidor:** sube, renombra, lee y borra una carpeta temporal para confirmar que la API se comporta como se espera, sin tocar la app.
+4. Se sube un único `.tar.gz` con la API de cPanel (`Fileman::upload_files`) a `/home/alesyaed/alesya-platform.release-<commit>`, cPanel lo extrae (`Fileman::fileop extract`) y se verifica que su `BUILD_ID` sea el del build.
+5. Se intercambian carpetas con dos renombrados: la versión anterior queda en `/home/alesyaed/alesya-platform.previous`. Si el segundo renombrado falla, se restaura la anterior en el acto.
+6. `tmp/restart.txt` reinicia la aplicación; `bootstrap.mjs` aplica las migraciones pendientes al arrancar.
+7. Chequeo de salud: el sitio debe servir un archivo estático que solo existe en el build nuevo. **Si falla, el workflow vuelve solo a la versión anterior** (la que falló queda en `alesya-platform.failed-<commit>` para revisarla).
 
 Duración típica: unos 3 minutos. Si algo falla antes del intercambio de carpetas, producción no cambia.
 
-La cuenta de cPanel no tiene acceso a shell; todo el despliegue usa SFTP (una sola conexión, el hosting rechaza sesiones simultáneas) y la API de cPanel. Sin el token de API, el workflow sube los archivos uno a uno (unos 10 minutos).
+La cuenta de cPanel no tiene acceso a shell y, desde el 4 de octubre de 2026, el hosting corta las conexiones SFTP que vienen de GitHub. Por eso todo el despliegue va por HTTPS con la API de cPanel (`.github/scripts/cpanel-deploy.mjs`), usando solo funciones disponibles desde cPanel 11.44. Cada paso se comprueba leyendo el estado real del servidor. El script se prueba en cada PR contra un cPanel simulado (`.github/scripts/cpanel-deploy.test.mjs`): éxito, firewall que bloquea, token inválido, renombrado con otra semántica, extracción incompleta, fallo al activar, borrado que no borra y vuelta atrás.
 
 ### Flujo de trabajo
 
@@ -44,7 +45,7 @@ gh pr create --fill --base main-rzbi9x
 
 ### Volver a la versión anterior
 
-Desde el Administrador de archivos de cPanel: renombrar `alesya-platform` a otro nombre, renombrar `alesya-platform.previous` a `alesya-platform` y pulsar **Restart** en "Setup Node.js App". Las migraciones ya aplicadas no se revierten.
+El workflow lo hace solo cuando el chequeo de salud falla. A mano, desde el Administrador de archivos de cPanel: renombrar `alesya-platform` a otro nombre, renombrar `alesya-platform.previous` a `alesya-platform` y pulsar **Restart** en "Setup Node.js App". Las migraciones ya aplicadas no se revierten.
 
 ### Configuración en GitHub
 
@@ -52,13 +53,13 @@ Entorno `production` (Settings → Environments), limitado a la rama `main-rzbi9
 
 | Nombre | Tipo | Uso |
 | --- | --- | --- |
-| `CPANEL_SSH_HOST`, `CPANEL_SSH_PORT`, `CPANEL_SSH_USER` | Secret | Conexión SFTP. |
-| `CPANEL_SSH_KEY` | Secret | Clave privada autorizada en cPanel → Acceso a SSH (`github_deploy`). |
-| `CPANEL_SSH_KNOWN_HOSTS` | Secret | Claves públicas del servidor (`ssh-keyscan -p 22 195.250.27.40`). |
+| `CPANEL_API_TOKEN` | Secret | Token de cPanel → Manage API Tokens (`github_deploy`). Obligatorio. |
+| `CPANEL_SSH_USER` | Secret | Usuario de la cuenta de cPanel (`alesyaed`), para autenticar la API. Si se crea `CPANEL_USER`, se usa ese. |
 | `CPANEL_APP_DIR` | Secret | `/home/alesyaed/alesya-platform`. |
-| `CPANEL_API_TOKEN` | Secret | Token de cPanel → Manage API Tokens (`github_deploy`). |
 | `CPANEL_API_URL` | Variable | `https://alesyaediciones.com:2083` (la IP no sirve: el certificado no coincide). |
 | `PRODUCTION_URL` | Variable | `https://nueva.alesyaediciones.com`. |
+
+Los secrets `CPANEL_SSH_HOST`, `CPANEL_SSH_PORT`, `CPANEL_SSH_KEY` y `CPANEL_SSH_KNOWN_HOSTS` ya no se usan desde que el despliegue va solo por la API. Cuando un despliegue por API haya funcionado se pueden borrar, junto con la clave SSH `github_deploy` en cPanel → Acceso a SSH (no confundir con el token de API del mismo nombre, que sí se usa).
 
 Al cargar desde Git Bash un valor que empieza por `/`, usar `MSYS_NO_PATHCONV=1 gh secret set …`; si no, Git Bash lo convierte en una ruta de Windows.
 
