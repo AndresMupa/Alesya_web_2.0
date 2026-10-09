@@ -561,3 +561,13 @@ a.activity-item:hover span { text-decoration:underline; }
 .adm-revisions li { display:flex; justify-content:space-between; align-items:center; gap:10px; background:white; border:1px solid var(--adm-line); border-radius:10px; padding:10px 12px; font-size:13px; }
 .adm-revisions small { display:block; color:#6a7482; }
 @media (max-width:760px) { .adm-media-row { grid-template-columns:1fr; } .adm-block-body .adm-form-grid { grid-template-columns:1fr; } }
+
+/* Captación por correo */
+.adm-inbox-list { max-height:560px; }
+.adm-inbox-list li { border-left:4px solid #c9d0d8; }
+.adm-inbox-list li[data-result="created"] { border-left-color:var(--signal-lime); }
+.adm-inbox-list li[data-result="matched"] { border-left-color:var(--signal-cyan); }
+.adm-inbox-list strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.adm-inbox-list .status-pill { margin-right:4px; padding:3px 7px; }
+.status-pill[data-result="matched"] { background:#dff3fb; color:#155a78; }
+.status-pill[data-result="skipped"] { background:#eceff2; color:#5b6573; }

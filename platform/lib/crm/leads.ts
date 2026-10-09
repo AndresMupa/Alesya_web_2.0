@@ -100,7 +100,8 @@ export type LeadInput = {
 
 const clean = (value: string | null | undefined) => value?.trim() || null;
 
-function leadValues(input: LeadInput, now: Date) {
+/** Fila nueva de `leads` (también la usa la captación por correo dentro de su propia transacción). */
+export function leadValues(input: LeadInput, now: Date) {
   return {
     id: crypto.randomUUID(), name: input.name.trim(), organization: input.organization.trim(), email: clean(input.email)?.toLowerCase() ?? null, phone: clean(input.phone), city: clean(input.city), website: clean(input.website),
     message: input.message.trim(), source: input.source, stage: "new", priority: input.priority ?? "medium", owner: clean(input.owner), notes: input.notes?.trim() ?? "", estimatedValueInCents: input.estimatedValueInCents ?? 0,
