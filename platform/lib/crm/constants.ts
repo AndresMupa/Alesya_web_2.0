@@ -26,6 +26,7 @@ export const leadPriorityValues = leadPriorities.map((priority) => priority.valu
 export const leadSources = [
   { value: "base_colegios_2026", label: "Base colegios 2026" },
   { value: "website", label: "Sitio web" },
+  { value: "email", label: "Correo" },
   { value: "whatsapp", label: "WhatsApp" },
   { value: "instagram", label: "Instagram" },
   { value: "facebook", label: "Facebook" },
@@ -79,7 +80,7 @@ export const outcomeValues = outcomes.map((item) => item.value) as [Outcome, ...
 export const MAX_ATTEMPTS = 3;
 
 /** Actividades automáticas que escribe el sistema. */
-const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación" };
+const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación", email_in: "Correo recibido" };
 
 /** Quién hizo la gestión: el asesor activo del panel (varios asesores comparten la cuenta de administración) o el correo de la sesión. */
 export const actorName = (email: string, asesor?: string | null) => asesor?.trim() ? asesor.trim().slice(0, 80) : email;

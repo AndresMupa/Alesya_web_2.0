@@ -83,6 +83,10 @@ SMTP_PORT=465
 SMTP_USER=comercial@alesyaediciones.com
 SMTP_PASS
 MAIL_FROM=Alesya X-Tech <comercial@alesyaediciones.com>
+CRON_SECRET
+# Captación por correo (si es la misma cuenta de SMTP_USER basta IMAP_USER):
+IMAP_USER=comercial@alesyaediciones.com
+# IMAP_PASS, IMAP_HOST=mail.alesyaediciones.com, IMAP_PORT=993, IMAP_MAILBOX=INBOX
 # Solo al pasar al dominio principal (ver "Cambio al dominio principal"):
 # CANONICAL_REDIRECT=1
 ```
@@ -98,6 +102,16 @@ wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/daily?token=EL_
 ```
 
 Envía al correo de avisos (`/admin/configuracion`) los seguimientos del día, entrantes sin atender, oportunidades sin siguiente acción y cotizaciones por vencer. Requiere el correo SMTP configurado; sin él responde con el resumen en JSON pero no envía nada.
+
+### Captación por correo (cron)
+
+Lleva al CRM los correos que llegan al buzón comercial (ver README → "Captación por correo"). Requiere `IMAP_USER` (la cuenta que recibe a los clientes, normalmente `comercial@alesyaediciones.com`) y su contraseña: si es la misma cuenta de `SMTP_USER` se reutilizan `SMTP_HOST` y `SMTP_PASS`; si es otra, definir también `IMAP_PASS` (y `IMAP_HOST` si el servidor no es el de SMTP). El buzón se abre en modo lectura: no se marcan, mueven ni borran correos. Después de **Restart**, en cPanel → **Trabajos de cron** crear uno cada 10 minutos (`*/10 * * * *`):
+
+```sh
+wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/inbox?token=EL_SECRETO"
+```
+
+Comprobar en `/admin/ventas?tab=captacion` (**Revisar ahora**). La primera revisión trae los correos de los últimos 3 días. Antes de activarla conviene cargar en *Configuración → Remitentes que no son clientes* los dominios de proveedores, bancos y plataformas que escriben a ese buzón. Mientras la cuenta esté en el límite de procesos (NPROC) el cron puede no arrancar; la captación igual corre al abrir la máquina de ventas.
 
 Las variables `SMTP_*` y `MAIL_FROM` activan el correo transaccional (pedido recibido, pago confirmado, envío y avisos al equipo). Se obtienen en cPanel → **Cuentas de correo** → *Connect Devices* de la cuenta que enviará; sin ellas la tienda funciona igual pero no envía correos (Integraciones lo indica). Después de pegarlas, **Restart** y probar con **Configuración → Enviar correo de prueba**.
 
@@ -158,7 +172,7 @@ El código ya está listo para servir el dominio principal: páginas legales con
 6. **SSL:** cPanel → *SSL/TLS Status* → confirmar (o ejecutar AutoSSL) para `alesyaediciones.com` y `www.alesyaediciones.com`.
 7. **GitHub:** variable `PRODUCTION_URL` del entorno `production` = `https://www.alesyaediciones.com` (la usa el chequeo de salud del despliegue).
 8. **Wompi:** URL de eventos = `https://www.alesyaediciones.com/api/webhooks/wompi`, en sandbox y en producción.
-9. **Cron del resumen diario:** cambiar la URL a `https://www.alesyaediciones.com/api/cron/daily?token=…`.
+9. **Cron del resumen diario y de la captación por correo:** cambiar las URL a `https://www.alesyaediciones.com/api/cron/daily?token=…` y `…/api/cron/inbox?token=…`.
 
 ### Verificación
 

@@ -1,16 +1,13 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { and, count, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { leadActivities, leads, quotes } from "@/db/schema";
 import { leadStageLabel, workActivityTypes } from "@/lib/crm/constants";
 import { getAgenda, getWithoutNextAction } from "@/lib/crm/leads";
+import { cronAuthorized } from "@/lib/cron";
 import { bogotaDay, formatMoney } from "@/lib/format";
 import { noStore } from "@/lib/http";
 import { mailStatus, renderEmail, sendMail } from "@/lib/mail";
 import { getSettings, storeConfig } from "@/lib/settings";
-
-const digest = (value: string) => createHash("sha256").update(value).digest();
-const validToken = (token: string | null) => { const secret = process.env.CRON_SECRET; return Boolean(secret && token && secret.length >= 16 && timingSafeEqual(digest(secret), digest(token))); };
 
 /**
  * Resumen diario para el equipo (llamar cada mañana desde un cron de cPanel con `?token=CRON_SECRET`):
@@ -18,7 +15,7 @@ const validToken = (token: string | null) => { const secret = process.env.CRON_S
  * cotizaciones por vencer y gestiones de ayer frente a la meta.
  */
 export async function GET(request: Request) {
-  if (!validToken(new URL(request.url).searchParams.get("token"))) return Response.json({ message: "No autorizado" }, { status: 401, headers: noStore });
+  if (!cronAuthorized(request)) return Response.json({ message: "No autorizado" }, { status: 401, headers: noStore });
   const db = getDb();
   const today = bogotaDay();
   const yesterdayStart = new Date(Date.parse(`${bogotaDay(-1)}T05:00:00Z`)), todayStart = new Date(Date.parse(`${today}T05:00:00Z`));

@@ -1,6 +1,7 @@
-import { CreditCard, Database, HardDrive, Mail, MessageCircle, ReceiptText, Store } from "lucide-react";
+import { CreditCard, Database, HardDrive, Inbox, Mail, MessageCircle, ReceiptText, Store } from "lucide-react";
 import { demoDatabase } from "@/db";
 import { requireAdmin } from "@/lib/admin-auth";
+import { inboxStatus } from "@/lib/inbox";
 import { mailStatus } from "@/lib/mail";
 import { wompiStatus } from "@/lib/payments/wompi";
 import { uploadsAvailable } from "@/lib/storage";
@@ -12,6 +13,7 @@ export default async function IntegrationsPage() {
   await requireAdmin();
   const wompi = wompiStatus();
   const mail = mailStatus();
+  const inbox = inboxStatus();
   const demo = demoDatabase();
   const turso = Boolean(process.env.TURSO_DATABASE_URL && !process.env.TURSO_DATABASE_URL.startsWith("file:"));
   const items = [
@@ -21,6 +23,7 @@ export default async function IntegrationsPage() {
     { icon: HardDrive, name: "Fotos de productos", detail: uploadsAvailable() ? "Las fotos subidas desde el panel se guardan en la carpeta de datos y se sirven en /uploads/…; sobreviven a los despliegues." : "Este alojamiento no tiene disco persistente: usa rutas /media/… o URLs https.", state: uploadsAvailable() ? "Activo" : "No disponible", ok: uploadsAvailable() },
     { icon: MessageCircle, name: "WhatsApp comercial", detail: "Enlaces wa.me desde fichas de contacto, pedidos y la página de colegios. Las conversaciones se registran a mano en el CRM.", state: "Enlaces", ok: true },
     { icon: Mail, name: "Correo transaccional", detail: mail.configured ? `Enviando desde ${mail.from} por ${mail.host}:${mail.port}. Pedido recibido, pago confirmado, envío y avisos al equipo. Prueba en Configuración.` : "Sin SMTP: configura SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS y MAIL_FROM con una cuenta de correo del dominio (cPanel → Cuentas de correo). Mientras tanto las confirmaciones van por WhatsApp.", state: mail.configured ? "Activo" : "Configurar", ok: mail.configured },
+    { icon: Inbox, name: "Correo entrante · captación de leads", detail: inbox.configured ? `Revisa ${inbox.user} (${inbox.mailbox}) en modo lectura: cada correo de un cliente entra al CRM como lead nuevo o al historial del contacto. Estado y últimos correos en Máquina de ventas → Captación.` : "Sin buzón: define IMAP_USER (el correo que recibe a los clientes) e IMAP_PASS; si es la misma cuenta de SMTP_USER basta IMAP_USER. Luego un cron cada 10 minutos a /api/cron/inbox.", state: inbox.configured ? "Activo" : "Configurar", ok: inbox.configured },
     { icon: Store, name: "WooCommerce", detail: "Migración de productos y pedidos históricos: importar el CSV de productos desde Productos → Importar.", state: "Planificado", ok: false },
   ];
   return <>

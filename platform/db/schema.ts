@@ -25,6 +25,17 @@ export const leadActivities = sqliteTable("lead_activities", {
   id: text("id").primaryKey(), leadId: text("lead_id").notNull().references(() => leads.id), type: text("type").notNull(), summary: text("summary").notNull(), createdBy: text("created_by"), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [index("idx_lead_activities_lead_created").on(table.leadId, table.createdAt), index("idx_lead_activities_created").on(table.createdAt)]);
 
+/**
+ * Correos del buzón comercial que ya revisó la captación (lib/crm/inbox.ts): cada uno una sola vez (por Message-ID),
+ * con lo que se hizo (`created` lead nuevo, `matched` sumado al historial, `skipped` omitido con `reason`).
+ * El UID más alto de cada buzón y UIDVALIDITY es el punto desde donde sigue la siguiente revisión.
+ */
+export const inboundEmails = sqliteTable("inbound_emails", {
+  id: text("id").primaryKey(), messageId: text("message_id").notNull(), mailbox: text("mailbox").notNull(), uidValidity: text("uid_validity").notNull(), uid: integer("uid").notNull(),
+  fromEmail: text("from_email"), fromName: text("from_name"), subject: text("subject").notNull().default(""), receivedAt: integer("received_at", { mode: "timestamp_ms" }),
+  result: text("result").notNull(), reason: text("reason"), leadId: text("lead_id").references(() => leads.id), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [uniqueIndex("idx_inbound_emails_message_id").on(table.messageId), index("idx_inbound_emails_cursor").on(table.mailbox, table.uidValidity, table.uid), index("idx_inbound_emails_created").on(table.createdAt)]);
+
 // ── Comercio ─────────────────────────────────────────────────────────────────
 
 export const products = sqliteTable("products", {

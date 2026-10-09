@@ -43,6 +43,7 @@ export function SettingsForm() {
 
     <h2>Máquina de ventas</h2>
     <label>Meta diaria de gestiones por asesor<input name="crm.daily_goal" type="number" min="1" max="9999" defaultValue={values["crm.daily_goal"]} /><small>Llamadas, WhatsApp, correos, reuniones e intentos que cuentan cada día. Se muestra como barra de avance en la máquina de ventas.</small></label>
+    <label>Remitentes que no son clientes<textarea name="crm.inbox_ignore" defaultValue={values["crm.inbox_ignore"]} rows={3} maxLength={2000} placeholder={"proveedor.com\nfacturacion@banco.com.co"} /><small>La captación por correo no crea leads con estos remitentes. Un correo o un dominio por línea (o separados por comas): proveedores, bancos, transportadoras, plataformas.</small></label>
 
     <h2><Mail size={17} /> Correo</h2>
     <label>Correo de avisos del equipo<input name="mail.notify_to" type="email" defaultValue={values["mail.notify_to"]} maxLength={180} /><small>Recibe los pedidos nuevos y los contactos del formulario; es el “responder a” de los correos al cliente.</small></label>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, BarChart3, CalendarClock, FileText, Flag, Kanban, Megaphone, MessageCircle, Play, RefreshCw, School, Users } from "lucide-react";
 import { toast } from "sonner";
 import { AnalyticsPanel } from "@/components/admin/crm/analytics-panel";
+import { InboxPanel, syncSummary } from "@/components/admin/crm/inbox-panel";
 import { ColumnChart } from "@/components/admin/charts";
 import { Metric, PageHeader, useJson } from "@/components/admin/kit";
 import { AsesorPicker, useAsesor } from "@/components/admin/asesor";
@@ -43,6 +44,21 @@ function useUrlTab(): [Tab, (next: Tab) => void] {
   return [tab, setTab];
 }
 
+// Al abrir la máquina de ventas se revisa el buzón comercial si la última revisión tiene más de 5 minutos (una vez por carga).
+let inboxChecked = false;
+function useInboxAutoSync(onNews: () => void) {
+  useEffect(() => {
+    if (inboxChecked) return;
+    inboxChecked = true;
+    fetch("/api/admin/crm/inbox", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ifStale: true }) })
+      .then((response) => response.ok ? response.json() as Promise<{ created: number; matched: number; fresh?: boolean }> : null)
+      .then((result) => {
+        const summary = result && !result.fresh ? syncSummary(result) : "";
+        if (summary) { toast.success(`Llegaron por correo: ${summary}.`); onNews(); }
+      }, () => undefined);
+  }, [onNews]);
+}
+
 /**
  * Máquina de ventas en pestañas: tablero del día (meta, agenda corta, cola, embudo), agenda completa con
  * oportunidades sin siguiente acción, cotizaciones, analítica comercial y captación por redes.
@@ -60,6 +76,7 @@ export function SalesMachine() {
   const { data, error, loading } = useJson<Pipeline>(`/api/admin/crm/pipeline?${params}`, revision);
   const { data: stats } = useJson<Stats>(tab === "tablero" ? "/api/admin/crm/stats" : null, revision);
   const reload = useCallback(() => setRevision((value) => value + 1), []);
+  useInboxAutoSync(reload);
   const today = bogotaDay();
   const metrics = data?.metrics;
 
@@ -144,6 +161,7 @@ export function SalesMachine() {
     {tab === "cotizaciones" && <QuotesList asesor={asesor} />}
     {tab === "analitica" && <AnalyticsPanel revision={revision} />}
 
+    {tab === "captacion" && <InboxPanel onOpenLead={setOpenLead} onSynced={reload} />}
     {tab === "captacion" && <section className="panel adm-section">
       <div className="panel-header"><div><h2>Captación por redes</h2><p className="adm-muted">Publica estos enlaces: quien llena el formulario entra al CRM con el canal y la campaña, con prioridad alta y aviso al equipo. Las conversaciones directas regístralas con “+ Nuevo contacto” en el CRM.</p></div></div>
       <div className="sales-channel-links">{campaignChannels.map((channel) => <div className="sales-channel" key={channel}>
