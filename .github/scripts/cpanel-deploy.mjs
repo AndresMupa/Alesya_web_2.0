@@ -8,10 +8,10 @@
 // para deploy, ARCHIVE (el .tar.gz de package:cpanel) y PKG_DIR (ese paquete extraído, para leer su BUILD_ID).
 //
 // Usa solo funciones disponibles desde cPanel 11.44 —UAPI Fileman::upload_files, list_files, get_file_content y
-// get_file_information, y API 2 Fileman::fileop (extract, rename, unlink, trash)— porque rename_file, move_file y
-// delete_file solo existen desde cPanel 136. Cada paso se comprueba leyendo el estado real del servidor; la app solo
+// get_file_information, Quota::get_quota_info y API 2 Fileman::fileop (extract, rename, unlink, trash)— porque
+// rename_file, move_file y delete_file solo existen desde cPanel 136. Cada paso se comprueba leyendo el estado real del servidor; la app solo
 // se toca cuando la versión nueva está completa y verificada, y si algo falla al activarla se restaura la anterior.
-import { appendFile, readFile, stat } from "node:fs/promises";
+import { appendFile, readFile, readdir, stat } from "node:fs/promises";
 import { openAsBlob } from "node:fs";
 import path from "node:path";
 
@@ -60,11 +60,17 @@ async function post(url, body, timeoutMs) {
   catch { fail(`HTTP ${response.status} en ${where} con una respuesta que no es JSON (¿token inválido o bloqueo de Imunify360?): ${text.replace(/\s+/g, " ").slice(0, 200)}`); }
 }
 
-/** UAPI Fileman::<func>. Devuelve `data`; falla si cPanel no confirma la operación. */
-async function uapi(func, params, { body, timeoutMs = 120_000 } = {}) {
-  const { status, json } = await post(`${API_URL}/execute/Fileman/${func}`, body ?? new URLSearchParams(params), timeoutMs);
+/**
+ * UAPI <module>::<func> (Fileman por defecto). Devuelve `data`; falla si cPanel no confirma la operación. En una subida
+ * rechazada el motivo de cada archivo viene en `data.uploads[].reason` (los `errors` solo dicen "various failures").
+ */
+async function uapi(func, params, { body, timeoutMs = 120_000, module = "Fileman" } = {}) {
+  const { status, json } = await post(`${API_URL}/execute/${module}/${func}`, body ?? new URLSearchParams(params), timeoutMs);
   const result = json?.result ?? json;
-  if (result?.status !== 1) fail(`Fileman::${func} falló (HTTP ${status}): ${JSON.stringify(result?.errors ?? result?.data ?? result).slice(0, 300)}`);
+  if (result?.status !== 1) {
+    const reasons = (result?.data?.uploads ?? []).map((item) => item?.reason).filter(Boolean);
+    fail(`${module}::${func} falló (HTTP ${status}): ${JSON.stringify(result?.errors ?? result?.data ?? result).slice(0, 300)}${reasons.length ? ` Motivo: ${reasons.join("; ").slice(0, 300)}` : ""}`);
+  }
   return result.data;
 }
 
@@ -98,6 +104,35 @@ async function assertExists(fullPath) {
   const data = await uapi("get_file_information", { path: fullPath, show_hidden: "1" });
   if (data && data.exists === 0) fail(`No existe ${fullPath}.`);
 }
+
+/** Cuota de la cuenta (UAPI Quota::get_quota_info). `null` si el hosting no la informa o no tiene límite. */
+async function diskSpace() {
+  let data;
+  try { data = await uapi("get_quota_info", {}, { module: "Quota" }); } catch (error) { log(`No se pudo leer la cuota de disco (${error.message}).`); return null; }
+  const number = (value) => (value === undefined || value === null || value === "" ? NaN : Number(value));
+  const usedMb = number(data?.megabytes_used), limitMb = number(data?.megabyte_limit);
+  const inodesUsed = number(data?.inodes_used), inodeLimit = number(data?.inode_limit);
+  const space = {
+    mb: Number.isFinite(usedMb) && limitMb > 0 ? { used: usedMb, limit: limitMb, free: limitMb - usedMb } : null,
+    inodes: Number.isFinite(inodesUsed) && inodeLimit > 0 ? { used: inodesUsed, limit: inodeLimit, free: inodeLimit - inodesUsed } : null,
+  };
+  return space.mb || space.inodes ? space : null;
+}
+
+/** Tamaño y número de archivos del paquete extraído: lo que ocupará la versión nueva en el servidor. */
+async function folderSize(dir) {
+  let bytes = 0, files = 0;
+  for (const entry of await readdir(dir, { recursive: true, withFileTypes: true })) {
+    files += 1;
+    if (entry.isFile()) bytes += (await stat(path.join(entry.parentPath ?? entry.path, entry.name))).size;
+  }
+  return { bytes, files };
+}
+
+const shortOf = (space, need) => [
+  space?.mb && space.mb.free < need.mb ? `libres ${space.mb.free.toFixed(0)} MB y se necesitan unos ${need.mb.toFixed(0)} MB` : "",
+  space?.inodes && space.inodes.free < need.inodes ? `quedan ${space.inodes.free} archivos de cupo y se necesitan unos ${need.inodes}` : "",
+].filter(Boolean).join("; ");
 
 async function upload(dir, source, filename) {
   const form = new FormData();
@@ -158,21 +193,42 @@ async function deploy({ env }) {
   const buildId = (await readFile(path.join(env("PKG_DIR"), ".next", "BUILD_ID"), "utf8")).trim();
   const archiveName = `alesya-deploy-${COMMIT}.tar.gz`;
 
-  step("1/7 Acceso a la API de cPanel");
+  step("1/8 Acceso a la API de cPanel");
   const home = await listHome();
   if (!home.has(APP)) fail(`No existe ${APP_DIR}: revisa CPANEL_APP_DIR.`);
   log(`API OK. Versión activa en ${APP_DIR}${home.has(PREVIOUS) ? `; versión anterior guardada en ${PREVIOUS}` : ""}.`);
   for (const name of [...home].filter((entry) => LEFTOVER.test(entry))) { log(`Quitando restos de un despliegue anterior: ${name}`); await remove(name); }
 
-  step("2/7 Autoprueba de subir, renombrar, leer y borrar (sin tocar la app)");
+  step("2/8 Autoprueba de subir, renombrar, leer y borrar (sin tocar la app)");
   await selfTest();
   log("Autoprueba OK.");
 
-  step(`3/7 Subiendo el paquete (${((await stat(archive)).size / 1048576).toFixed(1)} MB)`);
+  // Durante el despliegue conviven la app, la versión anterior, el paquete subido y la versión nueva extraída.
+  step("3/8 Espacio en el hosting");
+  const archiveBytes = (await stat(archive)).size;
+  const unpacked = await folderSize(env("PKG_DIR"));
+  const need = { mb: ((archiveBytes + unpacked.bytes) / 1048576) * 1.1 + 5, inodes: Math.ceil(unpacked.files * 1.1) + 50 };
+  let space = await diskSpace();
+  if (!space) log("El hosting no informa límite de cuota; se continúa.");
+  else {
+    if (space.mb) log(`Disco: ${space.mb.used.toFixed(0)} de ${space.mb.limit.toFixed(0)} MB usados (libres ${space.mb.free.toFixed(0)} MB). El despliegue necesita unos ${need.mb.toFixed(0)} MB.`);
+    if (space.inodes) log(`Archivos: ${space.inodes.used} de ${space.inodes.limit} (quedan ${space.inodes.free}). El despliegue necesita unos ${need.inodes}.`);
+    // La versión de hace dos despliegues se borra en el paso 5 de todos modos; si falta espacio se borra antes.
+    if (shortOf(space, need) && (await listHome([PREVIOUS])).has(PREVIOUS)) {
+      log(`No alcanza: se borra ya ${PREVIOUS} (la versión de hace dos despliegues). La app activa no se toca.`);
+      await remove(PREVIOUS);
+      space = (await diskSpace()) ?? space;
+    }
+    const short = shortOf(space, need);
+    if (short) fail(`Espacio insuficiente en el hosting: ${short}. No se tocó la app. Libera espacio en cPanel (copias de seguridad u otros archivos grandes en el home, la papelera del Administrador de archivos, fotos o videos subidos que ya no se usan) y vuelve a ejecutar el despliegue.`);
+    log("Hay espacio suficiente.");
+  }
+
+  step(`4/8 Subiendo el paquete (${(archiveBytes / 1048576).toFixed(1)} MB)`);
   await upload(abs(RELEASE), archive, archiveName);
   log(`Subido a ${abs(RELEASE)}/${archiveName}`);
 
-  step("4/7 Extrayendo en el servidor y verificando");
+  step("5/8 Extrayendo en el servidor y verificando");
   await fileop("extract", `${abs(RELEASE)}/${archiveName}`, abs(RELEASE));
   const extracted = await readText(`${abs(RELEASE)}/.next`, "BUILD_ID").catch(() => "");
   if (extracted !== buildId) fail(`La extracción no quedó completa (BUILD_ID "${extracted}", se esperaba "${buildId}"). No se tocó la app.`);
@@ -180,11 +236,11 @@ async function deploy({ env }) {
   try { await fileop("unlink", `${abs(RELEASE)}/${archiveName}`); } catch (error) { warn(`No se borró el paquete subido: ${error.message}`); }
   log(`Versión nueva completa (build ${buildId}).`);
 
-  step("5/7 Liberando el lugar de la versión anterior");
+  step("6/8 Liberando el lugar de la versión anterior");
   if ((await listHome([PREVIOUS])).has(PREVIOUS)) await remove(PREVIOUS);
   log("Listo.");
 
-  step("6/7 Activando la versión nueva");
+  step("7/8 Activando la versión nueva");
   const aside = await renameChecked(APP, PREVIOUS);
   if (!aside.moved) {
     if (aside.unchanged) fail("No se pudo apartar la versión activa; la app sigue intacta.");
@@ -200,7 +256,7 @@ async function deploy({ env }) {
   await setOutput("swapped", "true");
   log(`Activada. La versión anterior queda en ${abs(PREVIOUS)}.`);
 
-  step("7/7 Reiniciando la app");
+  step("8/8 Reiniciando la app");
   await touchRestart();
   log(`Desplegado ${COMMIT} (build ${buildId}).`);
 }

@@ -24,10 +24,11 @@ Cada merge a la rama `main-rzbi9x` se publica solo mediante GitHub Actions (`.gi
 1. `npm run lint`, las pruebas del despliegue y `npm run build` (`.github/workflows/ci.yml`).
 2. `npm run package:cpanel`: paquete Linux x86-64 construido en Docker, validado (sin secretos, bases de datos, `.env` ni binarios de otra arquitectura) y con smoke test.
 3. **Autoprueba en el servidor:** sube, renombra, lee y borra una carpeta temporal para confirmar que la API se comporta como se espera, sin tocar la app.
-4. Se sube un único `.tar.gz` con la API de cPanel (`Fileman::upload_files`) a `/home/alesyaed/alesya-platform.release-<commit>`, cPanel lo extrae (`Fileman::fileop extract`) y se verifica que su `BUILD_ID` sea el del build.
-5. Se intercambian carpetas con dos renombrados: la versión anterior queda en `/home/alesyaed/alesya-platform.previous`. Si el segundo renombrado falla, se restaura la anterior en el acto.
-6. `tmp/restart.txt` reinicia la aplicación; `bootstrap.mjs` aplica las migraciones pendientes al arrancar.
-7. Chequeo de salud: el sitio debe servir un archivo estático que solo existe en el build nuevo. **Si falla, el workflow vuelve solo a la versión anterior** (la que falló queda en `alesya-platform.failed-<commit>` para revisarla).
+4. **Espacio:** consulta la cuota de la cuenta (MB y número de archivos) y la compara con lo que ocupa el despliegue (paquete + versión extraída). Si no alcanza, borra antes la versión de hace dos despliegues (`alesya-platform.previous`, que el paso 6 borraría igual); si aun así no alcanza, se detiene con un mensaje claro sin tocar la app. Si cPanel rechaza la subida, el registro muestra el motivo real que devuelve.
+5. Se sube un único `.tar.gz` con la API de cPanel (`Fileman::upload_files`) a `/home/alesyaed/alesya-platform.release-<commit>`, cPanel lo extrae (`Fileman::fileop extract`) y se verifica que su `BUILD_ID` sea el del build.
+6. Se intercambian carpetas con dos renombrados: la versión anterior queda en `/home/alesyaed/alesya-platform.previous`. Si el segundo renombrado falla, se restaura la anterior en el acto.
+7. `tmp/restart.txt` reinicia la aplicación; `bootstrap.mjs` aplica las migraciones pendientes al arrancar.
+8. Chequeo de salud: el sitio debe servir un archivo estático que solo existe en el build nuevo. **Si falla, el workflow vuelve solo a la versión anterior** (la que falló queda en `alesya-platform.failed-<commit>` para revisarla).
 
 Duración típica: unos 3 minutos. Si algo falla antes del intercambio de carpetas, producción no cambia.
 

@@ -50,6 +50,8 @@ function mockCpanel(root, faults) {
       const uploads = [];
       for (const [field, value] of form.entries()) {
         if (!field.startsWith("file-") || typeof value === "string") continue;
+        // Como cPanel sin cupo: errors genérico y el motivo real solo en uploads[].reason.
+        if (faults.rejectUpload && value.name.endsWith(".tar.gz")) return uapiReply(res, { uploads: [{ file: value.name, status: 0, reason: faults.rejectUpload }], succeeded: 0, failed: 1 }, ["Failed to upload any of the requested files with various failures."]);
         const target = path.join(dir, value.name);
         if (existsSync(target) && form.get("overwrite") !== "1") { uploads.push({ file: value.name, status: 0, reason: "already exists", size: value.size }); continue; }
         await writeFile(target, Buffer.from(await value.arrayBuffer()));
@@ -58,6 +60,13 @@ function mockCpanel(root, faults) {
       if (!uploads.length) return uapiReply(res, null, ["You must specify at least one file to upload."]);
       const failed = uploads.filter((item) => item.status === 0).length;
       return uapiReply(res, { uploads, succeeded: uploads.length - failed, failed, warned: 0, diskinfo: { file_upload_max_bytes: "104857600.00" } });
+    }
+    if (url.pathname === "/execute/Quota/get_quota_info") {
+      // Sin `faults.quota`: cuenta sin límite. Con él, la versión anterior ocupa `previousMb` mientras exista.
+      const quota = faults.quota;
+      if (!quota) return uapiReply(res, { megabytes_used: "12.34", megabyte_limit: "0", megabytes_remain: "0", inodes_used: 900, inode_limit: 0, inodes_remain: 0 });
+      const used = quota.usedMb + (existsSync(local(`${HOME}/alesya-platform.previous`)) ? quota.previousMb ?? 0 : 0);
+      return uapiReply(res, { megabytes_used: String(used), megabyte_limit: String(quota.limitMb), megabytes_remain: String(quota.limitMb - used), inodes_used: 1000, inode_limit: quota.inodeLimit ?? 0, inodes_remain: 0 });
     }
     if (url.pathname === "/execute/Fileman/list_files") {
       const dir = local(form.get("dir"));
@@ -176,6 +185,40 @@ describe("despliegue por API de cPanel", () => {
     assert.deepEqual(home.sort(), ["alesya-platform", "alesya-platform.previous", "public_html"]);
     assert.ok(!existsSync(path.join(remote("alesya-platform"), "alesya-deploy-abcdef123456.tar.gz")), "el paquete subido no queda dentro de la app");
     assert.match(await readFile(path.join(workdir, "output.txt"), "utf8"), /swapped=true/);
+  });
+
+  test("con espacio justo borra antes la versión de hace dos despliegues y despliega", async () => {
+    faults.quota = { limitMb: 1000, usedMb: 900, previousMb: 400 };
+    const { code, output } = await deploy();
+    assert.equal(code, 0, output);
+    assert.match(output, /No alcanza: se borra ya alesya-platform\.previous/);
+    assert.equal(await buildOf("alesya-platform"), "NEWBUILD");
+    assert.equal(await buildOf("alesya-platform.previous"), "OLDBUILD");
+  });
+
+  test("sin espacio suficiente no sube nada ni toca la app", async () => {
+    faults.quota = { limitMb: 1000, usedMb: 999 };
+    const { code, output } = await deploy();
+    assert.equal(code, 1);
+    assert.match(output, /Espacio insuficiente en el hosting: libres 1 MB/);
+    await assertUntouched();
+    assert.ok(!existsSync(remote("alesya-platform.release-abcdef123456")), "no llegó a subir el paquete");
+  });
+
+  test("sin cupo de archivos (inodos) tampoco sube", async () => {
+    faults.quota = { limitMb: 100000, usedMb: 10, inodeLimit: 1000 };
+    const { code, output } = await deploy();
+    assert.equal(code, 1);
+    assert.match(output, /quedan 0 archivos de cupo/);
+    await assertUntouched();
+  });
+
+  test("si cPanel rechaza la subida muestra el motivo real", async () => {
+    faults.rejectUpload = "Disk quota exceeded";
+    const { code, output } = await deploy();
+    assert.equal(code, 1);
+    assert.match(output, /Motivo: Disk quota exceeded/);
+    await assertUntouched();
   });
 
   test("también entiende list_files con forma {dirs, files}", async () => {
