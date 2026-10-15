@@ -1,0 +1,1 @@
+ALTER TABLE `leads` ADD `consent_at` integer;
