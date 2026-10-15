@@ -96,26 +96,38 @@ export async function getWithoutNextAction(filters: { owner?: string } = {}, lim
 
 export type LeadInput = {
   name: string; organization: string; email?: string | null; phone?: string | null; city?: string | null; website?: string | null; message: string; source: string;
-  priority?: LeadPriority; owner?: string | null; notes?: string; estimatedValueInCents?: number; nextFollowUp?: string | null; externalId?: string | null;
+  priority?: LeadPriority; owner?: string | null; notes?: string; estimatedValueInCents?: number; nextFollowUp?: string | null; nextAction?: string | null; externalId?: string | null;
+  /** Calificación que deja el formulario: niveles (`gradeLevels` separados por coma), estudiantes aproximados y programa de interés. */
+  grades?: string | null; students?: number; program?: string | null;
+  /** Cuándo autorizó el tratamiento de datos (Ley 1581). */
+  consentAt?: Date | null;
 };
 
 const clean = (value: string | null | undefined) => value?.trim() || null;
 
 /** Fila nueva de `leads` (también la usa la captación por correo dentro de su propia transacción). */
 export function leadValues(input: LeadInput, now: Date) {
+  const students = Math.max(0, Math.round(input.students ?? 0));
+  const program = clean(input.program);
   return {
     id: crypto.randomUUID(), name: input.name.trim(), organization: input.organization.trim(), email: clean(input.email)?.toLowerCase() ?? null, phone: clean(input.phone), city: clean(input.city), website: clean(input.website),
     message: input.message.trim(), source: input.source, stage: "new", priority: input.priority ?? "medium", owner: clean(input.owner), notes: input.notes?.trim() ?? "", estimatedValueInCents: input.estimatedValueInCents ?? 0,
-    nextFollowUp: input.nextFollowUp ?? null, externalId: clean(input.externalId), stageChangedAt: now, createdAt: now, updatedAt: now,
+    nextFollowUp: input.nextFollowUp ?? null, nextAction: clean(input.nextAction), externalId: clean(input.externalId), grades: clean(input.grades), students, program, consentAt: input.consentAt ?? null,
+    score: scoreLead({ stage: "new", students, sector: null, techLevel: null, budgetRange: null, program, decisionMaker: null, contacts: 0, lastContact: null, today: bogotaDay() }).total,
+    stageChangedAt: now, createdAt: now, updatedAt: now,
   };
 }
+
+/** Siguiente acción de un lead del formulario: entra a la agenda de hoy para contactarlo en minutos. */
+const FORM_FIRST_ACTION ="Primer contacto (meta: menos de 5 minutos)";
 
 /** Crea un contacto y deja la primera entrada del historial (registro manual o formulario web). */
 export async function createLead(input: LeadInput, origin: { type: "created" | "form"; actor?: string | null }) {
   const db = getDb();
   const now = new Date();
-  const values = leadValues(input, now);
-  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).` : `Registrado a mano (${input.source}).`;
+  const values = leadValues(origin.type === "form" ? { ...input, nextFollowUp: input.nextFollowUp ?? bogotaDay(), nextAction: input.nextAction ?? FORM_FIRST_ACTION } : input, now);
+  const consent = input.consentAt ? " Autorizó el tratamiento de sus datos personales (Ley 1581 de 2012)." : "";
+  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).${consent}` : `Registrado a mano (${input.source}).`;
   await db.batch([
     db.insert(leads).values(values),
     db.insert(leadActivities).values({ id: crypto.randomUUID(), leadId: values.id, type: origin.type, summary, createdBy: origin.actor ?? null, createdAt: now }),

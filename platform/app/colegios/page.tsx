@@ -4,6 +4,7 @@ import { LeadForm } from "@/components/lead-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { pageMetadata } from "@/lib/seo";
+import { storeConfig } from "@/lib/settings";
 import { jsonLd, siteUrl } from "@/lib/site";
 
 // Dinámica para que el enlace canónico use el dominio de PRODUCTION_URL del servidor (no el del momento de compilar).
@@ -17,9 +18,9 @@ const serviceJsonLd = () => ({
   provider: { "@id": `${siteUrl()}/#organizacion` }, areaServed: { "@type": "Country", name: "Colombia" }, audience: { "@type": "EducationalAudience", educationalRole: "school" }, url: `${siteUrl()}/colegios`,
 });
 
-const whatsapp = "https://wa.me/573005937840?text=Hola%2C%20quiero%20conocer%20el%20programa%20de%20rob%C3%B3tica%20para%20mi%20colegio.%20Vengo%20de%20la%20p%C3%A1gina%20de%20colegios.";
-
-export default function SchoolsPage() {
+export default async function SchoolsPage() {
+  const config = await storeConfig().catch(() => null);
+  const whatsapp = `https://wa.me/${config?.whatsappDigits ?? "573005937840"}?text=${encodeURIComponent("Hola, quiero conocer el programa de robótica para mi colegio. Vengo de la página de colegios.")}`;
   return <div className="site-shell schools-page">
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(serviceJsonLd()) }} />
     <div className="interior-header"><SiteHeader /></div>
@@ -41,7 +42,7 @@ export default function SchoolsPage() {
       </section>
       <section className="schools-conversion page-width" id="diagnostico">
         <div><p className="eyebrow eyebrow-light">Empecemos por tu institución</p><h2>Cuéntanos qué quieres lograr.</h2><p>Déjanos los datos de tu colegio y el reto que buscas resolver. El equipo comercial podrá preparar una conversación enfocada en tu contexto.</p><Link href="/proyectos" className="text-link-light">Explorar proyectos <ArrowRight size={17} /></Link></div>
-        <LeadForm />
+        <LeadForm program="Robótica" />
       </section>
     </main>
     <SiteFooter />

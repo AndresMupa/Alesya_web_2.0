@@ -141,8 +141,12 @@ Usa enlaces con `utm_source` y `utm_campaign` al publicar o prospectar. Ejemplos
 - Instagram: `/colegios?utm_source=instagram&utm_campaign=colegios_2026`
 - Facebook: `/colegios?utm_source=facebook&utm_campaign=colegios_2026`
 - WhatsApp: `/colegios?utm_source=whatsapp&utm_campaign=colegios_2026`
+- Evento o feria: `/colegios?utm_source=event&utm_campaign=feria_bogota`
+- Brochure impreso (QR): `/colegios?utm_source=brochure&utm_campaign=robotica_brochure#diagnostico`
 
-El formulario acepta las fuentes `website`, `linkedin`, `instagram`, `facebook` y `whatsapp`. La campaña admite hasta 40 caracteres alfanuméricos, guion o guion bajo. Ambos datos se guardan en `leads.source` y aparecen en la ficha del contacto en `/admin/crm` (filtro *Origen*). Cada envío del formulario entra con prioridad alta y aparece en la columna *Nuevo* de la máquina de ventas. La captura de fuente ocurre al enviar el formulario, por lo que conserva el enlace de campaña al compartirlo.
+El formulario acepta las fuentes `website`, `linkedin`, `instagram`, `facebook`, `whatsapp` y `event`; `brochure` entra como `website` y la campaña dice qué pieza fue (sin campaña queda `website / brochure`). La campaña admite hasta 40 caracteres alfanuméricos, guion o guion bajo. Ambos datos se guardan en `leads.source` y aparecen en la ficha del contacto en `/admin/crm` (filtro *Origen*). La captura de fuente ocurre al enviar el formulario, por lo que conserva el enlace de campaña al compartirlo.
+
+Cada envío entra con prioridad alta en la columna *Nuevo* y en la agenda del día (siguiente acción "Primer contacto (meta: menos de 5 minutos)"). Guarda la fecha de la autorización de datos (`leads.consent_at`, Ley 1581) y, si los indica, los grados y el número aproximado de estudiantes (`grades`, `students`); `/colegios` registra además el programa (`program = "Robótica"`). Después de responder se envían dos correos: el aviso al equipo y una respuesta al contacto con la promesa de contacto el mismo día hábil y el WhatsApp de `/admin/configuracion`. Ambos requieren SMTP; si falla, el lead queda igual en el CRM.
 
 ## Base de colegios 2026
 
