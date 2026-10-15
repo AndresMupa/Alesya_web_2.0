@@ -80,7 +80,7 @@ export const outcomeValues = outcomes.map((item) => item.value) as [Outcome, ...
 export const MAX_ATTEMPTS = 3;
 
 /** Actividades automáticas que escribe el sistema. */
-const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación", email_in: "Correo recibido" };
+const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación", email_in: "Correo recibido", proposal_view: "Lectura de la propuesta" };
 
 /** Quién hizo la gestión: el asesor activo del panel (varios asesores comparten la cuenta de administración) o el correo de la sesión. */
 export const actorName = (email: string, asesor?: string | null) => asesor?.trim() ? asesor.trim().slice(0, 80) : email;

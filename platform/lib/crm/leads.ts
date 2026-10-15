@@ -8,6 +8,7 @@ import {
   MAX_ATTEMPTS, PROSPECT_SOURCE, activityTypes, isContactActivity, leadPriorities, leadPriorityValues, leadSourceLabel, leadSourceValues, leadStageLabel, leadStages, leadStageValues, openLeadStages, stagePlaybook, workActivityTypes,
   type ActivityType, type ContactChannel, type LeadPriority, type LeadStage, type Outcome,
 } from "@/lib/crm/constants";
+import { PROPOSAL_ACTIVITY, proposalSignals } from "@/lib/crm/proposal-plan";
 import { scoreLead } from "@/lib/crm/score";
 
 export type Lead = typeof leads.$inferSelect;
@@ -80,7 +81,7 @@ export async function getLeadDetail(id: string) {
     db.select({ id: quotes.id, number: quotes.number, status: quotes.status, title: quotes.title, totalInCents: quotes.totalInCents, validUntil: quotes.validUntil, token: quotes.token, createdAt: quotes.createdAt }).from(quotes).where(eq(quotes.leadId, id)).orderBy(desc(quotes.createdAt)).limit(20),
     db.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, id), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, new Date(Date.now() - 90 * 86_400_000)))),
   ]);
-  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay() });
+  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay(), proposal: proposalSignals(activities) });
   return { lead, activities, orders: relatedOrders, quotes: leadQuotes, score, playbook: stagePlaybook[lead.stage as LeadStage] ?? null };
 }
 
@@ -131,12 +132,14 @@ export type LeadPatch = Partial<{
 
 const CONTACT_TYPES = activityTypes.filter((type) => type.contact).map((type) => type.value);
 
-/** Recalcula el puntaje (ajuste del colegio + avance de la relación) y lo guarda en el contacto. */
-async function refreshScore(tx: Tx, leadId: string) {
+/** Recalcula el puntaje (ajuste del colegio + avance de la relación, incluida la lectura de la propuesta) y lo guarda en el contacto. */
+export async function refreshScore(tx: Tx, leadId: string) {
   const [lead] = await tx.select().from(leads).where(eq(leads.id, leadId)).limit(1);
   if (!lead) return 0;
-  const [{ contacts }] = await tx.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, new Date(Date.now() - 90 * 86_400_000))));
-  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay() }).total;
+  const since = new Date(Date.now() - 90 * 86_400_000);
+  const [{ contacts }] = await tx.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, since)));
+  const reads = await tx.select({ type: leadActivities.type, summary: leadActivities.summary, createdAt: leadActivities.createdAt }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), eq(leadActivities.type, PROPOSAL_ACTIVITY), gte(leadActivities.createdAt, since)));
+  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay(), proposal: proposalSignals(reads) }).total;
   if (score !== lead.score) await tx.update(leads).set({ score }).where(eq(leads.id, leadId));
   return score;
 }

@@ -1,11 +1,12 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Copy, ExternalLink, Minus, Plus, Search, Send, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Minus, Plus, Presentation, Search, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Drawer, send, useJson } from "@/components/admin/kit";
 import type { AdminProduct } from "@/components/admin/commerce/product-drawer";
 import { QUOTE_DEFAULT_TERMS, QUOTE_VALIDITY_DAYS, quoteStatusLabel } from "@/lib/crm/constants";
+import { PROGRAM_LINES } from "@/lib/crm/proposal-plan";
 import { bogotaDay, formatDateTime, formatDay, formatMoney, whatsappLink } from "@/lib/format";
 
 type Item = { description: string; quantity: number; unitPriceInCents: number; productSlug?: string | null };
@@ -47,7 +48,9 @@ function QuoteForm({ quote, lead, asesor, onSaved, onClose }: { quote: Quote | n
   const subtotal = items.reduce((acc, item) => acc + Math.round(item.quantity * item.unitPriceInCents), 0);
   const discountInCents = Math.min(subtotal, Math.max(0, Math.round(Number(discount) || 0) * 100));
   const total = subtotal - discountInCents;
-  const publicUrl = quote ? `${typeof window !== "undefined" ? window.location.origin : ""}/cotizacion/${quote.token}` : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const publicUrl = quote ? `${origin}/cotizacion/${quote.token}` : "";
+  const proposalUrl = quote ? `${origin}/propuesta/${quote.token}` : "";
   const stamp = asesor ? { asesor } : {};
 
   const setItem = (index: number, patch: Partial<Item>) => setItems((current) => current.map((item, position) => position === index ? { ...item, ...patch } : item));
@@ -75,8 +78,24 @@ function QuoteForm({ quote, lead, asesor, onSaved, onClose }: { quote: Quote | n
     if (result) onSaved(quote.id);
   }
 
+  /** Propuesta viva: copia el enlace, abre WhatsApp con el mensaje y deja la cotización como enviada (si era borrador o se reabre). */
+  async function sendProposal() {
+    if (!quote) return;
+    void navigator.clipboard.writeText(proposalUrl).then(() => toast.success("Enlace de la propuesta copiado."), () => undefined);
+    if (quote.status === "sent" || quote.status === "accepted") return;
+    const result = await send(`/api/admin/crm/quotes/${quote.id}`, "PATCH", { action: "status", status: "sent", ...stamp }, "Cotización marcada como enviada.");
+    if (result) onSaved(quote.id);
+  }
+
   const message = quote ? `Hola ${lead.name.split(" ")[0]}, le comparto la cotización ${quote.number} para ${lead.organization}: ${publicUrl}\n\nVigente hasta el ${formatDay(quote.validUntil)}. Desde el enlace puede revisarla, imprimirla y aceptarla. Quedo atento a sus comentarios.${asesor ? `\n\n${asesor} · Alesya X-Tech` : ""}` : "";
   const wa = quote ? whatsappLink(lead.phone, message) : null;
+  const proposalMessage = quote ? `Hola ${lead.name.split(" ")[0]}, le comparto la propuesta de Robótica Educativa para ${lead.organization}: ${proposalUrl}
+
+Ahí puede ver la ruta por niveles, jugar la Arena ALESYA X y revisar la inversión calculada para su colegio. Si les parece bien, la pueden aceptar desde el mismo enlace; está vigente hasta el ${formatDay(quote.validUntil)}.${asesor ? `
+
+${asesor} · Alesya X-Tech` : ""}` : "";
+  // Sin celular registrado, WhatsApp abre con el mensaje listo para elegir el contacto.
+  const proposalWa = quote ? whatsappLink(lead.phone, proposalMessage) ?? `https://wa.me/?text=${encodeURIComponent(proposalMessage)}` : null;
 
   return <div className="adm-lead">
     {quote && <section className="adm-card adm-quote-actions">
@@ -92,6 +111,12 @@ function QuoteForm({ quote, lead, asesor, onSaved, onClose }: { quote: Quote | n
         {lead.email && <a className="refresh-button" href={`mailto:${lead.email}?subject=${encodeURIComponent(`Cotización ${quote.number} · Alesya X-Tech`)}&body=${encodeURIComponent(message)}`}>Enviar por correo</a>}
         <button type="button" className="refresh-button" onClick={() => { void navigator.clipboard.writeText(message).then(() => toast.success("Mensaje copiado."), () => toast.error("No se pudo copiar.")); }}><Copy size={14} /> Copiar mensaje</button>
       </div>
+      <div className="adm-composer-actions">
+        {quote.status !== "accepted" && proposalWa && <a className="button button-primary" href={proposalWa} target="_blank" rel="noopener noreferrer" onClick={() => void sendProposal()}><Presentation size={15} /> Enviar propuesta</a>}
+        <a className="refresh-button" href={`/propuesta/${quote.token}`} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> Ver propuesta</a>
+        <button type="button" className="refresh-button" onClick={() => { void navigator.clipboard.writeText(proposalUrl).then(() => toast.success("Enlace de la propuesta copiado."), () => toast.error("No se pudo copiar.")); }}><Copy size={14} /> Copiar enlace</button>
+      </div>
+      <p className="adm-hint">Propuesta viva: página con la Arena jugable, la calculadora y el botón para aceptar. Cuando el colegio la abre queda en el historial (secciones, tiempo y si jugó la Arena), sube el puntaje y llega un aviso al correo del equipo. Tus vistas desde el panel no cuentan.</p>
       <p className="adm-muted adm-small">Creada {formatDateTime(quote.createdAt)}{quote.sentAt && ` · enviada ${formatDateTime(quote.sentAt)}`}{quote.decidedAt && ` · decidida ${formatDateTime(quote.decidedAt)}`}{quote.lead.city && ` · ${quote.lead.city}`}</p>
     </section>}
 
@@ -101,7 +126,9 @@ function QuoteForm({ quote, lead, asesor, onSaved, onClose }: { quote: Quote | n
       {editable && <>
         <label className="adm-search-line"><Search size={15} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar producto del catálogo por nombre o SKU" aria-label="Buscar producto" /></label>
         {matches.length > 0 && <ul className="adm-picker">{matches.map((product) => <li key={product.id}><button type="button" onClick={() => { addLine({ description: product.name, quantity: 1, unitPriceInCents: product.priceInCents, productSlug: product.slug }); setSearch(""); }}><span className="adm-picker-icon">{product.sku.slice(0, 3)}</span><span><strong>{product.name}</strong><small>{product.sku}</small></span><b>{formatMoney(product.priceInCents)}</b></button></li>)}</ul>}
+        <div className="adm-chip-row">{PROGRAM_LINES.map((line) => <button key={line.level} type="button" className="adm-chip" title={line.description} onClick={() => addLine({ description: line.description, quantity: 1, unitPriceInCents: line.unitPriceInCents })}>+ {line.label}</button>)}</div>
         <div className="adm-chip-row">{quickLines.map((line) => <button key={line} type="button" className="adm-chip" onClick={() => addLine({ description: line, quantity: 1, unitPriceInCents: 0 })}>+ {line}</button>)}<button type="button" className="adm-chip" onClick={() => addLine({ description: "", quantity: 1, unitPriceInCents: 0 })}><Plus size={12} /> Renglón libre</button></div>
+        <p className="adm-hint">La propuesta viva toma los renglones de textos de robótica por nivel (preescolar, primaria, bachillerato) como estudiantes: pon en la cantidad el número de estudiantes. Los kits, la formación y el resto se suman aparte.</p>
       </>}
       {items.length ? <table className="admin-table adm-table adm-quote-items">
         <thead><tr><th>Descripción</th><th>Cant.</th><th>Unitario (COP)</th><th>Total</th>{editable && <th />}</tr></thead>
