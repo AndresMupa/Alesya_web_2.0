@@ -15,7 +15,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const local = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host);
   if (host && !local && host !== siteHost()) return { rules: { userAgent: "*", disallow: "/" } };
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/checkout", "/carrito", "/pedido", "/cotizacion/"] },
+    rules: { userAgent: "*", allow: "/", disallow: ["/admin", "/api/", "/checkout", "/carrito", "/pedido", "/cotizacion/", "/propuesta/"] },
     sitemap: `${siteUrl()}/sitemap.xml`,
     host: siteUrl(),
   };
