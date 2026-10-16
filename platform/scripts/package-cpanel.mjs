@@ -154,6 +154,8 @@ async function containerVerify() {
       if (entry.isDirectory()) { walk(full); continue; }
       if (!entry.isFile()) { forbidden.push(`${rel} (special file)`); continue; }
       const data = fs.readFileSync(full);
+      // Un .zip dentro del paquete (aunque sea de pruebas de una dependencia) hace que el antivirus del hosting rechace la subida.
+      if (data.length > 3 && data[0] === 0x50 && data[1] === 0x4b && [0x03, 0x05, 0x07].includes(data[2])) forbidden.push(`${rel} (archivo zip: el antivirus del hosting rechaza paquetes que lo contengan)`);
       totalBytes += data.length;
       const top = segments.length > 1 ? segments[0] : "(root files)";
       bytesByTop[top] = (bytesByTop[top] || 0) + data.length;
