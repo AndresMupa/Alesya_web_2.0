@@ -264,7 +264,8 @@ async function containerSmoke() {
   out.staticAsset = { path: asset, status: assetResponse.status, cacheControl: assetResponse.headers.get("cache-control") };
   out.publicAsset = { path: "/favicon.svg", status: (await request("/favicon.svg")).status };
 
-  const lead = JSON.stringify({ name: "Smoke Test", organization: "Alesya QA", email: "qa@example.com", message: "Prueba automatizada del paquete cPanel." });
+  // /api/leads exige la autorización de datos (Ley 1581) desde #16: sin `consent` responde 400.
+  const lead = JSON.stringify({ name: "Smoke Test", organization: "Alesya QA", email: "qa@example.com", message: "Prueba automatizada del paquete cPanel.", consent: true });
   const post = (headers) => request("/api/leads", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: lead });
   out.leadStatuses = [];
   for (let i = 0; i < 10; i += 1) {
