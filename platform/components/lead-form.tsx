@@ -2,20 +2,29 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { formAttribution } from "@/lib/crm/constants";
 
-/** Formulario de diagnóstico para colegios: crea el contacto en el CRM con la red o campaña de origen. */
-export function LeadForm() {
+/** Niveles que ve el colegio; "Bachillerato" agrupa secundaria y media del estudio del colegio en el CRM. */
+const gradeOptions = [{ label: "Preescolar", value: "preescolar" }, { label: "Primaria", value: "primaria" }, { label: "Bachillerato", value: "secundaria,media" }];
+
+/**
+ * Formulario de diagnóstico para colegios: crea el contacto en el CRM con la red o campaña de origen, la autorización
+ * de datos y la calificación opcional (grados y estudiantes). `program` es el programa de la página (p. ej. "Robótica").
+ */
+export function LeadForm({ program }: { program?: string }) {
   const [state, setState] = useState<"idle" | "saving" | "done" | "error">("idle");
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState("saving");
-    const data = Object.fromEntries(new FormData(event.currentTarget));
-    delete data.consent;
+    const form = new FormData(event.currentTarget);
     const params = new URLSearchParams(window.location.search);
-    const source = params.get("utm_source");
-    const campaign = params.get("utm_campaign") ?? "";
-    data.source = source && ["linkedin", "instagram", "facebook", "whatsapp"].includes(source) ? source : "website";
-    data.campaign = /^[a-zA-Z0-9_-]{0,40}$/.test(campaign) ? campaign : "";
+    const data = {
+      ...Object.fromEntries(form),
+      grades: form.getAll("grades").flatMap((value) => String(value).split(",")),
+      consent: form.get("consent") === "on",
+      program,
+      ...formAttribution(params.get("utm_source"), params.get("utm_campaign")),
+    };
     try {
       const response = await fetch("/api/leads", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data) });
       setState(response.ok ? "done" : "error");
@@ -23,7 +32,7 @@ export function LeadForm() {
       setState("error");
     }
   }
-  if (state === "done") return <div className="lead-form lead-success" role="status"><CheckCircle2 /><h3>¡Gracias! Recibimos tu solicitud.</h3><p>Una persona del equipo te escribirá por correo o WhatsApp para conocer tu institución y agendar el diagnóstico.</p></div>;
+  if (state === "done") return <div className="lead-form lead-success" role="status"><CheckCircle2 /><h3>¡Gracias! Recibimos tu solicitud.</h3><p>Una persona del equipo te escribirá el mismo día hábil por correo o WhatsApp para conocer tu institución y agendar el diagnóstico.</p></div>;
   return <form className="lead-form" onSubmit={submit}>
     <span className="form-kicker">Hablemos de tu institución</span>
     <h3>Diseñemos una ruta para tu comunidad.</h3>
@@ -31,7 +40,11 @@ export function LeadForm() {
     <label>Institución<input required name="organization" autoComplete="organization" placeholder="Colegio u organización" maxLength={160} /></label>
     <label>Correo<input required type="email" name="email" autoComplete="email" placeholder="nombre@institucion.edu.co" maxLength={180} /></label>
     <label>Celular (opcional)<input type="tel" name="phone" autoComplete="tel" inputMode="tel" maxLength={30} placeholder="300 000 0000" /></label>
-    <label>¿Qué necesitas?<textarea required name="message" placeholder="Cuéntanos sobre estudiantes, grados y objetivos" rows={3} minLength={8} maxLength={2000} /></label>
+    <fieldset className="lead-grades"><legend>Grados de interés (opcional)</legend><div>
+      {gradeOptions.map((option) => <label key={option.value}><input type="checkbox" name="grades" value={option.value} />{option.label}</label>)}
+    </div></fieldset>
+    <label>Número aproximado de estudiantes (opcional)<input type="number" name="students" inputMode="numeric" min={1} max={50000} step={1} placeholder="350" /></label>
+    <label>¿Qué necesitas?<textarea required name="message" placeholder="Cuéntanos tus objetivos o el reto que quieres resolver" rows={3} minLength={8} maxLength={2000} /></label>
     <label className="consent-check"><input type="checkbox" name="consent" required /><span>Autorizo el tratamiento de mis datos para recibir el diagnóstico y propuestas, según la <Link href="/politica-de-privacidad" target="_blank">Política de datos personales</Link>.</span></label>
     <button disabled={state === "saving"} className="button button-primary" type="submit">{state === "saving" ? "Enviando…" : "Solicitar diagnóstico"} <ArrowRight size={18} /></button>
     {state === "error" && <p className="form-error" role="alert">No pudimos enviar la solicitud. Intenta de nuevo o escríbenos por WhatsApp.</p>}
