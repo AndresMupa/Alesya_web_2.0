@@ -41,8 +41,21 @@ export const leadSourceValues = leadSources.map((source) => source.value) as [Le
 export const PROSPECT_SOURCE = "base_colegios_2026";
 /** Canales que el asesor puede elegir al registrar un contacto a mano. */
 export const manualLeadSources = leadSources.filter((source) => !["base_colegios_2026", "import"].includes(source.value));
-/** Canales que el formulario público acepta desde los enlaces de campaña (`utm_source`). */
+/** Redes con enlace de campaña propio (`utm_source`) en la máquina de ventas. */
 export const campaignChannels = ["linkedin", "instagram", "facebook", "whatsapp"] as const;
+/** Canales con que el formulario público registra un lead: sitio web, las redes y eventos o ferias. */
+export const formLeadSources = ["website", "event", ...campaignChannels] as const;
+export type FormLeadSource = (typeof formLeadSources)[number];
+
+/**
+ * Canal y campaña del lead según el enlace (`utm_source`, `utm_campaign`). El QR del brochure impreso
+ * (`brochure`) entra como sitio web: la campaña dice qué pieza fue, y sin campaña queda `brochure`.
+ */
+export function formAttribution(utmSource: string | null, utmCampaign: string | null) {
+  const source: FormLeadSource = formLeadSources.includes(utmSource as FormLeadSource) ? utmSource as FormLeadSource : "website";
+  const campaign = /^[a-zA-Z0-9_-]{1,40}$/.test(utmCampaign ?? "") ? utmCampaign! : utmSource === "brochure" ? "brochure" : "";
+  return { source, campaign };
+}
 
 /** Actividades que registra el asesor. Las de contacto actualizan "último contacto" y avanzan un lead nuevo a "contactado". */
 export const activityTypes = [
@@ -80,7 +93,7 @@ export const outcomeValues = outcomes.map((item) => item.value) as [Outcome, ...
 export const MAX_ATTEMPTS = 3;
 
 /** Actividades automáticas que escribe el sistema. */
-const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación", email_in: "Correo recibido" };
+const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación", email_in: "Correo recibido", proposal_view: "Lectura de la propuesta" };
 
 /** Quién hizo la gestión: el asesor activo del panel (varios asesores comparten la cuenta de administración) o el correo de la sesión. */
 export const actorName = (email: string, asesor?: string | null) => asesor?.trim() ? asesor.trim().slice(0, 80) : email;
