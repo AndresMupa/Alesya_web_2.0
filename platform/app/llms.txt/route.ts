@@ -36,6 +36,7 @@ export async function GET() {
     `- [Tienda](${base}/catalogo): catálogo completo de kits, electrónica, impresión 3D, bricolaje y libros.`,
     `- [Colegios](${base}/colegios): programa de robótica educativa y cultura maker para colegios, con diagnóstico, dotación y formación docente.`,
     `- [Proyectos](${base}/proyectos): retos de robótica y electrónica por edad, duración y nivel.`,
+    `- [Qué es la robótica educativa](${base}/robotica-educativa): guía para entender el aprendizaje con LEGO, Arduino e impresión 3D, y cómo empezar en un colegio.`,
     `- [Preguntas frecuentes](${base}/preguntas-frecuentes): respuestas sobre productos, envíos, pagos y colegios.`,
     `- [Mapa del sitio](${base}/sitemap.xml): todas las páginas y productos publicados.`,
     "",
