@@ -33,6 +33,9 @@ export const site = {
   address: { street: "Cra 2B # 15A-07", city: "Funza", region: "Cundinamarca", country: "CO", countryName: "Colombia" },
   ogImage: { url: "/media/og-alesya.jpg", width: 1200, height: 630, alt: "Estudiantes con sus robots: robótica, Arduino e impresión 3D para aprender haciendo" },
   logo: "/media/alesya-x-tech.png",
+  /** Perfiles oficiales (Instagram, YouTube, LinkedIn…). Con URLs aquí, la entidad de la organización las declara en `sameAs`. */
+  instagram: "https://www.instagram.com/alesya0108/",
+  socials: ["https://www.instagram.com/alesya0108/"] as string[],
 } as const;
 
 /** Serializa datos estructurados (JSON-LD) escapando `<` para que un texto nunca cierre la etiqueta `<script>`. */
@@ -44,6 +47,8 @@ export function organizationJsonLd() {
   return [
     {
       "@context": "https://schema.org", "@type": "Organization", "@id": `${url}/#organizacion`, name: site.publisher, alternateName: site.name, legalName: site.legalName, url,
+      description: site.description, knowsAbout: [...site.keywords],
+      ...(site.socials.length > 0 ? { sameAs: site.socials } : {}),
       logo: absoluteUrl(site.logo), image: absoluteUrl(site.ogImage.url), email: site.email, telephone: site.phone,
       address: { "@type": "PostalAddress", streetAddress: site.address.street, addressLocality: site.address.city, addressRegion: site.address.region, addressCountry: site.address.country },
       contactPoint: [{ "@type": "ContactPoint", contactType: "sales", telephone: site.phone, email: site.email, areaServed: "CO", availableLanguage: ["es"] }],
