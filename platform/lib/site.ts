@@ -34,7 +34,8 @@ export const site = {
   ogImage: { url: "/media/og-alesya.jpg", width: 1200, height: 630, alt: "Estudiantes con sus robots: robótica, Arduino e impresión 3D para aprender haciendo" },
   logo: "/media/alesya-x-tech.png",
   /** Perfiles oficiales (Instagram, YouTube, LinkedIn…). Con URLs aquí, la entidad de la organización las declara en `sameAs`. */
-  socials: [] as string[],
+  instagram: "https://www.instagram.com/alesya0108/",
+  socials: ["https://www.instagram.com/alesya0108/"] as string[],
 } as const;
 
 /** Serializa datos estructurados (JSON-LD) escapando `<` para que un texto nunca cierre la etiqueta `<script>`. */
