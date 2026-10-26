@@ -8,8 +8,8 @@ import { absoluteUrl, site, siteUrl } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 /**
- * llms.txt: índice en Markdown para asistentes de IA (ChatGPT, Claude, Perplexity, Gemini). Resume qué vende la marca,
- * dónde está, cómo se paga y se envía, y enlaza las páginas que más sirven para responder. Si la base no responde,
+ * llms.txt: índice en Markdown para asistentes de IA (ChatGPT, Claude, Perplexity, Gemini). Resume la editorial y sus
+ * líneas de trabajo, dónde está, cómo se paga y se envía, y enlaza las páginas que más sirven para responder. Si la base no responde,
  * el archivo sale igual con lo fijo; nunca falla por el catálogo.
  */
 export async function GET() {
@@ -19,9 +19,13 @@ export async function GET() {
   ]);
   const base = siteUrl();
   const lines = [
-    `# ${site.name}`,
+    `# ${site.publisher} · ${site.name}`,
     "",
-    `> ${site.name} es la marca de robótica educativa, Arduino, impresión 3D, bricolaje y libros de ${site.legalName}, en ${site.address.city} (${site.address.region}, Colombia). Vende kits para aprender construyendo, con envíos a toda Colombia, y ofrece programas de robótica y cultura maker para colegios y formación docente.`,
+    `> ${site.about}`,
+    "",
+    "## Líneas de trabajo",
+    ...site.businessLines.map((line) => `- ${line.name}: ${line.detail}`),
+    `- Para editorial, plan lector, preicfes y capacitaciones, el equipo comercial atiende en ${site.email} o por WhatsApp al ${site.phone}. Los kits y libros a la venta están en la tienda.`,
     "",
     "## Datos clave",
     `- Razón social: ${site.legalName}`,
@@ -37,7 +41,7 @@ export async function GET() {
     `- [Colegios](${base}/colegios): programa de robótica educativa y cultura maker para colegios, con diagnóstico, dotación y formación docente.`,
     `- [Proyectos](${base}/proyectos): retos de robótica y electrónica por edad, duración y nivel.`,
     `- [Qué es la robótica educativa](${base}/robotica-educativa): guía para entender el aprendizaje con LEGO, Arduino e impresión 3D, y cómo empezar en un colegio.`,
-    `- [Preguntas frecuentes](${base}/preguntas-frecuentes): respuestas sobre productos, envíos, pagos y colegios.`,
+    `- [Preguntas frecuentes](${base}/preguntas-frecuentes): respuestas sobre la editorial, productos, envíos, pagos y servicios para colegios.`,
     `- [Mapa del sitio](${base}/sitemap.xml): todas las páginas y productos publicados.`,
     "",
     "## Categorías de la tienda",

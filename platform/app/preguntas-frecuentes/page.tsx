@@ -8,8 +8,8 @@ import { jsonLd } from "@/lib/site";
 // Dinámica para que el enlace canónico use el dominio de PRODUCTION_URL del servidor (no el del momento de compilar).
 export const dynamic = "force-dynamic";
 
-const title = "Preguntas frecuentes sobre robótica educativa";
-const description = "Respuestas sobre kits de robótica LEGO, Arduino, impresión 3D, envíos a toda Colombia, formas de pago, programas para colegios y devoluciones de Alesya X-Tech.";
+const title = "Preguntas frecuentes: editorial, robótica y formación";
+const description = "Respuestas sobre Alesya Ediciones y Alesya X-Tech: libros y cuentos, producción editorial, plan lector, preicfes, capacitaciones, robótica, envíos a toda Colombia y formas de pago.";
 
 export const generateMetadata = () => pageMetadata({ title, description, path: "/preguntas-frecuentes", type: "article" });
 
