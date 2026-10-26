@@ -37,10 +37,14 @@ export function ImmersiveHero({ captionTop, captionBottom, poster, slides }: { c
 
   if (!world) return null;
   const still = world.image || posterFor(world.video) || poster;
+  // La primera imagen es el LCP: se pide antes de que el navegador llegue al <img> o al poster del video.
+  const first = slides[0];
+  const firstStill = first && (first.image || posterFor(first.video) || poster);
   return <section className="immersive-hero" id="inicio" style={{ "--world-color": world.color || DEFAULT_COLOR } as React.CSSProperties}>
+    {firstStill && <link rel="preload" as="image" href={firstStill} fetchPriority="high" />}
     {world.video
-      ? <video ref={video} key={world.id} className="immersive-film" muted loop playsInline preload="auto" poster={still || undefined} aria-hidden="true"><source src={world.video} type={videoType(world.video)} /></video>
-      : still ? <img key={world.id} className="immersive-film" src={still} alt="" /> : null}
+      ? <video ref={video} key={world.id} className="immersive-film" muted loop playsInline preload="metadata" poster={still || undefined} aria-hidden="true"><source src={world.video} type={videoType(world.video)} /></video>
+      : still ? <img key={world.id} className="immersive-film" src={still} alt="" decoding="async" fetchPriority={active === 0 ? "high" : "auto"} /> : null}
     <div className="immersive-shade" />
     <div className="hero-editorial page-width">
       {(captionTop || captionBottom) && <div className="hero-caption"><span>{captionTop}</span><span>{captionBottom}</span></div>}
