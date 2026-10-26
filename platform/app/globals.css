@@ -708,6 +708,13 @@ h1 em, h2 em { color: var(--signal-lime); font-family: Georgia, serif; font-weig
 .consent-check input { width:auto !important; flex:none; margin:2px 0 0; accent-color:var(--ink); }
 .consent-check a { text-decoration:underline; font-weight:700; }
 .checkout-card .consent-check { margin:22px 0 4px; color:#4c5666; }
+.lead-grades { border:0; padding:0; margin:0 0 15px; min-width:0; }
+.lead-grades legend { padding:0; margin-bottom:8px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
+.lead-grades div { display:flex; flex-wrap:wrap; gap:8px; }
+.lead-form .lead-grades label { display:inline-flex; align-items:center; gap:8px; margin:0; padding:8px 12px; border:1px solid rgba(16,24,40,.45); font-size:13px; text-transform:none; letter-spacing:0; font-weight:600; cursor:pointer; }
+.lead-form .lead-grades input { width:auto; margin:0; padding:0; accent-color:var(--ink); }
+.lead-form .lead-grades label:has(input:checked) { background:var(--ink); color:var(--signal-lime); border-color:var(--ink); }
+.lead-form .lead-grades label:has(input:focus-visible) { outline:2px solid var(--ink); outline-offset:2px; }
 .site-footer address { font-style:normal; line-height:1.6; }
 .footer-bottom nav { display:flex; flex-wrap:wrap; gap:18px; }
 .footer-bottom nav a:hover, .footer-grid a:hover { color:white; }

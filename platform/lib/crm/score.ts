@@ -26,7 +26,12 @@ export type ScoreInput = {
   stage: string; students: number; sector: string | null; techLevel: string | null; budgetRange: string | null; program: string | null; decisionMaker: string | null;
   /** Gestiones de contacto (llamada, WhatsApp, correo, reunión, visita) en los últimos 90 días. */
   contacts: number; lastContact: string | null; today: string;
+  /** Lectura de la propuesta viva en los últimos 90 días (`proposalSignals` en lib/crm/proposal-plan.ts). */
+  proposal?: ProposalSignals;
 };
+
+/** Qué hizo el colegio con la propuesta: abrirla, leerla a fondo y jugar la Arena. */
+export type ProposalSignals = { opened: boolean; deepRead: boolean; arena: boolean };
 
 export type ScoreBreakdown = { total: number; grade: "A" | "B" | "C"; fit: number; engagement: number; reasons: string[] };
 
@@ -63,6 +68,9 @@ export function scoreLead(input: ScoreInput): ScoreBreakdown {
     const days = Math.round((Date.parse(input.today) - Date.parse(input.lastContact)) / 86_400_000);
     if (days <= 7) engagement += 5; else if (days <= 30) engagement += 2; else if (input.stage !== "won") reasons.push("Sin contacto hace más de un mes");
   }
+  if (input.proposal?.opened) { engagement += 4; reasons.push("Abrió la propuesta"); }
+  if (input.proposal?.deepRead) { engagement += 3; reasons.push("Leyó la propuesta a fondo"); }
+  if (input.proposal?.arena) { engagement += 3; reasons.push("Jugó la Arena de la propuesta"); }
   engagement = input.stage === "lost" ? 0 : Math.min(40, engagement);
 
   const total = Math.min(100, fit + engagement);

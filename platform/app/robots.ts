@@ -5,7 +5,7 @@ import { siteHost, siteUrl } from "@/lib/site";
 export const dynamic = "force-dynamic";
 
 /** Rutas privadas o transaccionales: ningún buscador ni asistente de IA debe indexarlas. */
-const privatePaths = ["/admin", "/api/", "/checkout", "/carrito", "/pedido", "/cotizacion/"];
+const privatePaths = ["/admin", "/api/", "/checkout", "/carrito", "/pedido", "/cotizacion/", "/propuesta/"];
 
 /**
  * Bots de IA que citan o consultan el sitio: ChatGPT (OpenAI), Claude (Anthropic), Perplexity, Gemini (Google-Extended

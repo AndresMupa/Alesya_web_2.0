@@ -9,6 +9,8 @@ export const leads = sqliteTable("leads", {
   nextAction: text("next_action"), expectedClose: text("expected_close"), students: integer("students").notNull().default(0), program: text("program"), decisionMaker: text("decision_maker"),
   /** Estudio del colegio: niveles, sector, calendario, nivel tecnológico actual, presupuesto, dolores, proveedor actual. `score` (0–100) se recalcula al guardar. */
   grades: text("grades"), sector: text("sector"), calendar: text("calendar"), techLevel: text("tech_level"), budgetRange: text("budget_range"), painPoints: text("pain_points").notNull().default(""), competitors: text("competitors"), score: integer("score").notNull().default(0),
+  /** Prueba de la autorización de datos (Ley 1581 de 2012): cuándo la dio en el formulario. Vacío en prospectos, importados y registros a mano. */
+  consentAt: integer("consent_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(), updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [index("idx_leads_stage_created").on(table.stage, table.createdAt), index("idx_leads_email").on(table.email), uniqueIndex("idx_leads_external_id").on(table.externalId), index("idx_leads_follow_up").on(table.nextFollowUp), index("idx_leads_stage_changed").on(table.stage, table.stageChangedAt)]);
 

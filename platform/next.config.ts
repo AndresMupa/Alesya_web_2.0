@@ -35,6 +35,9 @@ const nextConfig: NextConfig = {
   turbopack: { root },
   // Seeded SQLite file for demo previews (DEMO_DATABASE=1); absent in normal builds.
   outputFileTracingIncludes: { "/**": ["./.demo/**/*"] },
+  // pino (lo usa imapflow) arrastra las pruebas de thread-stream y sonic-boom, con .zip que llevan JavaScript: el
+  // antivirus del hosting (ClamAV, Sanesecurity.Foxhole.JS_Zip) rechaza el paquete entero al subirlo.
+  outputFileTracingExcludes: { "/**": ["node_modules/thread-stream/test/**", "node_modules/sonic-boom/test/**"] },
   // No anunciar la tecnología del servidor.
   poweredByHeader: false,
   // Next quitaría la barra final antes de las redirecciones propias (dos saltos para /about-us/). Se desactiva y la
