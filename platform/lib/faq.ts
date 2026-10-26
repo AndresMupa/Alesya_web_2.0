@@ -8,12 +8,24 @@ export type Faq = { question: string; answer: string };
  */
 export const faqs: Faq[] = [
   {
-    question: "¿Qué es Alesya X-Tech?",
-    answer: `Alesya X-Tech es la marca de robótica educativa, electrónica, impresión 3D, bricolaje y libros de ${site.legalName}, con sede en ${site.address.city}, ${site.address.region} (Colombia). Vende kits para aprender haciendo y ofrece programas de robótica y cultura maker para colegios.`,
+    question: "¿Qué es Alesya Ediciones y qué es Alesya X-Tech?",
+    answer: site.about,
   },
   {
-    question: "¿Qué productos venden?",
-    answer: "Kits de LEGO EV3 y LEGO WeDo, placas Arduino con sensores y componentes electrónicos, materiales para impresión 3D, proyectos de bricolaje y libros con rutas pedagógicas y guías docentes.",
+    question: "¿Qué productos y servicios ofrecen?",
+    answer: `${site.businessLines.map((line) => `${line.name}: ${line.detail}`).join(" ")} En la tienda en línea están los kits de robótica, la electrónica, la impresión 3D y los libros a la venta.`,
+  },
+  {
+    question: "¿Hacen producción editorial?",
+    answer: `Sí. Además de publicar libros escolares, literatura y cuentos, ofrecemos servicios de producción editorial. Escríbenos a ${site.email} o por WhatsApp al ${site.phone} para contarnos tu proyecto.`,
+  },
+  {
+    question: "¿Tienen plan lector, preicfes y capacitaciones para colegios?",
+    answer: `Sí. Además de la robótica, trabajamos con colegios en plan lector, preparación preicfes para las pruebas Saber 11 del ICFES y capacitaciones para docentes. Para conocer el alcance y pedir una cotización, escribe a ${site.email} o por WhatsApp al ${site.phone}.`,
+  },
+  {
+    question: "¿Tienen libros de robótica?",
+    answer: "Sí. La robótica la trabajamos tanto con libros como con robots: hay libros con rutas pedagógicas y guías docentes, como la Ruta LEGO EV3, y kits como LEGO EV3 y LEGO WeDo para construir y programar.",
   },
   {
     question: "¿Hacen envíos a toda Colombia?",
