@@ -15,11 +15,14 @@ export const dataConsentVersions = Object.keys(dataConsentTexts) as [DataConsent
 
 /** Autorización de comunicaciones comerciales (opcional, casilla propia y sin marcar): novedades, guías y ofertas por correo y WhatsApp. */
 export const marketingConsentTexts = {
+  // v1 prometía un enlace de baja «en cada correo», y hoy solo lo lleva el correo de confirmación: se conserva tal cual porque `leads` guarda
+  // la versión que cada persona aceptó, y el formulario nuevo usa v2.
   "marketing-v1-borrador": "Quiero recibir novedades, guías y ofertas de Alesya por correo y WhatsApp. Es opcional y no afecta tu solicitud; puedes darte de baja cuando quieras con el enlace de baja de cada correo o escribiéndonos.",
+  "marketing-v2-borrador": "Quiero recibir novedades, guías y ofertas de Alesya por correo y WhatsApp. Es opcional y no afecta tu solicitud; puedes darte de baja cuando quieras con el enlace del correo de confirmación o escribiéndonos por correo o WhatsApp.",
 } as const;
 export type MarketingConsentVersion = keyof typeof marketingConsentTexts;
 export const marketingConsentVersions = Object.keys(marketingConsentTexts) as [MarketingConsentVersion, ...MarketingConsentVersion[]];
-export const CURRENT_MARKETING_CONSENT: MarketingConsentVersion = "marketing-v1-borrador";
+export const CURRENT_MARKETING_CONSENT: MarketingConsentVersion = "marketing-v2-borrador";
 
 /** Canales de comunicación comercial autorizados: correo siempre que haya correo; WhatsApp solo si dejó celular. */
 export const marketingChannels = (input: { email?: string | null; phone?: string | null }) => [input.email ? "email" : "", input.phone ? "whatsapp" : ""].filter(Boolean).join(",");

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, like, lte, not, or, sql, sum, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lte, not, or, sql, sum, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { leadActivities, leads, orders, quotes } from "@/db/schema";
 import { bogotaDay, bogotaMonthStart } from "@/lib/format";
@@ -136,14 +136,34 @@ export function leadValues(input: LeadInput, now: Date) {
 /** Siguiente acción de un lead del formulario: entra a la agenda de hoy para contactarlo en minutos. */
 const FORM_FIRST_ACTION ="Primer contacto (meta: menos de 5 minutos)";
 
+type OptOut = { email: string | null; phone: string | null; at: Date };
+
+/** Bajas de comunicaciones comerciales ya registradas, con el correo y el celular de quien las pidió. */
+export async function loadOptOuts(db: Pick<Db, "select">): Promise<OptOut[]> {
+  const rows = await db.select({ email: leads.email, phone: leads.phone, at: leads.marketingOptOutAt }).from(leads).where(isNotNull(leads.marketingOptOutAt));
+  return rows.flatMap((row) => (row.at ? [{ email: row.email?.toLowerCase() ?? null, phone: row.phone, at: row.at }] : []));
+}
+
+/**
+ * La baja más antigua de quien tenga ese correo o celular. Pedir la baja vale para la persona y no para una sola ficha: un registro
+ * nuevo (formulario, captación por correo o CSV) con el mismo contacto nace con ella, para que ningún atajo del panel ofrezca escribirle.
+ */
+export function inheritedOptOut(optOuts: OptOut[], contact: { email?: string | null; phone?: string | null }): Date | null {
+  const email = clean(contact.email)?.toLowerCase(), phone = clean(contact.phone);
+  const found = optOuts.filter((row) => (!!email && row.email === email) || (!!phone && row.phone === phone));
+  return found.length ? new Date(Math.min(...found.map((row) => row.at.getTime()))) : null;
+}
+
 /** Crea un contacto y deja la primera entrada del historial (registro manual o formulario web). */
 export async function createLead(input: LeadInput, origin: { type: "created" | "form"; actor?: string | null }) {
   const db = getDb();
   const now = new Date();
-  const values = leadValues(origin.type === "form" ? { ...input, nextFollowUp: input.nextFollowUp ?? bogotaDay(), nextAction: input.nextAction ?? FORM_FIRST_ACTION } : input, now);
+  // Quien vuelve a aceptar comunicaciones comerciales en este mismo envío da una autorización nueva y no hereda la baja anterior.
+  const optedOutAt = input.marketingConsentAt ? null : inheritedOptOut(await loadOptOuts(db), input);
+  const values = { ...leadValues(origin.type === "form" ? { ...input, nextFollowUp: input.nextFollowUp ?? bogotaDay(), nextAction: input.nextAction ?? FORM_FIRST_ACTION } : input, now), ...(optedOutAt && { marketingOptOutAt: optedOutAt }) };
   const consent = input.consentAt ? " Autorizó el tratamiento de sus datos personales (Ley 1581 de 2012)." : "";
-  const marketing = input.marketingConsentAt ? ` Aceptó recibir comunicaciones comerciales (${values.marketingChannels || "sin canal"}).` : "";
-  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).${consent}${marketing}` : `Registrado a mano (${input.source}).`;
+  const marketing = input.marketingConsentAt ? ` Aceptó recibir comunicaciones comerciales (${values.marketingChannels || "sin canal"}).` : optedOutAt ? " Ya se había dado de baja de las comunicaciones comerciales con este correo o celular: no contactarlo con fines comerciales." : "";
+  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).${consent}${marketing}` : `Registrado a mano (${input.source}).${marketing}`;
   await db.batch([
     db.insert(leads).values(values),
     db.insert(leadActivities).values({ id: crypto.randomUUID(), leadId: values.id, type: origin.type, summary, createdBy: origin.actor ?? null, createdAt: now }),
@@ -538,6 +558,7 @@ export async function importLeads(records: Record<string, string>[]) {
   const existing = await db.select({ email: leads.email, externalId: leads.externalId }).from(leads);
   const emails = new Set(existing.map((row) => row.email?.toLowerCase()).filter(Boolean));
   const externalIds = new Set(existing.map((row) => row.externalId).filter(Boolean));
+  const optOuts = await loadOptOuts(db);
   const now = new Date();
   const values: ReturnType<typeof leadValues>[] = [];
   let skipped = 0, invalid = 0;
@@ -560,7 +581,8 @@ export async function importLeads(records: Record<string, string>[]) {
       nextFollowUp: isoDay(pick(record, "proximo_seguimiento", "next_follow_up")),
     }, now);
     const stage = fromLabel(leadStages, pick(record, "etapa", "stage"), "new");
-    values.push({ ...value, stage, ...(isoDay(pick(record, "ultimo_contacto", "last_contact")) && { lastContact: isoDay(pick(record, "ultimo_contacto", "last_contact")) }) } as typeof value);
+    const optedOutAt = inheritedOptOut(optOuts, value);
+    values.push({ ...value, stage, ...(optedOutAt && { marketingOptOutAt: optedOutAt }), ...(isoDay(pick(record, "ultimo_contacto", "last_contact")) && { lastContact: isoDay(pick(record, "ultimo_contacto", "last_contact")) }) } as typeof value);
     if (email) emails.add(email);
     if (externalId) externalIds.add(externalId);
   }
