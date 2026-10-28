@@ -28,6 +28,17 @@ const wordpress: [source: string, destination: string][] = [
   ["/media/alesya-x-tech.svg", "/media/alesya-x-tech.png"],
 ];
 
+/**
+ * Política de contenido completa, solo en modo reporte. Mientras Next inyecte guiones propios sin `nonce` hace falta
+ * `'unsafe-inline'` en scripts y estilos; el siguiente paso es pasar a nonces desde proxy.ts (ver el informe de seguridad).
+ * En desarrollo React necesita `'unsafe-eval'`.
+ */
+const reportOnlyPolicy = [
+  "default-src 'self'", `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`, "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:", "font-src 'self' data:", "media-src 'self' blob:", "connect-src 'self'", "worker-src 'self' blob:", "manifest-src 'self'",
+  "frame-src 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'", "report-uri /api/csp-report",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // Produce a self-contained Node.js server that can run under cPanel/Passenger.
   output: "standalone",
@@ -59,8 +70,19 @@ const nextConfig: NextConfig = {
         { key: "X-Frame-Options", value: "DENY" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-        { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+        { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+        // Directivas que se aplican ya: nadie puede enmarcar el sitio, cambiar su <base> ni mandar formularios a otro dominio.
+        { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" },
+        // Política completa en modo «solo reporte»: no bloquea nada, avisa a /api/csp-report qué cargaría un origen no previsto.
+        { key: "Content-Security-Policy-Report-Only", value: reportOnlyPolicy },
       ] },
+      // El panel y sus APIs nunca se guardan en cachés ni se indexan; las APIs y los archivos subidos no se incrustan desde otros sitios.
+      { source: "/admin/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/api/:path*", headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-site" }] },
+      // Lo subido desde el panel se sirve inerte: sin guiones, estilos ni marcos aunque alguien lo abra directamente.
+      { source: "/uploads/:file", headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-site" }, { key: "Content-Security-Policy", value: "default-src 'none'; sandbox" }] },
       { source: "/media/:path*", headers: [{ key: "Cache-Control", value: media }] },
       { source: "/:icon(favicon.ico|favicon.svg|apple-touch-icon.png|icon-192.png|icon-512.png)", headers: [{ key: "Cache-Control", value: media }] },
     ];
