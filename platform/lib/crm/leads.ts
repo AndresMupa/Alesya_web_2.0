@@ -273,7 +273,7 @@ export async function logActivity(id: string, input: { type: ActivityType; summa
 // ── Máquina de ventas ────────────────────────────────────────────────────────
 
 const PIPELINE_COLUMN_LIMIT = 60;
-const pipelineCard = { id: leads.id, name: leads.name, organization: leads.organization, city: leads.city, phone: leads.phone, email: leads.email, source: leads.source, stage: leads.stage, priority: leads.priority, owner: leads.owner, estimatedValueInCents: leads.estimatedValueInCents, lastContact: leads.lastContact, nextFollowUp: leads.nextFollowUp, stageChangedAt: leads.stageChangedAt, score: leads.score, nextAction: leads.nextAction, expectedClose: leads.expectedClose, students: leads.students, program: leads.program };
+const pipelineCard = { id: leads.id, name: leads.name, organization: leads.organization, city: leads.city, phone: leads.phone, email: leads.email, source: leads.source, stage: leads.stage, priority: leads.priority, owner: leads.owner, estimatedValueInCents: leads.estimatedValueInCents, lastContact: leads.lastContact, nextFollowUp: leads.nextFollowUp, stageChangedAt: leads.stageChangedAt, score: leads.score, nextAction: leads.nextAction, expectedClose: leads.expectedClose, students: leads.students, program: leads.program, marketingOptOutAt: leads.marketingOptOutAt };
 export type PipelineCard = { [K in keyof typeof pipelineCard]: Lead[K] };
 
 /**

@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { fillTemplate, templatesFor, type MessageTemplate } from "@/lib/crm/templates";
 import { whatsappLink } from "@/lib/format";
 
-export type ComposerLead = { name: string; organization: string; city: string | null; phone: string | null; email: string | null; stage: string };
+export type ComposerLead = { name: string; organization: string; city: string | null; phone: string | null; email: string | null; stage: string;
+  /** Si se dio de baja de las comunicaciones comerciales (`/baja/[token]`): el compositor no abre mensajes salvo confirmación. */
+  marketingOptOutAt?: Date | string | null };
 type Channel = MessageTemplate["channel"];
 
 export const phonesOf = (phone: string | null | undefined) => (phone ?? "").split(/[;,/]/).map((value) => value.trim()).filter((value) => value.replace(/\D/g, "").length >= 7);
@@ -23,6 +25,8 @@ export function MessageComposer({ lead, asesor, onOpened, compact }: { lead: Com
   const templates = templatesFor(channel, lead.stage);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [phone, setPhone] = useState(phones[0] ?? "");
+  const [override, setOverride] = useState(false);
+  const blocked = !!lead.marketingOptOutAt && !override;
   const [text, setText] = useState(() => (templates[0] ? fillTemplate(templates[0].body, lead, asesor) : ""));
   const template = templates.find((item) => item.id === templateId) ?? templates[0];
 
@@ -55,10 +59,12 @@ export function MessageComposer({ lead, asesor, onOpened, compact }: { lead: Com
     </div>
     {channel === "email" && template?.subject && <p className="adm-composer-subject">Asunto: {fillTemplate(template.subject, lead, asesor)}</p>}
     <textarea value={text} onChange={(event) => setText(event.target.value)} rows={compact ? 4 : 6} maxLength={2000} aria-label="Mensaje" />
+    {lead.marketingOptOutAt && <p className="adm-callout"><strong>Se dio de baja de las comunicaciones comerciales.</strong> No le envíes novedades, guías ni ofertas por correo o WhatsApp.{blocked && <> Solo escríbele si responde a algo que pidió.</>}</p>}
     <div className="adm-composer-actions">
-      {href ? <a className="button button-primary" href={href} target="_blank" rel="noopener noreferrer" onClick={() => onOpened?.(channel, template?.label ?? "")}><ExternalLink size={15} /> Abrir {channel === "whatsapp" ? "WhatsApp" : "correo"}</a>
+      {blocked ? <><span className="adm-muted">Envío bloqueado.</span><button type="button" className="refresh-button" onClick={() => setOverride(true)}>Es respuesta a una solicitud suya: desbloquear</button></>
+        : href ? <a className="button button-primary" href={href} target="_blank" rel="noopener noreferrer" onClick={() => onOpened?.(channel, template?.label ?? "")}><ExternalLink size={15} /> Abrir {channel === "whatsapp" ? "WhatsApp" : "correo"}</a>
         : <span className="adm-muted">{channel === "whatsapp" ? "Sin número de celular válido." : "Sin correo."}</span>}
-      <button type="button" className="refresh-button" onClick={() => { void navigator.clipboard.writeText(text).then(() => toast.success("Mensaje copiado."), () => toast.error("No se pudo copiar.")); }}><Copy size={14} /> Copiar</button>
+      <button type="button" className="refresh-button" disabled={blocked} onClick={() => { void navigator.clipboard.writeText(text).then(() => toast.success("Mensaje copiado."), () => toast.error("No se pudo copiar.")); }}><Copy size={14} /> Copiar</button>
       {!asesor && <small className="adm-muted">Escribe tu nombre en “Asesor” para firmar el mensaje.</small>}
     </div>
   </div>;
