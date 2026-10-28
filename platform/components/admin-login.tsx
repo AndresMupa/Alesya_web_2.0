@@ -1,25 +1,37 @@
 "use client";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
 
 export function AdminLogin({ configured }: { configured: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
+  // Tras la contraseña, el servidor entrega un token de vida corta; con él se envía el código. No es una sesión.
+  const [challenge, setChallenge] = useState<string | null>(null);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError("");
     const data = Object.fromEntries(new FormData(event.currentTarget));
     try {
-      const response = await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      const result = await response.json() as { message?: string };
-      if (!response.ok) { setError(result.message || "No se pudo iniciar sesión."); return; }
+      const response = await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(challenge ? { challenge, code: data.code } : data) });
+      const result = await response.json() as { message?: string; step?: string; challenge?: string; restart?: boolean };
+      if (!response.ok) { if (result.restart) setChallenge(null); setError(result.message || "No se pudo iniciar sesión."); return; }
+      if (result.step === "code" && result.challenge) { setChallenge(result.challenge); return; }
       router.replace("/admin");
       router.refresh();
     } catch { setError("No pudimos conectar. Intenta nuevamente."); }
     finally { setBusy(false); }
   }
+  if (challenge) return <form className="login-form" onSubmit={submit}>
+    <span className="login-icon"><ShieldCheck size={25} /></span>
+    <p className="eyebrow">Verificación en dos pasos</p><h1>Confirma<br />que eres<br /><em>tú.</em></h1>
+    <p className="login-description">Escribe el código de 6 dígitos de tu aplicación autenticadora. Si perdiste el teléfono, usa un código de recuperación.</p>
+    <label htmlFor="admin-code">Código de verificación</label><input id="admin-code" name="code" type="text" inputMode="text" autoComplete="one-time-code" autoCapitalize="characters" spellCheck={false} autoFocus required maxLength={32} />
+    {error && <p role="alert" className="form-error">{error}</p>}
+    <button className="button button-primary" disabled={busy} type="submit">{busy ? "Verificando…" : "Verificar y entrar"}<ArrowRight size={18} /></button>
+    <button className="login-back" type="button" onClick={() => { setChallenge(null); setError(""); }}>← Volver</button>
+  </form>;
   return <form className="login-form" onSubmit={submit}>
     <span className="login-icon"><LockKeyhole size={25} /></span>
     <p className="eyebrow">Acceso privado</p><h1>Tu espacio<br />para hacer crecer<br /><em>Alesya.</em></h1>

@@ -286,6 +286,7 @@ h1 em, h2 em { color: var(--signal-lime); font-family: Georgia, serif; font-weig
 .login-form > button { width:100%; margin-top:28px; border-radius:100px; }
 .login-form > button:disabled { cursor:wait; opacity:.55; }
 .login-note { font-size:12px; color:#647080; text-align:center; margin-top:24px; }
+.login-form > .login-back { display:block; width:auto; margin:20px auto 0; background:none; border:0; border-radius:0; padding:0; font:inherit; font-size:13px; color:#647080; text-decoration:underline; cursor:pointer; }
 @media(max-width:760px) { .login-page { grid-template-columns:1fr; }.login-story { padding:24px; gap:24px; }.login-story > div { display:none; }.login-surface { padding:40px 24px; }.admin-topbar { height:auto; min-height:76px; gap:16px; flex-wrap:wrap; padding:18px; }.admin-user { flex-wrap:wrap; } }
 
 /* Admin */

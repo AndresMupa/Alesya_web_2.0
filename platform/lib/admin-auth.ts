@@ -11,7 +11,7 @@ export const ADMIN_COOKIE = "alesya_admin";
 export const SESSION_SECONDS = 60 * 60 * 8;
 export const adminConfigured = () => Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD_HASH && (process.env.ADMIN_SESSION_SECRET?.length ?? 0) >= 32);
 const sign = (value: string) => createHmac("sha256", process.env.ADMIN_SESSION_SECRET!).update(value).digest("base64url");
-const credentialVersion = () => createHash("sha256").update(process.env.ADMIN_PASSWORD_HASH!).digest("hex");
+export const credentialVersion = () => createHash("sha256").update(process.env.ADMIN_PASSWORD_HASH!).digest("hex");
 
 export async function verifyAdmin(email: string, password: string) {
   if (!adminConfigured() || password.length > 256) return false;

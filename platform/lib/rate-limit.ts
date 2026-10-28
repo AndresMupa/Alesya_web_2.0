@@ -84,6 +84,12 @@ export async function claimOnce(name: string, windowMs: number) {
   catch (error) { console.error("rate_limit_failed", name, error); return false; }
 }
 
+/** Cuenta un intento contra `key`; `false` cuando ya se superó `limit` dentro de la ventana (y, si la base falla, por seguridad). */
+export async function countAttempt(key: string, limit: number, windowMs: number) {
+  try { return (await consume(key, limit, windowMs)).allowed; }
+  catch (error) { console.error("rate_limit_failed", error); return false; }
+}
+
 /** Marca una clave como bloqueada hasta `untilMs` (p. ej. una sesión cerrada), con la misma tabla y sin migración. */
 export async function blockKey(key: string, untilMs: number) {
   const client = createClient({ url: databaseUrl(), authToken: process.env.TURSO_AUTH_TOKEN });
