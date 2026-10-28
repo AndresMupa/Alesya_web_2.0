@@ -46,21 +46,25 @@ async function consume(key: string, limit: number, windowMs: number): Promise<Li
   }
 }
 
+/**
+ * Primero el cupo de la dirección: una dirección que ya agotó el suyo recibe 429 sin tocar el cupo global, así una sola IP no puede
+ * agotar el global y dejar fuera a los demás. El global (si la política lo tiene) cuenta solo las peticiones que pasaron el cupo por
+ * dirección y protege frente a ataques repartidos entre muchas direcciones.
+ */
 export async function enforceRateLimit(request: Request, policy: Policy) {
   try {
-    if (policy.globalLimit) {
-      const global = await consume(`${policy.name}:global`, policy.globalLimit, policy.windowMs);
-      if (!global.allowed) { securityLog("rate_limited", request, { policy: policy.name, scope: "global" }); return rateLimited(global.retryAfter); }
-    }
-
     const address = trustedClientAddress(request);
     if (!address) {
       console.error("trusted_proxy_ip_header_missing", policy.name);
       return Response.json({ message: "La protección de acceso no está configurada." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
     const result = await consume(bucketKey(policy.name, address), policy.limit, policy.windowMs);
-    if (!result.allowed) securityLog("rate_limited", request, { policy: policy.name, scope: "client" });
-    return result.allowed ? null : rateLimited(result.retryAfter);
+    if (!result.allowed) { securityLog("rate_limited", request, { policy: policy.name, scope: "client" }); return rateLimited(result.retryAfter); }
+    if (policy.globalLimit) {
+      const global = await consume(`${policy.name}:global`, policy.globalLimit, policy.windowMs);
+      if (!global.allowed) { securityLog("rate_limited", request, { policy: policy.name, scope: "global" }); return rateLimited(global.retryAfter); }
+    }
+    return null;
   } catch (error) {
     console.error("rate_limit_failed", policy.name, error);
     return Response.json({ message: "La protección de acceso no está disponible." }, { status: 503, headers: { "Cache-Control": "no-store" } });
