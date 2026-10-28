@@ -15,6 +15,8 @@ type Lead = {
   id: string; name: string; organization: string; email: string | null; phone: string | null; city: string | null; website: string | null; message: string; source: string; stage: string; owner: string | null;
   externalId: string | null; priority: string; notes: string; lastContact: string | null; nextFollowUp: string | null; estimatedValueInCents: number; lostReason: string | null; createdAt: string; updatedAt: string;
   nextAction: string | null; expectedClose: string | null; students: number; program: string | null; decisionMaker: string | null; grades: string | null; sector: string | null; calendar: string | null; techLevel: string | null; budgetRange: string | null; painPoints: string; competitors: string | null; score: number;
+  consentAt: string | null; consentVersion: string | null; marketingConsentAt: string | null; marketingConsentVersion: string | null; marketingChannels: string | null; marketingOptOutAt: string | null;
+  utmSource: string | null; utmMedium: string | null; utmCampaign: string | null; utmContent: string | null; utmTerm: string | null; referrer: string | null; landingPage: string | null;
 };
 type Activity = { id: string; type: string; summary: string; createdBy: string | null; createdAt: string };
 type Quote = { id: string; number: string; status: string; title: string; totalInCents: number; validUntil: string | null; token: string; createdAt: string };
@@ -131,6 +133,17 @@ function LeadDetail({ detail, asesor, reload }: { detail: Detail; asesor: string
       {playbook?.hint && <small>{playbook.hint}</small>}
     </div>}
     {attempts >= MAX_ATTEMPTS && open && <p className="adm-callout">Ya van {attempts} intentos sin respuesta. Si sigue sin contestar, márcalo como <strong>Perdido · Sin respuesta</strong> para sacarlo de la cola.</p>}
+
+    {lead.marketingOptOutAt && <p className="adm-callout"><strong>No contactar con fines comerciales.</strong> Se dio de baja el {formatDateTime(lead.marketingOptOutAt)}: ni correo ni WhatsApp de novedades u ofertas. Solo atender lo que él o ella pida.</p>}
+    {(lead.consentAt || lead.marketingConsentAt || lead.utmSource || lead.utmMedium || lead.referrer || lead.landingPage) && <section className="adm-card">
+      <h3>Origen y autorizaciones</h3>
+      <div className="adm-lead-facts">
+        {lead.consentAt && <div><span>Datos personales</span><strong>{formatDateTime(lead.consentAt)}</strong><small>{lead.consentVersion ?? "Sin versión"}</small></div>}
+        <div><span>Comunicaciones comerciales</span><strong>{lead.marketingConsentAt ? formatDateTime(lead.marketingConsentAt) : "No las aceptó"}</strong>{lead.marketingConsentAt && <small>{lead.marketingConsentVersion} · {lead.marketingChannels || "sin canal"}</small>}</div>
+        {(lead.utmSource || lead.utmMedium || lead.utmCampaign) && <div><span>Primer toque (UTM)</span><strong>{[lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(" / ")}</strong>{(lead.utmContent || lead.utmTerm) && <small>{[lead.utmContent && `contenido: ${lead.utmContent}`, lead.utmTerm && `término: ${lead.utmTerm}`].filter(Boolean).join(" · ")}</small>}</div>}
+        {(lead.referrer || lead.landingPage) && <div><span>Llegó desde</span><strong>{lead.referrer || "Directo"}</strong>{lead.landingPage && <small>Entró por {lead.landingPage}</small>}</div>}
+      </div>
+    </section>}
 
     <section className="adm-card">
       <div className="adm-card-row"><h3><PencilLine size={15} /> Escribir con plantilla</h3><button type="button" className="adm-link-button" onClick={() => setComposing(!composing)}>{composing ? "Ocultar" : "Mostrar"}</button></div>

@@ -15,6 +15,8 @@ export const budgetRanges = [
   { value: "20_50m", label: "$20 M – $50 M" },
   { value: "mas_50m", label: "Más de $50 M" },
 ] as const;
+/** Plataforma de robótica que el colegio usa hoy (se guarda como texto en `leads.competitors`); el formulario público ofrece esta lista. */
+export const roboticsPlatforms = ["LEGO SPIKE", "LEGO WeDo", "LEGO EV3", "mBot / Makeblock", "micro:bit", "Arduino", "Tale-Bot", "Otra"] as const;
 
 const labelOf = (list: readonly { value: string; label: string }[], value: string | null | undefined) => list.find((item) => item.value === value)?.label ?? null;
 export const sectorLabel = (value: string | null | undefined) => labelOf(sectors, value);

@@ -8,6 +8,7 @@ import {
   MAX_ATTEMPTS, PROSPECT_SOURCE, activityTypes, isContactActivity, leadPriorities, leadPriorityValues, leadSourceLabel, leadSourceValues, leadStageLabel, leadStages, leadStageValues, openLeadStages, stagePlaybook, workActivityTypes,
   type ActivityType, type ContactChannel, type LeadPriority, type LeadStage, type Outcome,
 } from "@/lib/crm/constants";
+import { cleanAttribution, type Attribution } from "@/lib/crm/attribution";
 import { PROPOSAL_ACTIVITY, proposalSignals } from "@/lib/crm/proposal-plan";
 import { scoreLead } from "@/lib/crm/score";
 
@@ -99,8 +100,14 @@ export type LeadInput = {
   priority?: LeadPriority; owner?: string | null; notes?: string; estimatedValueInCents?: number; nextFollowUp?: string | null; nextAction?: string | null; externalId?: string | null;
   /** Calificación que deja el formulario: niveles (`gradeLevels` separados por coma), estudiantes aproximados y programa de interés. */
   grades?: string | null; students?: number; program?: string | null;
-  /** Cuándo autorizó el tratamiento de datos (Ley 1581). */
-  consentAt?: Date | null;
+  /** Estudio del colegio que el formulario pide de forma opcional (valores de lib/crm/score.ts; `competitors` es la plataforma de robótica actual). */
+  sector?: string | null; calendar?: string | null; techLevel?: string | null; budgetRange?: string | null; competitors?: string | null;
+  /** Cuándo autorizó el tratamiento de datos (Ley 1581) y con qué versión del texto (lib/crm/consent.ts). */
+  consentAt?: Date | null; consentVersion?: string | null;
+  /** Autorización aparte de comunicaciones comerciales (Ley 2300 de 2023): cuándo, versión del texto y canales (`email,whatsapp`). */
+  marketingConsentAt?: Date | null; marketingConsentVersion?: string | null; marketingChannels?: string | null;
+  /** Primer toque: UTM, referente y página de entrada. Se limpia aquí aunque el llamador ya lo haya hecho. */
+  attribution?: Partial<Attribution>;
 };
 
 const clean = (value: string | null | undefined) => value?.trim() || null;
@@ -109,11 +116,19 @@ const clean = (value: string | null | undefined) => value?.trim() || null;
 export function leadValues(input: LeadInput, now: Date) {
   const students = Math.max(0, Math.round(input.students ?? 0));
   const program = clean(input.program);
+  const sector = clean(input.sector), techLevel = clean(input.techLevel), budgetRange = clean(input.budgetRange);
+  const touch = cleanAttribution(input.attribution ?? {});
   return {
     id: crypto.randomUUID(), name: input.name.trim(), organization: input.organization.trim(), email: clean(input.email)?.toLowerCase() ?? null, phone: clean(input.phone), city: clean(input.city), website: clean(input.website),
     message: input.message.trim(), source: input.source, stage: "new", priority: input.priority ?? "medium", owner: clean(input.owner), notes: input.notes?.trim() ?? "", estimatedValueInCents: input.estimatedValueInCents ?? 0,
-    nextFollowUp: input.nextFollowUp ?? null, nextAction: clean(input.nextAction), externalId: clean(input.externalId), grades: clean(input.grades), students, program, consentAt: input.consentAt ?? null,
-    score: scoreLead({ stage: "new", students, sector: null, techLevel: null, budgetRange: null, program, decisionMaker: null, contacts: 0, lastContact: null, today: bogotaDay() }).total,
+    nextFollowUp: input.nextFollowUp ?? null, nextAction: clean(input.nextAction), externalId: clean(input.externalId), grades: clean(input.grades), students, program,
+    sector, calendar: clean(input.calendar), techLevel, budgetRange, competitors: clean(input.competitors),
+    consentAt: input.consentAt ?? null, consentVersion: input.consentAt ? clean(input.consentVersion) : null,
+    marketingConsentAt: input.marketingConsentAt ?? null, marketingConsentVersion: input.marketingConsentAt ? clean(input.marketingConsentVersion) : null, marketingChannels: input.marketingConsentAt ? clean(input.marketingChannels) : null,
+    // Cada contacto nace con su enlace de baja (`/baja/[token]`): 128 bits aleatorios, en hexadecimal.
+    unsubscribeToken: crypto.randomUUID().replaceAll("-", ""),
+    utmSource: touch.utmSource || null, utmMedium: touch.utmMedium || null, utmCampaign: touch.utmCampaign || null, utmContent: touch.utmContent || null, utmTerm: touch.utmTerm || null, referrer: touch.referrer || null, landingPage: touch.landingPage || null,
+    score: scoreLead({ stage: "new", students, sector, techLevel, budgetRange, program, decisionMaker: null, contacts: 0, lastContact: null, today: bogotaDay() }).total,
     stageChangedAt: now, createdAt: now, updatedAt: now,
   };
 }
@@ -127,12 +142,43 @@ export async function createLead(input: LeadInput, origin: { type: "created" | "
   const now = new Date();
   const values = leadValues(origin.type === "form" ? { ...input, nextFollowUp: input.nextFollowUp ?? bogotaDay(), nextAction: input.nextAction ?? FORM_FIRST_ACTION } : input, now);
   const consent = input.consentAt ? " Autorizó el tratamiento de sus datos personales (Ley 1581 de 2012)." : "";
-  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).${consent}` : `Registrado a mano (${input.source}).`;
+  const marketing = input.marketingConsentAt ? ` Aceptó recibir comunicaciones comerciales (${values.marketingChannels || "sin canal"}).` : "";
+  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).${consent}${marketing}` : `Registrado a mano (${input.source}).`;
   await db.batch([
     db.insert(leads).values(values),
     db.insert(leadActivities).values({ id: crypto.randomUUID(), leadId: values.id, type: origin.type, summary, createdBy: origin.actor ?? null, createdAt: now }),
   ]);
-  return values.id;
+  return { id: values.id, unsubscribeToken: values.unsubscribeToken };
+}
+
+/** Formato del token de baja (`leadValues`): 128 bits en hexadecimal. */
+export const UNSUBSCRIBE_TOKEN = /^[a-f0-9]{32}$/;
+
+/** ¿Existe el token y ya está dado de baja? No devuelve ningún dato personal. */
+export async function getOptOutState(token: string) {
+  if (!UNSUBSCRIBE_TOKEN.test(token)) return null;
+  const [lead] = await getDb().select({ optedOut: leads.marketingOptOutAt }).from(leads).where(eq(leads.unsubscribeToken, token)).limit(1);
+  return lead ? { optedOut: !!lead.optedOut } : null;
+}
+
+/**
+ * Baja de comunicaciones comerciales por correo y WhatsApp (enlace `/baja/[token]`). Aplica al contacto y a los demás registros con el
+ * mismo correo o celular, porque una persona puede haber llenado el formulario más de una vez. Es idempotente; devuelve `null` si el token no existe.
+ */
+export async function optOutByToken(token: string) {
+  return getDb().transaction(async (tx) => {
+    const [lead] = await tx.select({ id: leads.id, email: leads.email, phone: leads.phone }).from(leads).where(eq(leads.unsubscribeToken, token)).limit(1);
+    if (!lead) return null;
+    const same = or(eq(leads.id, lead.id), lead.email ? eq(leads.email, lead.email) : undefined, lead.phone ? eq(leads.phone, lead.phone) : undefined);
+    const pending = await tx.select({ id: leads.id }).from(leads).where(and(same, isNull(leads.marketingOptOutAt)));
+    const now = new Date();
+    for (let index = 0; index < pending.length; index += 100) {
+      const ids = pending.slice(index, index + 100).map((row) => row.id);
+      await tx.update(leads).set({ marketingOptOutAt: now }).where(inArray(leads.id, ids));
+      await tx.insert(leadActivities).values(ids.map((id) => ({ id: crypto.randomUUID(), leadId: id, type: "opt_out", summary: "Se dio de baja de las comunicaciones comerciales por correo y WhatsApp (enlace de baja). No contactarlo con fines comerciales.", createdBy: null, createdAt: now })));
+    }
+    return { updated: pending.length };
+  });
 }
 
 export type LeadPatch = Partial<{

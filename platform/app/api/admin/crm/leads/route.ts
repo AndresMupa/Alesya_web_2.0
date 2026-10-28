@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (!body.email && !body.phone) return fail("Registra al menos un correo o un teléfono para poder hacer seguimiento.");
   try {
     const { asesor, ...input } = body;
-    const id = await createLead({ ...input, estimatedValueInCents: input.estimatedValue * 100, nextFollowUp: input.nextFollowUp || null }, { type: "created", actor: actorName(admin.email, asesor) });
+    const { id } = await createLead({ ...input, estimatedValueInCents: input.estimatedValue * 100, nextFollowUp: input.nextFollowUp || null }, { type: "created", actor: actorName(admin.email, asesor) });
     return ok({ ok: true, id }, 201);
   } catch (error) { return handleError(error, "crm_lead_create_failed", "No se pudo crear la oportunidad."); }
 }

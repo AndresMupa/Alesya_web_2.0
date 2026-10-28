@@ -146,3 +146,16 @@
   .store-remove { grid-row:1; grid-column:3; }
   .store-search { min-width:0; width:100%; }
 }
+
+/* Lista de espera de un producto agotado (components/lead-form.tsx) */
+.waitlist-form { display:grid; gap:12px; margin:0 0 26px; padding:20px; border:1px solid var(--line); background:white; }
+.waitlist-form h2 { font-size:20px; margin:0; }
+.waitlist-form p { margin:0; font-size:14px; color:#4c5666; line-height:1.5; }
+.waitlist-form label { display:grid; gap:5px; font-size:12px; font-weight:700; }
+.waitlist-form input { width:100%; border:1px solid var(--line); padding:10px 12px; font:inherit; font-weight:500; }
+.waitlist-form .consent-check { margin:0; color:#4c5666; }
+.waitlist-form .consent-check input { width:auto; }
+.waitlist-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.waitlist-done { grid-auto-flow:column; justify-content:start; align-items:start; gap:12px; }
+.waitlist-done p { margin-top:4px; }
+@media (max-width:520px) { .waitlist-row { grid-template-columns:1fr; } }

@@ -13,7 +13,9 @@ export function mailStatus() {
   return { configured, host: SMTP_HOST ?? null, port: Number(SMTP_PORT) || 465, from: MAIL_FROM ?? null, devPreview: !configured && process.env.NODE_ENV !== "production" };
 }
 
-export type MailMessage = { to: string; subject: string; html: string; text: string; replyTo?: string };
+export type MailMessage = { to: string; subject: string; html: string; text: string; replyTo?: string;
+  /** Cabeceras adicionales (p. ej. `List-Unsubscribe` en correos con enlace de baja). */
+  headers?: Record<string, string> };
 export type MailResult = { sent: boolean; reason?: string };
 
 const SEND_TIMEOUT_MS = 12_000;
@@ -33,7 +35,7 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
   if (!transporter) return { sent: false, reason: "Correo no configurado (SMTP_*)." };
   try {
     const info = await Promise.race([
-      transporter.sendMail({ from: process.env.MAIL_FROM ?? "Alesya <no-reply@localhost>", to: message.to, subject: message.subject, html: message.html, text: message.text, replyTo: message.replyTo }),
+      transporter.sendMail({ from: process.env.MAIL_FROM ?? "Alesya <no-reply@localhost>", to: message.to, subject: message.subject, html: message.html, text: message.text, replyTo: message.replyTo, headers: message.headers }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), SEND_TIMEOUT_MS)),
     ]);
     if (mailStatus().devPreview) console.log(`[mail preview] → ${message.to} · ${message.subject}\n${message.text}\n`);
