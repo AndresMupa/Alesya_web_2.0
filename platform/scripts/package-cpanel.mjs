@@ -313,8 +313,10 @@ node -e '
   pkg.type = "commonjs"; delete pkg.devDependencies; pkg.scripts = { start: "node server.js" };
   fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + "\\n");' "$P/package.json"
 # npm installs every libc variant of optional native deps and Next traces them all; cPanel is
-# glibc x86-64, so drop musl/macOS/Windows builds (libsql and sharp pick theirs via detect-libc).
-for dir in $(find "$P/node_modules" "$P/.next/node_modules" -mindepth 1 -maxdepth 2 -type d \\( -name "*musl*" -o -name "*darwin*" -o -name "*win32*" \\) 2>/dev/null); do
+# glibc x86-64, so drop musl/macOS/Windows/Android/FreeBSD/ARM/WebAssembly builds (libsql and sharp pick theirs via detect-libc).
+# Keep this list in sync with the "foreign native package" check in containerVerify(): sharp 0.35.5 started shipping
+# @img/sharp-wasm32, which that check rejected because it was not pruned here.
+for dir in $(find "$P/node_modules" "$P/.next/node_modules" -mindepth 1 -maxdepth 2 -type d \\( -name "*musl*" -o -name "*darwin*" -o -name "*win32*" -o -name "*android*" -o -name "*freebsd*" -o -name "*arm64*" -o -name "*wasm32*" \\) 2>/dev/null); do
   echo "pruned foreign native package: \${dir#$P/}"; rm -rf "$dir"
 done
 # No .bin dirs (symlinks, useless at runtime).
