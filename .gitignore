@@ -17,3 +17,6 @@ outputs/*.sha256
 *.csv
 *.xlsx
 *.xls
+
+# Informe privado de seguridad (hallazgos abiertos): nunca al repositorio público.
+outputs/seguridad-*.md
