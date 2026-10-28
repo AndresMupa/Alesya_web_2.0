@@ -180,7 +180,8 @@ function AgendaList({ items, today, onOpen, empty }: { items: AgendaItem[]; toda
   if (!items.length) return <p className="adm-muted">{empty}</p>;
   return <ul className="adm-agenda">{items.map((item) => {
     const state = item.nextFollowUp! < today ? "overdue" : item.nextFollowUp === today ? "today" : "soon";
-    const wa = whatsappLink(item.phone);
+    // Con baja de comunicaciones comerciales no se ofrece el atajo de WhatsApp: se entra a la ficha, donde el compositor pide confirmar.
+    const wa = item.marketingOptOutAt ? null : whatsappLink(item.phone);
     return <li key={item.id} data-state={state}>
       <button type="button" onClick={() => onOpen(item.id)}>
         <time>{state === "overdue" ? "Vencido · " : state === "today" ? "Hoy · " : ""}{formatDay(item.nextFollowUp)}</time>

@@ -3,7 +3,7 @@ import { and, count, desc, eq, gte, inArray, max, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { inboundEmails, leadActivities, leads, settings } from "@/db/schema";
 import { leadStageLabel, openLeadStages, type LeadStage } from "@/lib/crm/constants";
-import { leadValues } from "@/lib/crm/leads";
+import { inheritedOptOut, leadValues, loadOptOuts } from "@/lib/crm/leads";
 import { bogotaDay } from "@/lib/format";
 import { inboxStatus, readInbox, type InboundMessage, type InboxAddress } from "@/lib/inbox";
 import { getSettings } from "@/lib/settings";
@@ -129,8 +129,10 @@ async function persist(message: InboundMessage, decision: Decision, meta: { mail
   if (decision.result === "created") {
     const { name, organization } = identityOf(decision.contact);
     const lead = leadValues({ name, organization, email: decision.contact.address, phone, message: `Asunto: ${message.subject || "(sin asunto)"}\n\n${body || "(sin texto)"}`.slice(0, 2000), source: "email", priority: "high" }, now);
+    // Quien ya se dio de baja y ahora escribe por correo sigue sin querer ofertas: el registro nuevo hereda la baja.
+    const optedOutAt = inheritedOptOut(await loadOptOuts(db), lead);
     await db.transaction(async (tx) => {
-      await tx.insert(leads).values(lead);
+      await tx.insert(leads).values({ ...lead, ...(optedOutAt && { marketingOptOutAt: optedOutAt }) });
       await tx.insert(inboundEmails).values({ ...row, leadId: lead.id });
       await tx.insert(leadActivities).values({ id: crypto.randomUUID(), leadId: lead.id, type: "email_in", summary: `Llegó por correo a ${meta.mailboxUser}: ${quote(message.subject)}.`, createdBy: null, createdAt: now });
     });
