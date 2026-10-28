@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { orders, payments } from "@/db/schema";
 import { moveOrderStock } from "@/lib/commerce/inventory";
 import { recordOrderEvent } from "@/lib/commerce/orders";
+import { siteUrl } from "@/lib/site";
 
 /** Adaptador de Wompi: firma del checkout, verificación del webhook y aplicación de transacciones. */
 
@@ -87,5 +88,8 @@ export async function applyWompiTransaction(transaction: Record<string, unknown>
   });
 }
 
-/** Origen público para enlaces en correos y pagos: el dominio de producción si está definido, si no el de la petición. */
-export const publicOrigin = (request: Request) => (process.env.PRODUCTION_URL?.replace(/\/$/, "") || new URL(request.url).origin);
+/**
+ * Origen público para enlaces en correos y pagos: el dominio de producción. Solo en desarrollo se toma el de la petición; en
+ * producción nunca se deriva de la cabecera Host, que puede venir falsificada, para que ningún enlace de correo apunte a otro sitio.
+ */
+export const publicOrigin = (request: Request) => (process.env.NODE_ENV === "production" || process.env.PRODUCTION_URL ? siteUrl() : new URL(request.url).origin);

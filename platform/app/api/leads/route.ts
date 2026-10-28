@@ -7,7 +7,7 @@ import { createLead } from "@/lib/crm/leads";
 import { budgetRanges, calendars, gradeLevels, roboticsPlatforms, sectors, techLevels } from "@/lib/crm/score";
 import { getStoreProduct } from "@/lib/commerce/catalog";
 import { notifyNewLead, sendLeadAutoReply } from "@/lib/commerce/notifications";
-import { fail, handleError, ok, readBody } from "@/lib/http";
+import { PUBLIC_BODY_LIMIT, fail, handleError, ok, readBody } from "@/lib/http";
 import { publicOrigin } from "@/lib/payments/wompi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -56,7 +56,7 @@ const leadSchema = z.object({
 export async function POST(request: Request) {
   const limited = await enforceRateLimit(request, { name: "lead", limit: 5, globalLimit: 100, windowMs: 15 * 60_000 });
   if (limited) return limited;
-  const body = await readBody(request, leadSchema, "Revisa los datos del formulario."); if (body instanceof Response) return body;
+  const body = await readBody(request, leadSchema, "Revisa los datos del formulario.", PUBLIC_BODY_LIMIT); if (body instanceof Response) return body;
   const { source, campaign, consent, consentVersion, marketingConsent, marketingConsentVersion, grades, productSlug, quantity, attribution, ...contact } = body;
   try {
     let { organization, message, program } = contact;
