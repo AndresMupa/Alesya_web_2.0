@@ -2,7 +2,8 @@ import "server-only";
 import { getDb } from "@/db";
 import { orderEvents } from "@/db/schema";
 import { getOrderDetail } from "@/lib/commerce/orders";
-import { gradesLabel } from "@/lib/crm/score";
+import { WAITLIST_PROGRAM } from "@/lib/crm/constants";
+import { budgetLabel, gradesLabel, sectorLabel, techLevelLabel } from "@/lib/crm/score";
 import { formatMoney } from "@/lib/format";
 import { renderEmail, sendMail } from "@/lib/mail";
 import { storeConfig } from "@/lib/settings";
@@ -59,16 +60,26 @@ async function recordNotification(orderId: string, label: string, result: { sent
   await getDb().insert(orderEvents).values({ id: crypto.randomUUID(), orderId, type: "notification", detail: result.sent ? `${label}: enviado.` : `${label}: no se pudo enviar (${result.reason ?? "error"}).`, createdAt: new Date() }).catch((error) => console.error("notification_event_failed", error));
 }
 
-type FormLead = { name: string; organization: string; email?: string | null; phone?: string | null; message: string; source: string; grades?: string | null; students?: number; program?: string | null };
+type FormLead = {
+  name: string; organization: string; email?: string | null; phone?: string | null; message: string; source: string; grades?: string | null; students?: number; program?: string | null;
+  sector?: string | null; techLevel?: string | null; budgetRange?: string | null; competitors?: string | null;
+  /** Lista de espera: nombre del producto del catálogo. */
+  productName?: string;
+  /** Enlace de baja de comunicaciones comerciales que se incluye en el pie del correo al contacto. */
+  unsubscribeUrl?: string;
+};
 
 /** Aviso al equipo de un contacto nuevo que llegó por el formulario. */
 export async function notifyNewLead(lead: FormLead & { id: string }, origin: string) {
   const config = await storeConfig();
   if (!config.notifyTo) return;
-  const qualification: [string, string][] = [["Programa", lead.program ?? ""], ["Grados", gradesLabel(lead.grades) ?? ""], ["Estudiantes", lead.students ? `≈ ${lead.students.toLocaleString("es-CO")}` : ""]];
+  const qualification: [string, string][] = [
+    ["Programa", lead.program ?? ""], ["Grados", gradesLabel(lead.grades) ?? ""], ["Estudiantes", lead.students ? `≈ ${lead.students.toLocaleString("es-CO")}` : ""],
+    ["Sector", sectorLabel(lead.sector) ?? ""], ["Nivel de robótica", techLevelLabel(lead.techLevel) ?? ""], ["Presupuesto", budgetLabel(lead.budgetRange) ?? ""], ["Plataforma actual", lead.competitors ?? ""],
+  ];
   const mail = renderEmail({
     title: `Nuevo contacto: ${lead.organization}`,
-    intro: `${lead.name} dejó una solicitud por ${lead.source}.`,
+    intro: lead.program === WAITLIST_PROGRAM ? `${lead.name} se anotó en la lista de espera por ${lead.source}.` : `${lead.name} dejó una solicitud por ${lead.source}.`,
     rows: [["Correo", lead.email ?? "—"], ["Teléfono", lead.phone ?? "—"], ...qualification.filter(([, value]) => value)],
     paragraphs: [lead.message],
     cta: { label: "Abrir en el CRM", url: `${origin}/admin/crm?lead=${lead.id}` },
@@ -86,13 +97,19 @@ export async function sendLeadAutoReply(lead: FormLead) {
   const config = await storeConfig();
   const firstName = lead.name.split(" ")[0];
   const phone = config.whatsappDigits.replace(/^57(\d{3})(\d{3})(\d{4})$/, "+57 $1 $2 $3");
-  const whatsapp = `https://wa.me/${config.whatsappDigits}?text=${encodeURIComponent(`Hola Alesya, soy ${firstName} de ${lead.organization}. Acabo de solicitar el diagnóstico en la web.`)}`;
+  const waitlist = lead.program === WAITLIST_PROGRAM;
+  const whatsapp = `https://wa.me/${config.whatsappDigits}?text=${encodeURIComponent(waitlist ? `Hola Alesya, soy ${firstName}. Me anoté en la lista de espera${lead.productName ? ` de ${lead.productName}` : ""}.` : `Hola Alesya, soy ${firstName} de ${lead.organization}. Acabo de solicitar el diagnóstico en la web.`)}`;
+  const unsubscribe = lead.unsubscribeUrl ? ` · Si no quieres recibir comunicaciones comerciales nuestras: ${lead.unsubscribeUrl}` : "";
   const mail = renderEmail({
-    title: "Recibimos tu solicitud de diagnóstico",
-    intro: `Hola ${firstName}, gracias por escribirnos. Una persona del equipo comercial te contactará el mismo día hábil para conocer ${lead.organization} y agendar el diagnóstico${lead.program ? ` del programa de ${lead.program.toLowerCase()}` : ""}.`,
+    title: waitlist ? "Quedaste en la lista de espera" : "Recibimos tu solicitud de diagnóstico",
+    intro: waitlist
+      ? `Hola ${firstName}, te anotamos en la lista de espera${lead.productName ? ` de ${lead.productName}` : ""}. Todavía no tenemos una fecha confirmada: te escribiremos a este correo apenas la tengamos.`
+      : `Hola ${firstName}, gracias por escribirnos. Una persona del equipo comercial te contactará el mismo día hábil para conocer ${lead.organization} y agendar el diagnóstico${lead.program ? ` del programa de ${lead.program.toLowerCase()}` : ""}.`,
     paragraphs: [`Si prefieres adelantar la conversación, escríbenos por WhatsApp al ${phone}.`],
     cta: { label: "Escribirnos por WhatsApp", url: whatsapp },
-    footer: `Alesya Ediciones · Alesya X-Tech · WhatsApp ${phone}${config.notifyTo ? ` · ${config.notifyTo}` : ""}`,
+    footer: `Alesya Ediciones · Alesya X-Tech · WhatsApp ${phone}${config.notifyTo ? ` · ${config.notifyTo}` : ""}${unsubscribe}`,
   });
-  await sendMail({ to: lead.email, subject: "Recibimos tu solicitud · Alesya", replyTo: config.notifyTo || undefined, ...mail });
+  await sendMail({ to: lead.email, subject: waitlist ? "Estás en la lista de espera · Alesya" : "Recibimos tu solicitud · Alesya", replyTo: config.notifyTo || undefined, ...mail,
+    // Baja en un clic (RFC 8058) hacia /api/baja/[token], que acepta POST sin sesión.
+    ...(lead.unsubscribeUrl && { headers: { "List-Unsubscribe": `<${lead.unsubscribeUrl.replace("/baja/", "/api/baja/")}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }) });
 }

@@ -11,17 +11,20 @@ export type LegalPage = { slug: string; title: string; short: string; descriptio
 const address = `${site.address.street}, ${site.address.city}, ${site.address.region}, ${site.address.countryName}`;
 const contact = `el correo ${site.email}, el WhatsApp ${site.phone} o por escrito en ${address}`;
 
+// BORRADOR PENDIENTE DE REVISIÓN LEGAL: los cambios del 27-oct-2026 (casilla de comunicaciones comerciales, baja, atribución, lista de espera)
+// salen de resúmenes sin verificar de la Ley 1581 de 2012 y la Ley 2300 de 2023; un abogado debe confirmarlos contra el texto oficial.
 const privacy: LegalPage = {
   slug: "politica-de-privacidad",
   title: "Política de tratamiento de datos personales",
   short: "Privacidad y datos personales",
   description: "Cómo Alesya Ediciones recoge, usa y protege los datos personales de quienes visitan el sitio, compran en la tienda o solicitan un diagnóstico para su colegio.",
-  updated: "4 de octubre de 2026",
+  updated: "27 de octubre de 2026",
   blocks: [
     { paragraphs: [`Esta política explica cómo ${site.legalName} ("Alesya Ediciones" o "Alesya X-Tech") trata los datos personales que recibe a través de este sitio web, la tienda en línea, WhatsApp y el correo, en cumplimiento de la Ley 1581 de 2012, el Decreto 1377 de 2013 y las demás normas colombianas de protección de datos.`] },
     { heading: "1. Responsable del tratamiento", items: [`Razón social: ${site.legalName}.`, `Domicilio y dirección: ${address}.`, `Correo: ${site.email}.`, `Teléfono y WhatsApp: ${site.phone}.`] },
     { heading: "2. Qué datos recogemos", items: [
-      "Formulario de diagnóstico para colegios: nombre, institución, correo, celular (opcional), el mensaje que escribas y la campaña o red social desde la que llegaste.",
+      "Formulario de diagnóstico para colegios: nombre, institución, correo, celular (opcional), el mensaje que escribas, los datos opcionales sobre tu institución (sector, calendario, nivel de robótica, plataforma que usan y presupuesto estimado) y la campaña, red social o sitio desde el que llegaste.",
+      "Lista de espera de un producto: nombre, correo, celular y cantidad (opcionales) y el producto por el que preguntas.",
       "Compras en la tienda: nombre, correo, celular, documento de identidad (opcional), ciudad y dirección de entrega, notas del pedido, productos comprados y el estado del pago.",
       "Pagos: los datos de tarjetas, cuentas y PSE los recibe y procesa directamente Wompi (Bancolombia). Alesya no recibe ni guarda números de tarjeta ni claves bancarias; solo conoce el resultado del pago.",
       "Cotizaciones y relación comercial con instituciones: datos de contacto institucional (colegio, cargo, teléfono y correo de la institución) y el historial de conversaciones con el equipo comercial.",
@@ -35,9 +38,9 @@ const privacy: LegalPage = {
       "Enviar novedades y ofertas, solo cuando nos hayas autorizado. Puedes pedir que no te escribamos más en cualquier momento.",
       "Cumplir obligaciones legales, contables y tributarias, y proteger la seguridad del sitio.",
     ] },
-    { heading: "4. Autorización", paragraphs: ["Al enviar el formulario de diagnóstico o finalizar una compra marcas una casilla con la que autorizas el tratamiento de tus datos para las finalidades de esta política. Guardamos registro de la solicitud o del pedido como prueba de esa autorización. No es obligatorio responder preguntas sobre datos sensibles ni sobre niñas, niños y adolescentes; este sitio no los solicita."] },
+    { heading: "4. Autorización", paragraphs: ["Al enviar el formulario de diagnóstico o finalizar una compra marcas una casilla con la que autorizas el tratamiento de tus datos para las finalidades de esta política. Guardamos registro de la solicitud o del pedido como prueba de esa autorización. Las novedades, guías y ofertas por correo o WhatsApp tienen su propia casilla, opcional y sin marcar de fábrica: guardamos cuándo y con qué texto la aceptaste, y cada correo incluye un enlace de baja (alesyaediciones.com/baja/…) con el que dejamos de escribirte con fines comerciales. No es obligatorio responder preguntas sobre datos sensibles ni sobre niñas, niños y adolescentes; este sitio no los solicita."] },
     { heading: "5. Con quién compartimos los datos", paragraphs: ["No vendemos ni cedemos tus datos. Los compartimos solo con proveedores que los tratan por cuenta nuestra y con medidas de seguridad: el proveedor de alojamiento del sitio y del correo, Wompi para los pagos en línea y las transportadoras que entregan los pedidos (nombre, dirección y teléfono de entrega). También los entregaremos a una autoridad cuando una ley o una orden judicial lo exija."] },
-    { heading: "6. Cookies y almacenamiento en el navegador", paragraphs: ["El sitio no usa cookies de publicidad ni de seguimiento de terceros. El carrito de compras se guarda en el almacenamiento de tu propio navegador para que no pierdas los productos al recargar la página; puedes borrarlo vaciando el carrito o los datos del sitio. El panel administrativo usa una cookie de sesión solo para el personal de Alesya."] },
+    { heading: "6. Cookies y almacenamiento en el navegador", paragraphs: ["El sitio no usa cookies de publicidad ni de seguimiento de terceros. El carrito de compras se guarda en el almacenamiento de tu propio navegador para que no pierdas los productos al recargar la página; puedes borrarlo vaciando el carrito o los datos del sitio. También recordamos en esa pestaña, mientras dura la visita, el enlace por el que llegaste (campaña, red social o sitio de origen) para saber qué canal te trajo si decides escribirnos; no se comparte con terceros. El panel administrativo usa una cookie de sesión solo para el personal de Alesya."] },
     { heading: "7. Tus derechos", paragraphs: ["Como titular de los datos puedes:"], items: [
       "Conocer, actualizar y rectificar tus datos.",
       "Pedir prueba de la autorización que nos diste.",

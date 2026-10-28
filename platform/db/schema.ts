@@ -10,9 +10,18 @@ export const leads = sqliteTable("leads", {
   /** Estudio del colegio: niveles, sector, calendario, nivel tecnológico actual, presupuesto, dolores, proveedor actual. `score` (0–100) se recalcula al guardar. */
   grades: text("grades"), sector: text("sector"), calendar: text("calendar"), techLevel: text("tech_level"), budgetRange: text("budget_range"), painPoints: text("pain_points").notNull().default(""), competitors: text("competitors"), score: integer("score").notNull().default(0),
   /** Prueba de la autorización de datos (Ley 1581 de 2012): cuándo la dio en el formulario. Vacío en prospectos, importados y registros a mano. */
-  consentAt: integer("consent_at", { mode: "timestamp_ms" }),
+  consentAt: integer("consent_at", { mode: "timestamp_ms" }), consentVersion: text("consent_version"),
+  /**
+   * Comunicaciones comerciales (Ley 2300 de 2023), separadas de la autorización de datos: cuándo y con qué versión del texto las aceptó,
+   * por qué canales (`email`, `whatsapp`) y, si se dio de baja, cuándo. `marketingOptOutAt` manda sobre `marketingConsentAt`.
+   * `unsubscribeToken` arma el enlace público `/baja/[token]`.
+   */
+  marketingConsentAt: integer("marketing_consent_at", { mode: "timestamp_ms" }), marketingConsentVersion: text("marketing_consent_version"), marketingChannels: text("marketing_channels"),
+  marketingOptOutAt: integer("marketing_opt_out_at", { mode: "timestamp_ms" }), unsubscribeToken: text("unsubscribe_token"),
+  /** Atribución del primer toque (lib/crm/attribution.ts): lo que trajo el enlace y la página donde empezó la visita. `source` guarda el canal normalizado y la campaña. */
+  utmSource: text("utm_source"), utmMedium: text("utm_medium"), utmCampaign: text("utm_campaign"), utmContent: text("utm_content"), utmTerm: text("utm_term"), referrer: text("referrer"), landingPage: text("landing_page"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(), updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-}, (table) => [index("idx_leads_stage_created").on(table.stage, table.createdAt), index("idx_leads_email").on(table.email), uniqueIndex("idx_leads_external_id").on(table.externalId), index("idx_leads_follow_up").on(table.nextFollowUp), index("idx_leads_stage_changed").on(table.stage, table.stageChangedAt)]);
+}, (table) => [index("idx_leads_stage_created").on(table.stage, table.createdAt), index("idx_leads_email").on(table.email), uniqueIndex("idx_leads_external_id").on(table.externalId), uniqueIndex("idx_leads_unsubscribe_token").on(table.unsubscribeToken), index("idx_leads_follow_up").on(table.nextFollowUp), index("idx_leads_stage_changed").on(table.stage, table.stageChangedAt)]);
 
 /** Cotizaciones formales para colegios: numeradas, con vigencia, enlace público para aceptar e impresión. */
 export const quotes = sqliteTable("quotes", {

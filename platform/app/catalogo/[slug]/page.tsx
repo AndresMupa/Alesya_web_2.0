@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MessageCircle, ShieldCheck, Truck } from "lucide-react";
+import { WaitlistForm } from "@/components/lead-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { AddToCartPanel } from "@/components/store/add-to-cart";
@@ -72,7 +73,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <p className="store-description">{product.description}</p>
           {state.purchasable
             ? <AddToCartPanel product={{ slug: product.slug, name: product.name, priceInCents: product.priceInCents, imageUrl: product.imageUrl, category: product.category }} max={state.max} disabled={false} />
-            : <div className="store-buy"><p className="store-soldout">Agotado por ahora.</p><a className="button button-dark" href={whatsapp(`Hola, quiero que me avisen cuando vuelva a estar disponible: ${product.name}.`)} target="_blank" rel="noopener noreferrer"><MessageCircle size={17} /> Avísame cuando llegue</a></div>}
+            : <><p className="store-soldout">Agotado por ahora.</p><WaitlistForm productSlug={product.slug} productName={product.name} /></>}
           <ul className="store-assurances">
             <li><ShieldCheck size={18} /> Pago seguro con Wompi o transferencia confirmada por el equipo.</li>
             <li><Truck size={18} /> {config?.shippingNote ?? "Envíos a toda Colombia; coordinamos la entrega al confirmar el pago."}</li>
