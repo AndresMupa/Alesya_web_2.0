@@ -99,7 +99,6 @@ export async function sendLeadAutoReply(lead: FormLead) {
   const phone = config.whatsappDigits.replace(/^57(\d{3})(\d{3})(\d{4})$/, "+57 $1 $2 $3");
   const waitlist = lead.program === WAITLIST_PROGRAM;
   const whatsapp = `https://wa.me/${config.whatsappDigits}?text=${encodeURIComponent(waitlist ? `Hola Alesya, soy ${firstName}. Me anoté en la lista de espera${lead.productName ? ` de ${lead.productName}` : ""}.` : `Hola Alesya, soy ${firstName} de ${lead.organization}. Acabo de solicitar el diagnóstico en la web.`)}`;
-  const unsubscribe = lead.unsubscribeUrl ? ` · Si no quieres recibir comunicaciones comerciales nuestras: ${lead.unsubscribeUrl}` : "";
   const mail = renderEmail({
     title: waitlist ? "Quedaste en la lista de espera" : "Recibimos tu solicitud de diagnóstico",
     intro: waitlist
@@ -107,7 +106,8 @@ export async function sendLeadAutoReply(lead: FormLead) {
       : `Hola ${firstName}, gracias por escribirnos. Una persona del equipo comercial te contactará el mismo día hábil para conocer ${lead.organization} y agendar el diagnóstico${lead.program ? ` del programa de ${lead.program.toLowerCase()}` : ""}.`,
     paragraphs: [`Si prefieres adelantar la conversación, escríbenos por WhatsApp al ${phone}.`],
     cta: { label: "Escribirnos por WhatsApp", url: whatsapp },
-    footer: `Alesya Ediciones · Alesya X-Tech · WhatsApp ${phone}${config.notifyTo ? ` · ${config.notifyTo}` : ""}${unsubscribe}`,
+    footer: `Alesya Ediciones · Alesya X-Tech · WhatsApp ${phone}${config.notifyTo ? ` · ${config.notifyTo}` : ""}`,
+    footerLink: lead.unsubscribeUrl ? { label: "Dejar de recibir comunicaciones comerciales", url: lead.unsubscribeUrl } : undefined,
   });
   await sendMail({ to: lead.email, subject: waitlist ? "Estás en la lista de espera · Alesya" : "Recibimos tu solicitud · Alesya", replyTo: config.notifyTo || undefined, ...mail,
     // Baja en un clic (RFC 8058) hacia /api/baja/[token], que acepta POST sin sesión.
