@@ -12,3 +12,8 @@ dist/
 .demo/
 outputs/*.tar.gz
 outputs/*.sha256
+
+# Bases de contactos, inventarios y hojas de cálculo: contienen datos personales o comerciales; nunca al repositorio público.
+*.csv
+*.xlsx
+*.xls
