@@ -48,7 +48,9 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: { "/**": ["./.demo/**/*"] },
   // pino (lo usa imapflow) arrastra las pruebas de thread-stream y sonic-boom, con .zip que llevan JavaScript: el
   // antivirus del hosting (ClamAV, Sanesecurity.Foxhole.JS_Zip) rechaza el paquete entero al subirlo.
-  outputFileTracingExcludes: { "/**": ["node_modules/thread-stream/test/**", "node_modules/sonic-boom/test/**"] },
+  // sharp trae su alternativa en WebAssembly (@img/sharp-wasm32), que no sirve en este servidor (usa el binario nativo de Linux x64) y que el
+  // validador del paquete rechaza como «paquete nativo ajeno»: se deja fuera del paquete.
+  outputFileTracingExcludes: { "/**": ["node_modules/thread-stream/test/**", "node_modules/sonic-boom/test/**", "node_modules/@img/sharp-wasm32/**"] },
   // No anunciar la tecnología del servidor.
   poweredByHeader: false,
   // Next quitaría la barra final antes de las redirecciones propias (dos saltos para /about-us/). Se desactiva y la
