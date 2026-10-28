@@ -5,7 +5,7 @@ cantidad,nombre,categoria,sku_ref,precio_cop,revisar,notas,imagen
 2,Sensor lineal,Electrónica,ELE-LINEAR,,SI,Aclarar: ¿potenciómetro lineal / sensor de posición?,/media/productos/sensores-arduino.jpg
 2,Sensor de llama (flame),Electrónica,ELE-FLAME,,,Detección de fuego/infrarrojo,/media/productos/sensores-arduino.jpg
 1,Sensor de temperatura (analógico),Electrónica,ELE-TEMP-AN,,,Termistor analógico,/media/productos/sensores-arduino.jpg
-2,Módulo relé,Electrónica,ELE-RELAY,,,Relé 5V,/media/productos/sensores-arduino.jpg
+2,Módulo relé,Electrónica,ELE-RELAY,,,Relé 5V,/media/productos/commons-rele-5v.webp
 5,LED RGB,Electrónica,ELE-LED-RGB,,,Módulo LED RGB,/media/productos/sensores-arduino.jpg
 3,Emisor láser,Electrónica,ELE-LASER,,,Módulo emisor láser,/media/productos/sensores-arduino.jpg
 1,Módulo fotointerruptor (light blocking),Electrónica,ELE-LIGHTBLK,,,Sensor de interrupción de luz,/media/productos/sensores-arduino.jpg
@@ -14,13 +14,13 @@ cantidad,nombre,categoria,sku_ref,precio_cop,revisar,notas,imagen
 2,Fotorresistencia (photoresistor),Electrónica,ELE-PHOTOR,,,Unificados 1+1 de la lista,/media/productos/sensores-arduino.jpg
 1,Sensor infrarrojo,Electrónica,ELE-IR,,SI,Aclarar: ¿receptor / obstáculo / línea?,/media/productos/sensores-arduino.jpg
 1,Sensor de lluvia,Electrónica,ELE-RAIN,,,Detección de agua/lluvia,/media/productos/sensor-agua.jpg
-1,Protoboard,Electrónica,ELE-BREADBOARD,,,Protoboard,/media/productos/sensores-arduino.jpg
+1,Protoboard,Electrónica,ELE-BREADBOARD,,,Protoboard,/media/productos/commons-protoboard-400.webp
 2,Buzzer activo,Electrónica,ELE-BUZZ-A,,,Zumbador activo,/media/productos/sensores-arduino.jpg
 2,Botón (push button),Electrónica,ELE-BUTTON,,,Pulsador con módulo,/media/productos/sensores-arduino.jpg
 1,Encoder rotatorio,Electrónica,ELE-ENCODER,,,Encoder rotatorio KY-040,/media/productos/sensores-arduino.jpg
 2,Sensor de seguimiento de línea (tracking),Electrónica,ELE-TRACK,,,Seguidor de línea,/media/productos/sensores-arduino.jpg
 1,Reed switch,Electrónica,ELE-REED,,,Interruptor magnético,/media/productos/sensores-arduino.jpg
-1,Sensor temperatura y humedad (DHT11),Electrónica,ELE-DHT11,,,Temp + humedad,/media/productos/sensores-arduino.jpg
+1,Sensor temperatura y humedad (DHT11),Electrónica,ELE-DHT11,,,Temp + humedad,/media/productos/commons-dht11.webp
 2,Buzzer pasivo,Electrónica,ELE-BUZZ-P,,,Zumbador pasivo,/media/productos/sensores-arduino.jpg
 2,Ball switch (interruptor de bola),Electrónica,ELE-BALLSW,,,Sensor de inclinación por bola,/media/productos/sensores-arduino.jpg
 1,LED RGB SMD,Electrónica,ELE-RGB-SMD,,,LED RGB SMD,/media/productos/sensores-arduino.jpg
@@ -44,14 +44,14 @@ cantidad,nombre,categoria,sku_ref,precio_cop,revisar,notas,imagen
 2,HW-133A regulador reductor de voltaje,Electrónica,HW-133A,,,Convertidor step-down,/media/productos/sensores-arduino.jpg
 1,HM serie S línea,Electrónica,HM-S,,SI,Nombre incompleto: aclarar producto,/media/productos/sensores-arduino.jpg
 1,Adaptador tarjeta SD,Electrónica,ELE-SD-203,,,Ref. 203,/media/productos/sensores-arduino.jpg
-2,MPU-6050 (acelerómetro/giroscopio),Electrónica,MPU-6050,,,Giroscopio + acelerómetro,/media/productos/sensores-arduino.jpg
-2,Reloj de tiempo real (MH RTC),Electrónica,MH-RTC,,,Módulo RTC,/media/productos/sensores-arduino.jpg
+2,MPU-6050 (acelerómetro/giroscopio),Electrónica,MPU-6050,,,Giroscopio + acelerómetro,/media/productos/commons-mpu-6050.webp
+2,Reloj de tiempo real (MH RTC),Electrónica,MH-RTC,,,Módulo RTC,/media/productos/commons-rtc-ds3231.webp
 1,Sensor de voltaje (0-25V),Electrónica,ELE-VOLT-25V,,,Divisor de voltaje,/media/productos/sensor-voltaje.jpg
 1,Sensor touch capacitivo,Electrónica,ELE-TOUCH-CAP,,,Táctil capacitivo,/media/productos/sensores-arduino.jpg
 2,Paquete de pulsadores,Electrónica,ELE-BTN-PACK,,,Paquete de botones,/media/productos/sensores-arduino.jpg
-1,Arduino Uno,Electrónica,ELE-ARD-UNO,,,Placa Arduino Uno,/media/productos/arduino-uno.jpg
+1,Arduino Uno,Electrónica,ELE-ARD-UNO,,,Placa Arduino Uno,/media/productos/commons-arduino-uno.webp
 13,Display LED,Electrónica,ELE-DISPLAY,,SI,13 uds: aclarar tipo (7 seg / matriz / LCD),/media/productos/sensores-arduino.jpg
-3,Sensor ultrasónico HC-SR04,Electrónica,HC-SR04,,,Medición de distancia,/media/productos/sensores-arduino.jpg
+3,Sensor ultrasónico HC-SR04,Electrónica,HC-SR04,,,Medición de distancia,/media/productos/commons-hc-sr04.webp
 1,Sensor de lluvia (MH-RD raindrops),Electrónica,MH-RD,,,Módulo de gotas de lluvia,/media/productos/sensor-agua.jpg
 4,Sensor ultrasónico EV3,Robótica,ROB-EV3-ULTRA,,,LEGO Mindstorms EV3,/media/productos/ev3-ultrasonico.jpg
 3,Batería EV3,Robótica,ROB-EV3-BAT,,,Batería recargable EV3,/media/productos/ev3-bateria.jpg
