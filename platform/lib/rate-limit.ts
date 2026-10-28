@@ -1,8 +1,11 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { isIP } from "node:net";
 import { createClient } from "@libsql/client";
 import { databaseUrl } from "@/db";
+import { trustedClientAddress } from "@/lib/client-ip";
+import { securityLog } from "@/lib/security-log";
+
+export { trustedClientAddress };
 
 type Policy = {
   name: string;
@@ -12,27 +15,6 @@ type Policy = {
 };
 
 type LimitResult = { allowed: boolean; retryAfter: number; key: string };
-
-const allowedHeaders = new Set(["x-forwarded-for", "x-real-ip", "cf-connecting-ip", "x-vercel-forwarded-for"]);
-
-export function trustedClientAddress(request: Request) {
-  const configured = process.env.TRUSTED_PROXY_IP_HEADER?.trim().toLowerCase();
-  if (configured === "x-vercel-forwarded-for" && !process.env.VERCEL) return null;
-  const header = configured && allowedHeaders.has(configured)
-    ? configured
-    : process.env.NODE_ENV === "production"
-      ? null
-      : "x-forwarded-for";
-  if (!header) return null;
-
-  const raw = request.headers.get(header);
-  if (!raw) return process.env.NODE_ENV === "production" ? null : "127.0.0.1";
-  if (raw.length > 512) return null;
-  const parts = raw.split(",");
-  if (parts.length > 10) return null;
-  const candidate = header === "x-forwarded-for" ? parts.at(-1)?.trim() : raw.trim();
-  return candidate && isIP(candidate) ? candidate : null;
-}
 
 function bucketKey(namespace: string, identity: string) {
   const digest = createHash("sha256").update(identity).digest("hex");
@@ -68,7 +50,7 @@ export async function enforceRateLimit(request: Request, policy: Policy) {
   try {
     if (policy.globalLimit) {
       const global = await consume(`${policy.name}:global`, policy.globalLimit, policy.windowMs);
-      if (!global.allowed) return rateLimited(global.retryAfter);
+      if (!global.allowed) { securityLog("rate_limited", request, { policy: policy.name, scope: "global" }); return rateLimited(global.retryAfter); }
     }
 
     const address = trustedClientAddress(request);
@@ -77,6 +59,7 @@ export async function enforceRateLimit(request: Request, policy: Policy) {
       return Response.json({ message: "La protección de acceso no está configurada." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
     const result = await consume(bucketKey(policy.name, address), policy.limit, policy.windowMs);
+    if (!result.allowed) securityLog("rate_limited", request, { policy: policy.name, scope: "client" });
     return result.allowed ? null : rateLimited(result.retryAfter);
   } catch (error) {
     console.error("rate_limit_failed", policy.name, error);
@@ -90,6 +73,32 @@ export async function clearRateLimit(request: Request, namespace: string) {
   const client = createClient({ url: databaseUrl(), authToken: process.env.TURSO_AUTH_TOKEN });
   try {
     await client.execute({ sql: "DELETE FROM rate_limits WHERE key = ?", args: [bucketKey(namespace, address)] });
+  } finally {
+    client.close();
+  }
+}
+
+/** `true` solo la primera vez dentro de la ventana: sirve para avisar una vez por hora y no por cada intento. */
+export async function claimOnce(name: string, windowMs: number) {
+  try { return (await consume(`once:${name}`, 1, windowMs)).allowed; }
+  catch (error) { console.error("rate_limit_failed", name, error); return false; }
+}
+
+/** Marca una clave como bloqueada hasta `untilMs` (p. ej. una sesión cerrada), con la misma tabla y sin migración. */
+export async function blockKey(key: string, untilMs: number) {
+  const client = createClient({ url: databaseUrl(), authToken: process.env.TURSO_AUTH_TOKEN });
+  try {
+    await client.execute({ sql: "INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET reset_at = excluded.reset_at", args: [key, untilMs] });
+  } finally {
+    client.close();
+  }
+}
+
+export async function isKeyBlocked(key: string) {
+  const client = createClient({ url: databaseUrl(), authToken: process.env.TURSO_AUTH_TOKEN });
+  try {
+    const result = await client.execute({ sql: "SELECT 1 FROM rate_limits WHERE key = ? AND reset_at > ?", args: [key, Date.now()] });
+    return result.rows.length > 0;
   } finally {
     client.close();
   }
