@@ -30,6 +30,29 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       # Despliegue por API de cPanel contra un cPanel simulado (subir, extraer, activar, restaurar).
       - run: node --test ../.github/scripts/cpanel-deploy.test.mjs
       - run: npm run build
+
+  # El empaquetado validado (contenido prohibido, módulos nativos de Linux x64, secretos, prueba de arranque) antes solo corría al
+  # desplegar: una dependencia nueva podía romperlo ya fusionada (pasó con sharp-wasm32). Aquí corre en cada PR, sin subir nada.
+  # En el despliegue no se repite: deploy.yml reutiliza este flujo y empaqueta después.
+  paquete:
+    name: Empaquetado para cPanel
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.23.2"
+
+      - name: Empaquetar y validar (sin subir)
+        run: npm run package:cpanel

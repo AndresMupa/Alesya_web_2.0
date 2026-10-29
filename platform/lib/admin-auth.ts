@@ -3,13 +3,15 @@ import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual } from "no
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { blockKey, isKeyBlocked } from "@/lib/rate-limit";
+import { securityLog } from "@/lib/security-log";
 
 const derive = promisify(scrypt);
 export const ADMIN_COOKIE = "alesya_admin";
 export const SESSION_SECONDS = 60 * 60 * 8;
 export const adminConfigured = () => Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD_HASH && (process.env.ADMIN_SESSION_SECRET?.length ?? 0) >= 32);
 const sign = (value: string) => createHmac("sha256", process.env.ADMIN_SESSION_SECRET!).update(value).digest("base64url");
-const credentialVersion = () => createHash("sha256").update(process.env.ADMIN_PASSWORD_HASH!).digest("hex");
+export const credentialVersion = () => createHash("sha256").update(process.env.ADMIN_PASSWORD_HASH!).digest("hex");
 
 export async function verifyAdmin(email: string, password: string) {
   if (!adminConfigured() || password.length > 256) return false;
@@ -37,8 +39,23 @@ export async function getAdmin() {
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
     const session = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (typeof session.exp !== "number" || session.exp <= Date.now() / 1000 || session.version !== credentialVersion() || session.email !== process.env.ADMIN_EMAIL!.toLowerCase()) return null;
+    // Una sesión cerrada con «Cerrar sesión» deja de valer aunque la cookie siga sin vencer (copiada, o de otro navegador).
+    if (typeof session.nonce !== "string" || await isKeyBlocked(revokedKey(session.nonce))) return null;
     return { email: session.email as string };
   } catch { return null; }
+}
+
+const revokedKey = (nonce: string) => `revoked:${nonce}`;
+
+/** Invalida en el servidor la sesión de esta cookie hasta su vencimiento natural. */
+export async function revokeSession(token: string | undefined) {
+  if (!token || token.length > 2048) return;
+  try {
+    const [payload, signature, extra] = token.split(".");
+    if (!payload || !signature || extra || sign(payload) !== signature) return;
+    const session = JSON.parse(Buffer.from(payload, "base64url").toString());
+    if (typeof session.nonce === "string" && typeof session.exp === "number") await blockKey(revokedKey(session.nonce), session.exp * 1000);
+  } catch (error) { console.error("admin_session_revoke_failed", error); }
 }
 
 export function sameOrigin(request: Request) {
@@ -60,7 +77,7 @@ export async function guardAdmin(request?: Request) {
 export async function authorizeAdmin(request?: Request): Promise<{ email: string } | Response> {
   const admin = await getAdmin();
   if (!admin) return Response.json({ message: "Inicia sesión para continuar." }, { status: 401, headers: { "Cache-Control": "no-store" } });
-  if (request && !sameOrigin(request)) return Response.json({ message: "Solicitud no permitida." }, { status: 403 });
+  if (request && !sameOrigin(request)) { securityLog("origin_rejected", request, { route: "admin-api" }); return Response.json({ message: "Solicitud no permitida." }, { status: 403 }); }
   return admin;
 }
 

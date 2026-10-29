@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getAdmin, sameOrigin } from "@/lib/admin-auth";
 import { notifyProposalOpened, recordProposalRead } from "@/lib/crm/proposal";
 import { PROPOSAL_SECTIONS, proposalSectionIds } from "@/lib/crm/proposal-plan";
-import { fail, handleError, ok, readBody } from "@/lib/http";
+import { PUBLIC_BODY_LIMIT, fail, handleError, ok, readBody } from "@/lib/http";
 import { publicOrigin } from "@/lib/payments/wompi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (limited) return limited;
   const { token } = await params;
   if (!/^[a-f0-9]{32}$/.test(token)) return fail("Propuesta no válida.", 404);
-  const body = await readBody(request, schema, "Lectura no válida."); if (body instanceof Response) return body;
+  const body = await readBody(request, schema, "Lectura no válida.", PUBLIC_BODY_LIMIT); if (body instanceof Response) return body;
   if (await getAdmin()) return ok({ tracked: false, preview: true });
   try {
     const result = await recordProposalRead(token, body.visit, { sections: [...new Set(body.sections)], seconds: body.seconds, arena: body.arena });

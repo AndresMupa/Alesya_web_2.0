@@ -39,11 +39,13 @@ export function LeadDrawer({ leadId, asesor = "", onClose, onChanged }: { leadId
 }
 
 function ContactLinks({ lead }: { lead: Lead }) {
-  const wa = whatsappLink(lead.phone, `Hola ${lead.name.split(" ")[0]}, te escribimos de Alesya X-Tech.`);
+  // Con baja de comunicaciones comerciales no hay atajos de WhatsApp ni de correo (la llamada sigue); el compositor de la ficha pide confirmar.
+  const optedOut = !!lead.marketingOptOutAt;
+  const wa = optedOut ? null : whatsappLink(lead.phone, `Hola ${lead.name.split(" ")[0]}, te escribimos de Alesya X-Tech.`);
   return <div className="adm-contact-links">
     {wa && <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"><MessageCircle size={16} /></a>}
     {lead.phone && <a href={`tel:${lead.phone.split(/[;,/]/)[0].trim()}`} title="Llamar"><Phone size={16} /></a>}
-    {lead.email && <a href={`mailto:${lead.email}`} title="Correo"><Mail size={16} /></a>}
+    {lead.email && !optedOut && <a href={`mailto:${lead.email}`} title="Correo"><Mail size={16} /></a>}
   </div>;
 }
 

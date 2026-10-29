@@ -32,12 +32,31 @@ npm run admin:setup -- --production correo@dominio.co
 
 El correo, la contraseña y las líneas `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` y `ADMIN_SESSION_SECRET` listas para pegar quedan en `.local/admin-cpanel.txt`; nada se imprime en la terminal. Si el archivo ya existe no se sobrescribe; añade `--force` para regenerarlo.
 
+### Verificación en dos pasos (2FA) del panel
+
+El acceso a `/admin` admite un segundo factor TOTP (código de 6 dígitos de Google Authenticator, Authy y similares), opcional pero recomendado. Se activa con la variable `ADMIN_TOTP_SECRET`:
+
+- **Sin `ADMIN_TOTP_SECRET`** el acceso sigue siendo solo correo + contraseña (así un despliegue no deja al dueño fuera) y el servidor registra un aviso de seguridad `admin_2fa_disabled`.
+- **Con `ADMIN_TOTP_SECRET`** el segundo factor es obligatorio: tras la contraseña correcta el panel pide el código en la misma pantalla y la sesión solo se emite con ambos factores.
+
+Para generar el secreto y los códigos de recuperación:
+
+```sh
+npm run admin:totp                 # local: escribe ADMIN_TOTP_SECRET y ADMIN_RECOVERY_HASHES en .env.local
+npm run admin:totp -- --production # cPanel: deja las variables listas para pegar, sin tocar .env.local
+```
+
+El script escribe en `.local/` (ignorado por Git) el URI `otpauth://` para escanear con la app autenticadora y **10 códigos de recuperación de un solo uso**; de los códigos solo se guarda su hash (`ADMIN_RECOVERY_HASHES`), nunca el código en claro. Guarda los códigos de recuperación en tu gestor de contraseñas. Usa `--quiet` para no mostrar el URI ni los códigos en la terminal y `--force` para rotar uno ya configurado.
+
+**Si pierdes el teléfono:** entra con un código de recuperación (cada uno sirve una vez) y vuelve a ejecutar `npm run admin:totp -- --force` para generar un secreto nuevo. Si no tienes códigos de recuperación, borra la variable `ADMIN_TOTP_SECRET` del entorno (en cPanel, "Setup Node.js App" → **Restart**): el acceso vuelve a ser solo correo + contraseña y puedes reconfigurar el 2FA.
+
 ## Variables de entorno
 
 | Variable | Uso |
 | --- | --- |
 | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Base de datos persistente (producción). |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET` | Acceso al panel `/admin`. Se generan con `npm run admin:setup`. |
+| `ADMIN_TOTP_SECRET`, `ADMIN_RECOVERY_HASHES` | Verificación en dos pasos del panel (opcional). Se generan con `npm run admin:totp`. Con `ADMIN_TOTP_SECRET` el 2FA es obligatorio; sin ella, solo correo + contraseña. |
 | `WOMPI_PUBLIC_KEY`, `WOMPI_INTEGRITY_SECRET` | Firma del checkout. Sin ellas el pedido se registra pero no se abre el cobro. |
 | `WOMPI_EVENTS_SECRET` | Verificación de la firma del webhook `/api/webhooks/wompi`. |
 | `ALESYA_DATA_DIR` | Carpeta privada para SQLite en cPanel; por defecto `~/alesya-data` (con `npm start` en local, `.local`). |
@@ -124,6 +143,7 @@ Las fotos y videos que se suben desde el panel se guardan en `ALESYA_DATA_DIR/up
 - `npm run build`: compilación de producción en `.next/standalone`, con estáticos y `public/` copiados.
 - `npm start`: aplica las migraciones pendientes y arranca el servidor standalone (requiere `npm run build`).
 - `npm run admin:setup -- correo@dominio.co`: credenciales de `/admin` en `.env.local`. Con `--production` las escribe en `.local/admin-cpanel.txt` para cPanel (`--force` para sobrescribir).
+- `npm run admin:totp`: secreto TOTP y códigos de recuperación para la verificación en dos pasos del panel (ver "Verificación en dos pasos"). Con `--production` deja las variables listas para cPanel; `--quiet` oculta el URI y los códigos en la terminal; `--force` rota uno existente.
 - `npm run lint`: ESLint.
 - `npm run db:generate`: genera una migración después de cambiar `db/schema.ts`.
 - `npm run db:migrate`: aplica las migraciones pendientes (usa `TURSO_DATABASE_URL` si está definida).
