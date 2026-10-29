@@ -75,6 +75,9 @@ ALESYA_DATA_DIR=/home/alesyaed/alesya-data
 ADMIN_EMAIL
 ADMIN_PASSWORD_HASH
 ADMIN_SESSION_SECRET
+# Verificación en dos pasos del panel (opcional; sin estas, el acceso es solo correo + contraseña):
+# ADMIN_TOTP_SECRET
+# ADMIN_RECOVERY_HASHES
 WOMPI_PUBLIC_KEY
 WOMPI_INTEGRITY_SECRET
 WOMPI_EVENTS_SECRET
@@ -117,6 +120,16 @@ Comprobar en `/admin/ventas?tab=captacion` (**Revisar ahora**). La primera revis
 Las variables `SMTP_*` y `MAIL_FROM` activan el correo transaccional (pedido recibido, pago confirmado, envío y avisos al equipo). Se obtienen en cPanel → **Cuentas de correo** → *Connect Devices* de la cuenta que enviará; sin ellas la tienda funciona igual pero no envía correos (Integraciones lo indica). Después de pegarlas, **Restart** y probar con **Configuración → Enviar correo de prueba**.
 
 Las credenciales de `/admin` se generan con `npm run admin:setup -- --production --force correo@dominio.co` (quedan en `.local/admin-cpanel.txt`); después de pegarlas hay que pulsar **Restart**. Los valores secretos no deben escribirse en este documento.
+
+### Verificación en dos pasos del panel (2FA)
+
+El acceso a `/admin` admite un segundo factor TOTP (código de una app autenticadora). Es opcional pero muy recomendable, porque hoy el panel (leads con datos personales, pedidos, exportaciones) se protege solo con contraseña.
+
+1. Generar el secreto y los códigos de recuperación: `npm run admin:totp -- --production` (no toca `.env.local`; deja el URL `otpauth://`, 10 códigos de recuperación de un solo uso y las variables `ADMIN_TOTP_SECRET` y `ADMIN_RECOVERY_HASHES` en `.local/admin-totp-cpanel.txt`). Escanear el URI con Google Authenticator/Authy y guardar los códigos de recuperación en el gestor de contraseñas.
+2. En "Setup Node.js App" agregar `ADMIN_TOTP_SECRET` y `ADMIN_RECOVERY_HASHES` con esos valores y pulsar **Restart**. Desde ese momento el panel pide el código de 6 dígitos después de la contraseña.
+3. Comprobar el acceso con la app autenticadora antes de cerrar la sesión actual.
+
+**Recuperar el acceso si se pierde el teléfono:** entrar con un código de recuperación (cada uno sirve una vez) y volver a ejecutar `npm run admin:totp -- --production --force` para rotar el secreto, o —si no quedan códigos— borrar la variable `ADMIN_TOTP_SECRET` en "Setup Node.js App" y **Restart**: el acceso vuelve a ser solo correo + contraseña y se puede reconfigurar el 2FA. Los códigos y el secreto nunca deben escribirse en este documento ni subirse al repositorio.
 
 Antes de activar pagos reales se debe configurar en Wompi:
 

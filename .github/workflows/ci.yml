@@ -30,6 +30,7 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       # Despliegue por API de cPanel contra un cPanel simulado (subir, extraer, activar, restaurar).
       - run: node --test ../.github/scripts/cpanel-deploy.test.mjs
       - run: npm run build

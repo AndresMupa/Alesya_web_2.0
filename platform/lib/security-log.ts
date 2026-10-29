@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { trustedClientAddress } from "@/lib/client-ip";
 
 export type SecurityEvent =
-  | "admin_login_ok" | "admin_login_failed" | "admin_login_blocked" | "admin_logout"
+  | "admin_login_ok" | "admin_login_failed" | "admin_login_blocked" | "admin_logout" | "admin_2fa_disabled" | "admin_recovery_code_used"
   | "wompi_signature_invalid" | "cron_unauthorized" | "rate_limited" | "origin_rejected" | "csp_violation";
 
 /**

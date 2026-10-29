@@ -16,6 +16,8 @@
     "db:seed": "node --env-file-if-exists=.env.local scripts/seed-demo.mjs",
     "inventory:import": "node --env-file-if-exists=.env.local scripts/import-inventory.mjs",
     "admin:setup": "node scripts/setup-admin.mjs",
+    "admin:totp": "node scripts/setup-admin-totp.mjs",
+    "test": "node --test --experimental-strip-types",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "package:cpanel": "node scripts/package-cpanel.mjs"
