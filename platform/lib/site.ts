@@ -1,10 +1,10 @@
 /**
  * Identidad pública del sitio: dominio canónico, nombre y datos de contacto. Seguro para cliente y servidor.
- * El dominio sale de `PRODUCTION_URL` (cPanel → Setup Node.js App). Al pasar al dominio principal basta con
- * cambiar esa variable a https://www.alesyaediciones.com y reiniciar: enlaces canónicos, sitemap, robots, datos
- * estructurados, correos y pagos toman el nuevo dominio.
+ * El dominio sale de `PRODUCTION_URL` (cPanel → Setup Node.js App): enlaces canónicos, sitemap, robots, datos
+ * estructurados, correos y pagos lo toman de ahí. En el navegador esa variable no existe y se usa el respaldo, que
+ * desde el cambio de dominio (29 de octubre de 2026) es el dominio principal.
  */
-const FALLBACK_URL = "https://nueva.alesyaediciones.com";
+const FALLBACK_URL = "https://www.alesyaediciones.com";
 
 export function siteUrl() {
   const value = (typeof process !== "undefined" ? process.env.PRODUCTION_URL : undefined)?.trim().replace(/\/+$/, "");
