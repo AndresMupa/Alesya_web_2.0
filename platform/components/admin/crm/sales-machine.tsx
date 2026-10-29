@@ -51,7 +51,7 @@ function useInboxAutoSync(onNews: () => void) {
     if (inboxChecked) return;
     inboxChecked = true;
     fetch("/api/admin/crm/inbox", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ifStale: true }) })
-      .then((response) => response.ok ? response.json() as Promise<{ created: number; matched: number; fresh?: boolean }> : null)
+      .then((response) => response.ok ? response.json() as Promise<{ created: number; matched: number; quarantined?: number; fresh?: boolean }> : null)
       .then((result) => {
         const summary = result && !result.fresh ? syncSummary(result) : "";
         if (summary) { toast.success(`Llegaron por correo: ${summary}.`); onNews(); }

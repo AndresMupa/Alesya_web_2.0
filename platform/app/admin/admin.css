@@ -571,3 +571,12 @@ a.activity-item:hover span { text-decoration:underline; }
 .adm-inbox-list .status-pill { margin-right:4px; padding:3px 7px; }
 .status-pill[data-result="matched"] { background:#dff3fb; color:#155a78; }
 .status-pill[data-result="skipped"] { background:#eceff2; color:#5b6573; }
+.adm-inbox-list li[data-result="quarantined"] { border-left-color:#e8a317; }
+.adm-inbox-list li[data-level="dangerous"] { border-left-color:#c62828; background:#fff6f5; }
+.status-pill[data-result="quarantined"] { background:#fff1d6; color:#7a4b00; }
+.status-pill[data-level="dangerous"] { background:#fde2df; color:#9b1c1c; }
+.adm-guard-signals { margin:4px 0 0; padding-left:18px; font-size:12px; color:#4b5563; line-height:1.5; }
+.adm-queue .adm-guard-signals li { display:list-item; padding:0; background:none; border:0; }
+.adm-guard-signals small { color:#8a93a0; }
+.adm-guard-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+.adm-guard-actions label { display:flex; align-items:center; gap:5px; font-size:12px; color:#5b6573; white-space:nowrap; }

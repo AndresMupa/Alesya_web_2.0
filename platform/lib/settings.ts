@@ -12,6 +12,8 @@ export const settingDefaults = {
   "crm.daily_goal": "20",
   /** Remitentes que la captación por correo no convierte en leads: direcciones o dominios (proveedores, bancos…). */
   "crm.inbox_ignore": "",
+  /** Remitentes de confianza que el guardián del correo no revisa: direcciones o dominios. */
+  "crm.inbox_trust": "",
 } as const;
 
 export type SettingKey = keyof typeof settingDefaults;
