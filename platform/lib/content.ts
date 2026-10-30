@@ -4,7 +4,7 @@ import { BookOpen, Bot, Cpu, PackageOpen, Printer, Wrench, type LucideIcon } fro
 export const learningPaths = [
   { title: "Circuitos que cuentan historias", detail: "Electrónica + creatividad", level: "Inicial" },
   { title: "Robot seguidor de línea", detail: "Arduino + sensores", level: "Intermedio" },
-  { title: "Mecanismos en movimiento", detail: "LEGO WeDo", level: "Inicial" },
+  { title: "Mecanismos en movimiento", detail: "MART-02", level: "Inicial" },
   { title: "Diseña una ayuda técnica", detail: "Impresión 3D + diseño", level: "Avanzado" },
 ];
 
@@ -12,7 +12,7 @@ export type Tone = "cyan" | "yellow" | "coral" | "violet" | "mint";
 
 /** Presentación de cada categoría en la tienda: icono de respaldo cuando no hay foto, color y texto. */
 const categories: Record<string, { icon: LucideIcon; tone: Tone; detail: string }> = {
-  "Robótica": { icon: Bot, tone: "yellow", detail: "Kits LEGO EV3, WeDo, Talebot y retos de programación." },
+  "Robótica": { icon: Bot, tone: "yellow", detail: "Kits TECH-R3, MART-02, Talebot y retos de programación." },
   "Electrónica": { icon: Cpu, tone: "cyan", detail: "Arduino, sensores, actuadores y componentes." },
   "Impresión 3D": { icon: Printer, tone: "violet", detail: "Impresión 3D, diseño y prototipado." },
   "Bricolaje": { icon: Wrench, tone: "coral", detail: "Materiales y guías para construir con las manos." },

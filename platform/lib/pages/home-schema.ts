@@ -76,7 +76,7 @@ export function defaultHomeDocument(): HomeDocument {
       {
         id: "hero", type: "hero", enabled: true, captionTop: "ALESYA X-TECH", captionBottom: "El mundo es tu laboratorio", poster: "/media/clientes-robotica-ev3.jpeg",
         slides: [
-          { id: "hero-robotica", name: "Robótica", label: "Construye. Programa. Dale vida.", title: "La próxima gran idea", accent: "empieza contigo.", description: "Un robot que se mueve. Una pregunta que despierta. Descubre lo que puedes crear cuando aprendes haciendo.", video: "/media/robotica-aula.mp4", image: "", color: "#d7ff43", primaryLabel: "Empieza a explorar", primaryHref: categoryLink("LEGO EV3"), secondaryLabel: "Encuentra tu kit", secondaryHref: "/catalogo" },
+          { id: "hero-robotica", name: "Robótica", label: "Construye. Programa. Dale vida.", title: "La próxima gran idea", accent: "empieza contigo.", description: "Un robot que se mueve. Una pregunta que despierta. Descubre lo que puedes crear cuando aprendes haciendo.", video: "/media/robotica-aula.mp4", image: "", color: "#d7ff43", primaryLabel: "Empieza a explorar", primaryHref: categoryLink("TECH-R3"), secondaryLabel: "Encuentra tu kit", secondaryHref: "/catalogo" },
           { id: "hero-electronica", name: "Electrónica", label: "Conecta tu curiosidad.", title: "Pequeños circuitos.", accent: "Grandes posibilidades.", description: "Sensores, luces y código: experimenta con Arduino y transforma una idea en algo que responde al mundo.", video: "/media/electronica.mp4", image: "", color: "#69e2ff", primaryLabel: "Empieza a explorar", primaryHref: categoryLink("Arduino"), secondaryLabel: "Encuentra tu kit", secondaryHref: "/catalogo" },
           { id: "hero-3d", name: "Diseño 3D", label: "De tu imaginación a tus manos.", title: "Si puedes imaginarlo,", accent: "puedes construirlo.", description: "Explora el diseño y la impresión 3D. Aprende a dar forma a tus ideas, una capa a la vez.", video: "/media/impresion-3d.mp4", image: "", color: "#c2a6ff", primaryLabel: "Empieza a explorar", primaryHref: categoryLink("Impresión 3D"), secondaryLabel: "Encuentra tu kit", secondaryHref: "/catalogo" },
           { id: "hero-steam", name: "STEAM", label: "Ciencia, tecnología y creatividad.", title: "Todo encaja", accent: "cuando lo construyes.", description: "Mecanismos, circuitos y código trabajando juntos: aprende a conectar las piezas de una gran idea.", video: "/media/hero-steam.mp4", image: "", color: "#ffd54a", primaryLabel: "Empieza a explorar", primaryHref: "/proyectos", secondaryLabel: "Encuentra tu kit", secondaryHref: "/catalogo" },
@@ -86,15 +86,15 @@ export function defaultHomeDocument(): HomeDocument {
       {
         id: "categories", type: "categories", enabled: true, eyebrow: "Encuentra tu próxima aventura", title: "¿Qué quieres", accent: "crear hoy?", intro: "Empieza con una curiosidad. Encuentra el proyecto, aprende a tu ritmo y descubre hasta dónde puedes llegar.",
         items: [
-          { id: "cat-ev3", icon: "bot", title: "LEGO EV3", copy: "Retos de construcción, sensores, motores y programación por bloques.", color: "#ffd54a", href: categoryLink("LEGO EV3") },
-          { id: "cat-wedo", icon: "boxes", title: "LEGO WeDo", copy: "Primeros pasos en mecanismos y pensamiento computacional para primaria.", color: "#34d8ff", href: categoryLink("LEGO WeDo") },
+          { id: "cat-ev3", icon: "bot", title: "TECH-R3", copy: "Retos de construcción, sensores, motores y programación por bloques.", color: "#ffd54a", href: categoryLink("TECH-R3") },
+          { id: "cat-wedo", icon: "boxes", title: "MART-02", copy: "Primeros pasos en mecanismos y pensamiento computacional para primaria.", color: "#34d8ff", href: categoryLink("MART-02") },
           { id: "cat-arduino", icon: "circuit", title: "Arduino", copy: "Electrónica aplicada con microcontroladores, sensores y proyectos reales.", color: "#d7ff43", href: categoryLink("Arduino") },
           { id: "cat-bricolaje", icon: "wrench", title: "Bricolaje", copy: "Construye objetos útiles mientras aprendes diseño, medida y fabricación.", color: "#ff755f", href: categoryLink("Bricolaje") },
           { id: "cat-3d", icon: "printer", title: "Impresión 3D", copy: "Modelado, prototipado y piezas que conectan las ideas con el mundo físico.", color: "#a889ff", href: categoryLink("Impresión 3D") },
         ],
       },
       {
-        id: "story", type: "story", enabled: true, eyebrow: "Proyecto destacado", kicker: "01 / 04", title: "Programa un robot que entiende su entorno.", text: "Del primer mecanismo al desafío autónomo: una ruta EV3 con guías docentes, actividades de aula y piezas listas para construir.", video: "/media/lego-ev3.mp4", image: "",
+        id: "story", type: "story", enabled: true, eyebrow: "Proyecto destacado", kicker: "01 / 04", title: "Programa un robot que entiende su entorno.", text: "Del primer mecanismo al desafío autónomo: una ruta TECH-R3 con guías docentes, actividades de aula y piezas listas para construir.", video: "/media/lego-ev3.mp4", image: "",
         meta: [{ id: "story-edad", label: "Edad", value: "10–16 años" }, { id: "story-duracion", label: "Duración", value: "6 sesiones" }, { id: "story-nivel", label: "Nivel", value: "Intermedio" }], linkLabel: "Ver ruta completa", linkHref: "/proyectos",
       },
       { id: "paths", type: "paths", enabled: true, eyebrow: "Rutas de aprendizaje", title: "De la curiosidad a la creación.", linkLabel: "Ver todas las rutas", linkHref: "/proyectos", items: learningPaths.map((path, index) => ({ id: `path-${index + 1}`, title: path.title, detail: path.detail, level: path.level, href: "/proyectos" })) },
@@ -120,7 +120,7 @@ export function defaultHomeDocument(): HomeDocument {
         ],
         photos: [
           { id: "photo-ev3", image: "/media/clientes-robotica-ev3.jpeg", alt: "Estudiantes presentando proyectos de robótica educativa", caption: "Robótica que se demuestra, se comparte y se celebra." },
-          { id: "photo-wedo", image: "/media/clientes-lego-wedo.jpeg", alt: "Estudiante construyendo un proyecto con LEGO WeDo", caption: "Aprendizaje activo desde los primeros mecanismos." },
+          { id: "photo-wedo", image: "/media/clientes-lego-wedo.jpeg", alt: "Estudiante construyendo un proyecto con el kit MART-02", caption: "Aprendizaje activo desde los primeros mecanismos." },
         ],
       },
       {
