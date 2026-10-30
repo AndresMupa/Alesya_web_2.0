@@ -4,7 +4,8 @@ import { trustedClientAddress } from "@/lib/client-ip";
 
 export type SecurityEvent =
   | "admin_login_ok" | "admin_login_failed" | "admin_login_blocked" | "admin_logout" | "admin_2fa_disabled" | "admin_recovery_code_used"
-  | "wompi_signature_invalid" | "cron_unauthorized" | "rate_limited" | "origin_rejected" | "csp_violation";
+  | "wompi_signature_invalid" | "cron_unauthorized" | "rate_limited" | "origin_rejected" | "csp_violation"
+  | "mail_quarantined" | "mail_released";
 
 /**
  * Registro de eventos de seguridad: una línea JSON por evento en el log de la aplicación (en cPanel, el de "Setup Node.js App").

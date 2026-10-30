@@ -12,6 +12,7 @@ const schema = z.object({
   "mail.notify_to": z.union([z.string().trim().email().max(180), z.literal("")]).optional(),
   "crm.daily_goal": z.string().trim().regex(/^\d{1,4}$/).optional(),
   "crm.inbox_ignore": z.string().trim().max(2000).optional(),
+  "crm.inbox_trust": z.string().trim().max(2000).optional(),
 });
 
 export async function GET() {

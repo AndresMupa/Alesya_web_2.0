@@ -45,6 +45,8 @@ export const inboundEmails = sqliteTable("inbound_emails", {
   id: text("id").primaryKey(), messageId: text("message_id").notNull(), mailbox: text("mailbox").notNull(), uidValidity: text("uid_validity").notNull(), uid: integer("uid").notNull(),
   fromEmail: text("from_email"), fromName: text("from_name"), subject: text("subject").notNull().default(""), receivedAt: integer("received_at", { mode: "timestamp_ms" }),
   result: text("result").notNull(), reason: text("reason"), leadId: text("lead_id").references(() => leads.id), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  // Guardián del correo: puntaje 0–100, nivel ("ok" | "suspicious" | "dangerous") y señales (JSON con { code, label, points }).
+  riskScore: integer("risk_score"), riskLevel: text("risk_level"), riskSignals: text("risk_signals"),
 }, (table) => [uniqueIndex("idx_inbound_emails_message_id").on(table.messageId), index("idx_inbound_emails_cursor").on(table.mailbox, table.uidValidity, table.uid), index("idx_inbound_emails_created").on(table.createdAt)]);
 
 // ── Comercio ─────────────────────────────────────────────────────────────────
