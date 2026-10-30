@@ -144,13 +144,15 @@ async function persist(message: InboundMessage, decision: Decision, meta: { mail
   const summary = `${viaDomain ? `Escribió otra persona de la institución: ${who}` : `De ${who}`} · ${quote(message.subject)}${body ? ` — ${excerpt(body, 280)}` : ""}`;
   const today = bogotaDay();
   await db.transaction(async (tx) => {
-    const [lead] = await tx.select({ stage: leads.stage, nextFollowUp: leads.nextFollowUp }).from(leads).where(eq(leads.id, leadId)).limit(1);
+    const [lead] = await tx.select({ stage: leads.stage, nextFollowUp: leads.nextFollowUp, marketingOptOutAt: leads.marketingOptOutAt }).from(leads).where(eq(leads.id, leadId)).limit(1);
     await tx.insert(inboundEmails).values({ ...row, leadId });
     await tx.insert(leadActivities).values({ id: crypto.randomUUID(), leadId, type: "email_in", summary, createdBy: null, createdAt: now });
     const changes: Partial<typeof leads.$inferInsert> = { updatedAt: now };
     // Quien escribe pide respuesta hoy: prioridad alta y a la agenda del día. Una oportunidad perdida que vuelve a
-    // escribir se reabre (la conversación volvió); un cliente ganado solo suma la gestión a su historial.
-    const reopen = lead?.stage === "lost";
+    // escribir se reabre (la conversación volvió); un cliente ganado solo suma la gestión a su historial. Excepción:
+    // si se dio de baja hace menos de una semana, este correo suele ser la propia baja ("STOP" a Harvey) y no se reabre.
+    const optedOutRecently = !!lead?.marketingOptOutAt && now.getTime() - new Date(lead.marketingOptOutAt).getTime() < 7 * 86_400_000;
+    const reopen = lead?.stage === "lost" && !optedOutRecently;
     if (lead && (reopen || openLeadStages.includes(lead.stage as LeadStage))) {
       changes.priority = "high";
       if (reopen || !lead.nextFollowUp || lead.nextFollowUp > today) { changes.nextFollowUp = today; changes.nextAction = "Responder el correo recibido"; }
