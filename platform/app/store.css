@@ -73,6 +73,8 @@
 .store-breadcrumb a { color:var(--ink); }
 .store-product { display:grid; grid-template-columns:1.05fr 1fr; gap:48px; align-items:start; }
 .store-product-visual { height:auto; aspect-ratio:1; border:1px solid var(--line); }
+.image-credit { margin:10px 0 0; font-size:11px; line-height:1.5; color:var(--muted); }
+.image-credit a { color:inherit; text-decoration:underline; }
 .store-product-info h1 { font-size:clamp(32px,4vw,52px); letter-spacing:-.04em; line-height:1; margin:8px 0 18px; }
 .store-price { display:block; font-size:32px; letter-spacing:-.02em; }
 .store-stock { display:inline-flex; margin:12px 0 0; padding:5px 10px; border-radius:20px; font-size:12px; font-weight:800; background:#e3f8e7; color:#247341; }

@@ -5,6 +5,7 @@ import { WaitlistForm } from "@/components/lead-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { AddToCartPanel } from "@/components/store/add-to-cart";
+import { ImageCredit } from "@/components/store/image-credit";
 import { ProductCard, ProductVisual } from "@/components/store/product-card";
 import { getRelatedProducts, getStoreProduct, type StoreProduct } from "@/lib/commerce/catalog";
 import { stockState } from "@/lib/commerce/constants";
@@ -64,7 +65,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <div className="page-width">
       <nav className="store-breadcrumb" aria-label="Ruta"><Link href="/catalogo">Tienda</Link><span>/</span><Link href={`/catalogo?categoria=${encodeURIComponent(product.category)}#productos`}>{product.category}</Link><span>/</span><span aria-current="page">{product.name}</span></nav>
       <section className="store-product">
-        <div className={`product-visual store-product-visual${product.imageUrl ? " has-image" : ""}`} data-tone={tone}><ProductVisual product={product} size={120} /></div>
+        <div className="store-product-media">
+          <div className={`product-visual store-product-visual${product.imageUrl ? " has-image" : ""}`} data-tone={tone}><ProductVisual product={product} size={120} /></div>
+          <ImageCredit src={product.imageUrl} />
+        </div>
         <div className="store-product-info">
           <p className="product-type">{product.category}</p>
           <h1>{product.name}</h1>
