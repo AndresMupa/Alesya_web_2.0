@@ -64,7 +64,7 @@ El script escribe en `.local/` (ignorado por Git) el URI `otpauth://` para escan
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Correo transaccional (pedido recibido, pago confirmado, envío, avisos al equipo). En cPanel: una cuenta de correo del dominio, puerto 465. Sin ellas no se envía nada; en desarrollo el correo se imprime en la consola. |
 | `IMAP_USER`, `IMAP_PASS`, `IMAP_HOST`, `IMAP_PORT`, `IMAP_MAILBOX` | Captación por correo: buzón que recibe a los clientes (en cPanel, una cuenta del dominio, puerto 993, carpeta `INBOX`). Solo se lee. `IMAP_USER` la activa; si es la misma cuenta de `SMTP_USER`, sin `IMAP_HOST` ni `IMAP_PASS` se usan los de SMTP. |
 | `CRON_SECRET` | Token (16+ caracteres) de los cron de cPanel: `/api/cron/daily` y `/api/cron/inbox`. |
-| `PRODUCTION_URL` | Dominio canónico (`https://nueva.alesyaediciones.com`; tras el cambio, `https://www.alesyaediciones.com`): enlaces canónicos, sitemap, `robots.txt`, datos estructurados, correos y regreso de Wompi. |
+| `PRODUCTION_URL` | Dominio canónico (`https://www.alesyaediciones.com` desde el 29 de octubre de 2026): enlaces canónicos, sitemap, `robots.txt`, datos estructurados, correos y regreso de Wompi. |
 | `CANONICAL_REDIRECT` | `1` redirige de forma permanente cualquier otro nombre del sitio (sin www, `nueva.`) al dominio de `PRODUCTION_URL` (`proxy.ts`). Apagado por defecto; se activa en el cambio de dominio. |
 
 La configuración que no es secreta (WhatsApp comercial, instrucciones de pago manual, envío por defecto, correo de avisos) se edita en **`/admin/configuracion`** y se guarda en la tabla `settings`.

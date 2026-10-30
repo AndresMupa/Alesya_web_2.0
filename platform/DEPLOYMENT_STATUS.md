@@ -8,12 +8,12 @@ Publicar la nueva plataforma Next.js de Alesya directamente en Colombia Hosting/
 
 ## Estado actual
 
-- La plataforma está publicada y funcionando en `https://nueva.alesyaediciones.com`, con acceso a `/admin` verificado.
+- La plataforma está publicada en `https://www.alesyaediciones.com` desde el 29 de octubre de 2026; `alesyaediciones.com` y `nueva.alesyaediciones.com` redirigen allí de forma permanente.
 - WordPress continúa funcionando en `https://www.alesyaediciones.com` y todavía no debe modificarse.
 - Aplicación Node.js en cPanel ("Setup Node.js App"):
   - Node.js `22.23.2`, modo `Production`.
   - Raíz de aplicación: `/home/alesyaed/alesya-platform`.
-  - URL: `nueva.alesyaediciones.com`.
+  - URL: `alesyaediciones.com` (sirve también `www.`; antes `nueva.alesyaediciones.com`).
   - Archivo de inicio: `server.js`.
 - Base SQLite persistente en `/home/alesyaed/alesya-data/alesya.db`, fuera de la raíz de la aplicación: los despliegues no la tocan.
 
@@ -58,7 +58,7 @@ Entorno `production` (Settings → Environments), limitado a la rama `main-rzbi9
 | `CPANEL_SSH_USER` | Secret | Usuario de la cuenta de cPanel (`alesyaed`), para autenticar la API. Si se crea `CPANEL_USER`, se usa ese. |
 | `CPANEL_APP_DIR` | Secret | `/home/alesyaed/alesya-platform`. |
 | `CPANEL_API_URL` | Variable | `https://alesyaediciones.com:2083` (la IP no sirve: el certificado no coincide). |
-| `PRODUCTION_URL` | Variable | `https://nueva.alesyaediciones.com`. |
+| `PRODUCTION_URL` | Variable | `https://www.alesyaediciones.com`. |
 
 Los secrets `CPANEL_SSH_HOST`, `CPANEL_SSH_PORT`, `CPANEL_SSH_KEY` y `CPANEL_SSH_KNOWN_HOSTS` ya no se usan desde que el despliegue va solo por la API. Cuando un despliegue por API haya funcionado se pueden borrar, junto con la clave SSH `github_deploy` en cPanel → Acceso a SSH (no confundir con el token de API del mismo nombre, que sí se usa).
 
@@ -81,7 +81,7 @@ ADMIN_SESSION_SECRET
 WOMPI_PUBLIC_KEY
 WOMPI_INTEGRITY_SECRET
 WOMPI_EVENTS_SECRET
-PRODUCTION_URL=https://nueva.alesyaediciones.com
+PRODUCTION_URL=https://www.alesyaediciones.com
 SMTP_HOST=mail.alesyaediciones.com
 SMTP_PORT=465
 SMTP_USER=comercial@alesyaediciones.com
@@ -91,8 +91,8 @@ CRON_SECRET
 # Captación por correo (si es la misma cuenta de SMTP_USER basta IMAP_USER):
 IMAP_USER=comercial@alesyaediciones.com
 # IMAP_PASS, IMAP_HOST=mail.alesyaediciones.com, IMAP_PORT=993, IMAP_MAILBOX=INBOX
-# Solo al pasar al dominio principal (ver "Cambio al dominio principal"):
-# CANONICAL_REDIRECT=1
+# Activo en producción desde el cambio al dominio principal:
+CANONICAL_REDIRECT=1
 ```
 
 `PRODUCTION_URL` es el dominio canónico del sitio: de ahí salen los enlaces canónicos, el sitemap, `robots.txt`, los datos estructurados para Google, los enlaces de los correos y la URL de regreso de Wompi. `robots.txt` solo permite rastrear ese dominio; cualquier otro nombre que sirva la app pide no indexar. Con `CANONICAL_REDIRECT=1` toda visita por otro nombre (sin www, `nueva.`) se redirige de forma permanente a `PRODUCTION_URL` (no afecta `/api`).
@@ -102,7 +102,7 @@ IMAP_USER=comercial@alesyaediciones.com
 Con `CRON_SECRET` definido (una cadena aleatoria de al menos 16 caracteres, p. ej. `openssl rand -hex 24`), en cPanel → **Trabajos de cron** crear uno diario (por ejemplo 7:00) con:
 
 ```sh
-wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/daily?token=EL_SECRETO"
+wget -q -O /dev/null "https://www.alesyaediciones.com/api/cron/daily?token=EL_SECRETO"
 ```
 
 Envía al correo de avisos (`/admin/configuracion`) los seguimientos del día, entrantes sin atender, oportunidades sin siguiente acción y cotizaciones por vencer. Requiere el correo SMTP configurado; sin él responde con el resumen en JSON pero no envía nada.
@@ -112,7 +112,7 @@ Envía al correo de avisos (`/admin/configuracion`) los seguimientos del día, e
 Lleva al CRM los correos que llegan al buzón comercial (ver README → "Captación por correo"). Requiere `IMAP_USER` (la cuenta que recibe a los clientes, normalmente `comercial@alesyaediciones.com`) y su contraseña: si es la misma cuenta de `SMTP_USER` se reutilizan `SMTP_HOST` y `SMTP_PASS`; si es otra, definir también `IMAP_PASS` (y `IMAP_HOST` si el servidor no es el de SMTP). El buzón se abre en modo lectura: no se marcan, mueven ni borran correos. Después de **Restart**, en cPanel → **Trabajos de cron** crear uno cada 10 minutos (`*/10 * * * *`):
 
 ```sh
-wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/inbox?token=EL_SECRETO"
+wget -q -O /dev/null "https://www.alesyaediciones.com/api/cron/inbox?token=EL_SECRETO"
 ```
 
 Comprobar en `/admin/ventas?tab=captacion` (**Revisar ahora**). La primera revisión trae los correos de los últimos 3 días. Antes de activarla conviene cargar en *Configuración → Remitentes que no son clientes* los dominios de proveedores, bancos y plataformas que escriben a ese buzón. Mientras la cuenta esté en el límite de procesos (NPROC) el cron puede no arrancar; la captación igual corre al abrir la máquina de ventas.
@@ -131,13 +131,7 @@ El acceso a `/admin` admite un segundo factor TOTP (código de una app autentica
 
 **Recuperar el acceso si se pierde el teléfono:** entrar con un código de recuperación (cada uno sirve una vez) y volver a ejecutar `npm run admin:totp -- --production --force` para rotar el secreto, o —si no quedan códigos— borrar la variable `ADMIN_TOTP_SECRET` en "Setup Node.js App" y **Restart**: el acceso vuelve a ser solo correo + contraseña y se puede reconfigurar el 2FA. Los códigos y el secreto nunca deben escribirse en este documento ni subirse al repositorio.
 
-Antes de activar pagos reales se debe configurar en Wompi:
-
-```text
-https://nueva.alesyaediciones.com/api/webhooks/wompi
-```
-
-Después del cambio definitivo de dominio, la URL será:
+Antes de activar pagos reales se debe configurar en Wompi (sandbox y producción) la URL de eventos:
 
 ```text
 https://www.alesyaediciones.com/api/webhooks/wompi
@@ -166,7 +160,9 @@ La migración `0004` también pasa a la tabla `products` los cuatro destacados q
 
 ## Cambio al dominio principal (www.alesyaediciones.com)
 
-El código ya está listo para servir el dominio principal: páginas legales con las mismas direcciones que WordPress, redirecciones permanentes de las demás direcciones de WordPress (`next.config.ts`), sitemap, `robots.txt`, datos estructurados y redirección opcional a un dominio único. Lo que falta son pasos de operación en cPanel, GitHub y Wompi.
+**Hecho el 29 de octubre de 2026.** *Application URL* = `alesyaediciones.com`; `PRODUCTION_URL=https://www.alesyaediciones.com` y `CANONICAL_REDIRECT=1` en la app; se quitó de `public_html/.htaccess` la redirección temporal a `nueva.`; `nueva.` redirige (301, con comodín) a `www`; la variable `PRODUCTION_URL` del entorno `production` de GitHub apunta a `www`. Quedan pendientes los puntos 8 y 9 (Wompi y cron) cuando se activen, y enviar el sitemap de `www` en Search Console. La redirección de `nueva.` no excluye `/.well-known/`, así que su certificado (vence el 23 de diciembre de 2026) puede no renovarse; si importa, agregar `RewriteCond %{REQUEST_URI} !^/\.well-known/` en `/home/alesyaed/nueva.alesyaediciones.com/.htaccess`.
+
+El procedimiento queda como referencia (y para volver atrás).
 
 ### Antes del cambio
 

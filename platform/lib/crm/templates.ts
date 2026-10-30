@@ -3,7 +3,7 @@
 
 export type MessageTemplate = { id: string; label: string; channel: "whatsapp" | "email"; subject?: string; body: string; stages: readonly string[] };
 
-const SITE = "https://nueva.alesyaediciones.com";
+const SITE = "https://www.alesyaediciones.com";
 
 export const messageTemplates: MessageTemplate[] = [
   {
