@@ -91,6 +91,8 @@ CRON_SECRET
 # Captación por correo (si es la misma cuenta de SMTP_USER basta IMAP_USER):
 IMAP_USER=comercial@alesyaediciones.com
 # IMAP_PASS, IMAP_HOST=mail.alesyaediciones.com, IMAP_PORT=993, IMAP_MAILBOX=INBOX
+# Borradores con IA y Harvey (opcionales):
+# ANTHROPIC_API_KEY, CRM_AI_MODEL=claude-haiku-5-5, HARVEY_SYNC_TOKEN
 # Solo al pasar al dominio principal (ver "Cambio al dominio principal"):
 # CANONICAL_REDIRECT=1
 ```
