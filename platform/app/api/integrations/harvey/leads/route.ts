@@ -1,4 +1,4 @@
-import { harveyAuthorized, listOutboundCandidates } from "@/lib/crm/harvey";
+import { harveyAuthorized, listOutboundCandidates, recordHarveyContact } from "@/lib/crm/harvey";
 import { handleError, noStore } from "@/lib/http";
 
 /**
@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   const requireWebsite = url.searchParams.get("requireWebsite") === "1";
   try {
     const leads = await listOutboundCandidates({ limit, cities, requireWebsite });
+    await recordHarveyContact("leads");
     return Response.json({ leads }, { headers: noStore });
   } catch (error) {
     return handleError(error, "harvey_leads_failed", "No se pudieron listar los colegios.");

@@ -1,8 +1,8 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, ne, notInArray, notLike, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { leadActivities, leads } from "@/db/schema";
+import { leadActivities, leads, settings } from "@/db/schema";
 import { leadStageLabel } from "@/lib/crm/constants";
 import { refreshScore } from "@/lib/crm/leads";
 import { bogotaDay } from "@/lib/format";
@@ -36,14 +36,16 @@ const perLeadTypes = new Set(["enqueued", "skipped"]);
 export type OutboundFilters = { limit: number; cities: string[]; requireWebsite: boolean };
 
 /** Colegios en etapa "Nuevo", con correo, sin baja de comunicaciones, que Harvey todavía no ha tomado ni descartado. */
+const candidateConditions = () => [
+  eq(leads.stage, "new"),
+  isNotNull(leads.email),
+  ne(leads.email, ""),
+  isNull(leads.marketingOptOutAt),
+  sql`not exists (select 1 from lead_activities where lead_activities.id in ('hv:enqueued:' || ${leads.id}, 'hv:skipped:' || ${leads.id}))`,
+];
+
 export async function listOutboundCandidates({ limit, cities, requireWebsite }: OutboundFilters) {
-  const conditions = [
-    eq(leads.stage, "new"),
-    isNotNull(leads.email),
-    ne(leads.email, ""),
-    isNull(leads.marketingOptOutAt),
-    sql`not exists (select 1 from lead_activities where lead_activities.id in ('hv:enqueued:' || ${leads.id}, 'hv:skipped:' || ${leads.id}))`,
-  ];
+  const conditions = candidateConditions();
   if (cities.length) conditions.push(inArray(leads.city, cities));
   if (requireWebsite) conditions.push(isNotNull(leads.website), ne(leads.website, ""));
   return getDb().select({
@@ -182,6 +184,76 @@ async function applyOne(event: HarveyEvent): Promise<HarveyEventResult> {
     return { key: event.key, status: "applied", leadId };
   });
 }
+
+// ── Estado para el panel (/admin/harvey) ─────────────────────────────────────
+
+/** Resumen que Harvey manda al final de cada sincronización: solo conteos de su base local, sin datos de los colegios. */
+export type HarveySnapshot = {
+  prospects: number; verified: number; pendingVerification: number; risky: number; invalid: number;
+  outboxPending: number; outboxApproved: number; sent: number; sendingPaused: boolean; lastCycleAt: string | null;
+};
+export type HarveySync = { lastRequestAt: string; lastRequest: "leads" | "events" | "status"; snapshot?: HarveySnapshot & { at: string } };
+
+const SYNC_KEY = "harvey.sync";
+
+async function readSync(): Promise<HarveySync | null> {
+  const [row] = await getDb().select({ value: settings.value }).from(settings).where(eq(settings.key, SYNC_KEY)).limit(1);
+  try { return row ? JSON.parse(row.value) as HarveySync : null; } catch { return null; }
+}
+
+/** Anota cada llamada autorizada de Harvey; el panel la usa para saber si la sincronización programada sigue viva. */
+export async function recordHarveyContact(kind: HarveySync["lastRequest"], snapshot?: HarveySnapshot) {
+  try {
+    const now = new Date();
+    const previous = await readSync();
+    const next: HarveySync = { lastRequestAt: now.toISOString(), lastRequest: kind, snapshot: snapshot ? { ...snapshot, at: now.toISOString() } : previous?.snapshot };
+    const value = JSON.stringify(next);
+    await getDb().insert(settings).values({ key: SYNC_KEY, value, updatedAt: now }).onConflictDoUpdate({ target: settings.key, set: { value, updatedAt: now } });
+  } catch (error) {
+    console.error("harvey_sync_record_failed", error);
+  }
+}
+
+export type HarveyEventKind = HarveyEvent["type"];
+const kindOf = (activityId: string) => activityId.split(":")[1] as HarveyEventKind;
+
+/** Todo lo que el panel muestra de Harvey: conexión, totales por tipo de evento, colegios por atender y actividad reciente. */
+export async function getHarveyOverview() {
+  const db = getDb();
+  const ownEvents = and(like(leadActivities.id, "hv:%"), notLike(leadActivities.id, "%:stage"));
+  const inHarvey = sql`exists (select 1 from lead_activities where lead_activities.id = 'hv:enqueued:' || ${leads.id})`;
+
+  const [totals, pendingByCity, stages, recent, toAttend, sync] = await Promise.all([
+    db.select({ kind: sql<string>`substr(${leadActivities.id}, 4, instr(substr(${leadActivities.id}, 4), ':') - 1)`, total: count() })
+      .from(leadActivities).where(ownEvents).groupBy(sql`1`),
+    db.select({ city: leads.city, total: count() }).from(leads).where(and(...candidateConditions())).groupBy(leads.city).orderBy(desc(count())),
+    db.select({ stage: leads.stage, total: count() }).from(leads).where(inHarvey).groupBy(leads.stage),
+    db.select({ id: leadActivities.id, summary: leadActivities.summary, at: leadActivities.createdAt, leadId: leads.id, organization: leads.organization, city: leads.city })
+      .from(leadActivities).innerJoin(leads, eq(leads.id, leadActivities.leadId))
+      .where(and(ownEvents, notLike(leadActivities.id, "hv:enqueued:%"))).orderBy(desc(leadActivities.createdAt)).limit(25),
+    db.select({ leadId: leads.id, organization: leads.organization, city: leads.city, nextAction: leads.nextAction, nextFollowUp: leads.nextFollowUp })
+      .from(leads).where(and(
+        sql`exists (select 1 from lead_activities where lead_activities.lead_id = ${leads.id} and lead_activities.id like 'hv:reply:%')`,
+        isNotNull(leads.nextFollowUp), notInArray(leads.stage, ["won", "lost"]),
+      )).orderBy(asc(leads.nextFollowUp)).limit(15),
+    readSync(),
+  ]);
+
+  const counts = Object.fromEntries(harveyEventTypes.map((kind) => [kind, 0])) as Record<HarveyEventKind, number>;
+  for (const row of totals) if (row.kind in counts) counts[row.kind as HarveyEventKind] = Number(row.total);
+
+  return {
+    configured: (process.env.HARVEY_SYNC_TOKEN ?? "").length >= 24,
+    sync,
+    counts,
+    pending: { total: pendingByCity.reduce((sum, row) => sum + Number(row.total), 0), byCity: pendingByCity.map((row) => ({ city: row.city || "Sin ciudad", total: Number(row.total) })) },
+    stages: stages.map((row) => ({ stage: row.stage, total: Number(row.total) })),
+    recent: recent.map((row) => ({ ...row, kind: kindOf(row.id) })),
+    toAttend,
+  };
+}
+
+export type HarveyOverview = Awaited<ReturnType<typeof getHarveyOverview>>;
 
 /** Aplica los eventos uno a uno; un error en uno no frena a los demás. */
 export async function applyHarveyEvents(events: HarveyEvent[]) {

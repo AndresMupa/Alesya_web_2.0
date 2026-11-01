@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { applyHarveyEvents, harveyAuthorized, harveyEventTypes } from "@/lib/crm/harvey";
+import { applyHarveyEvents, harveyAuthorized, harveyEventTypes, recordHarveyContact } from "@/lib/crm/harvey";
 import { handleError, noStore, readBody } from "@/lib/http";
 
 const eventSchema = z.object({
@@ -24,6 +24,7 @@ export async function POST(request: Request) {
   const body = await readBody(request, schema, "Eventos de Harvey inválidos."); if (body instanceof Response) return body;
   try {
     const results = await applyHarveyEvents(body.events);
+    await recordHarveyContact("events");
     return Response.json({ results }, { headers: noStore });
   } catch (error) {
     return handleError(error, "harvey_events_failed", "No se pudieron aplicar los eventos.");
