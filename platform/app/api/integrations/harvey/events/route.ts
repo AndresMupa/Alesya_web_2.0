@@ -16,7 +16,8 @@ const eventSchema = z.object({
 const schema = z.object({ events: z.array(eventSchema).min(1).max(200) });
 
 /**
- * Lo que pasó en Harvey con cada colegio (entregado, envío, respuesta, reunión, baja, rebote, correo inválido).
+ * Lo que pasó en Harvey con cada colegio (entregado, envío, respuesta, reunión, baja, rebote, correo inválido, correo
+ * institucional encontrado o no en el sitio web).
  * Idempotente: reenviar un evento ya aplicado devuelve `duplicate` sin tocar la ficha.
  */
 export async function POST(request: Request) {
