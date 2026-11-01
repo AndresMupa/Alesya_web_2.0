@@ -1,9 +1,9 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, ne, notInArray, notLike, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, ne, notInArray, notLike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { leadActivities, leads, settings } from "@/db/schema";
-import { leadStageLabel } from "@/lib/crm/constants";
+import { leadStageLabel, PROSPECT_SOURCE } from "@/lib/crm/constants";
 import { refreshScore } from "@/lib/crm/leads";
 import { bogotaDay } from "@/lib/format";
 
@@ -11,7 +11,8 @@ import { bogotaDay } from "@/lib/format";
  * Integración con Harvey, el agente de prospección por correo que corre en el equipo del asesor.
  *
  * Harvey pide colegios listos para outbound (`listOutboundCandidates`) y devuelve lo que pasó con cada uno
- * (`applyHarveyEvents`): se lo entregaron, le escribió, respondió, pidió reunión, se dio de baja o rebotó.
+ * (`applyHarveyEvents`): se lo entregaron, le escribió, respondió, pidió reunión, se dio de baja o rebotó. A los que
+ * llegan sin correo les busca el correo institucional en su sitio web y lo devuelve (`email_found`), y la ficha se completa.
  * Cada evento queda como actividad con un id determinístico (`hv:<tipo>:<clave>`), así que reenviar el mismo
  * evento no duplica nada en la ficha. La respuesta en bruto ("Correo recibido") la sigue registrando la captación
  * del buzón del CRM; Harvey solo añade su clasificación. Una baja pedida a Harvey usa el mismo campo que `/baja/[token]`
@@ -31,32 +32,41 @@ export function harveyAuthorized(request: Request) {
 }
 
 /** Eventos que se registran una sola vez por colegio (no por correo): su id depende solo del colegio. */
-const perLeadTypes = new Set(["enqueued", "skipped"]);
+const perLeadTypes = new Set(["enqueued", "skipped", "email_found", "email_not_found"]);
 
-export type OutboundFilters = { limit: number; cities: string[]; requireWebsite: boolean };
+/**
+ * `cities` y `sources` acotan la búsqueda (un origen incluye sus subcanales: `base_colegios_2026` trae también
+ * `base_colegios_2026 / Clientes potenciales Colombia`). Con `missingEmail` se listan los que aún no tienen correo
+ * pero sí sitio web, para que Harvey busque en él el correo institucional publicado.
+ */
+export type OutboundFilters = { limit: number; cities: string[]; sources: string[]; requireWebsite: boolean; missingEmail: boolean };
+
+const notTakenByHarvey = sql`not exists (select 1 from lead_activities where lead_activities.id in ('hv:enqueued:' || ${leads.id}, 'hv:skipped:' || ${leads.id}))`;
+const hasWebsite = [isNotNull(leads.website), ne(leads.website, "")];
 
 /** Colegios en etapa "Nuevo", con correo, sin baja de comunicaciones, que Harvey todavía no ha tomado ni descartado. */
-const candidateConditions = () => [
-  eq(leads.stage, "new"),
-  isNotNull(leads.email),
-  ne(leads.email, ""),
-  isNull(leads.marketingOptOutAt),
-  sql`not exists (select 1 from lead_activities where lead_activities.id in ('hv:enqueued:' || ${leads.id}, 'hv:skipped:' || ${leads.id}))`,
+const candidateConditions = () => [eq(leads.stage, "new"), isNotNull(leads.email), ne(leads.email, ""), isNull(leads.marketingOptOutAt), notTakenByHarvey];
+
+/** Colegios "Nuevo" sin correo y con sitio web en los que Harvey todavía no buscó el correo. */
+const missingEmailConditions = () => [
+  eq(leads.stage, "new"), sql`coalesce(${leads.email}, '') = ''`, ...hasWebsite, isNull(leads.marketingOptOutAt), notTakenByHarvey,
+  sql`not exists (select 1 from lead_activities where lead_activities.id in ('hv:email_found:' || ${leads.id}, 'hv:email_not_found:' || ${leads.id}))`,
 ];
 
-export async function listOutboundCandidates({ limit, cities, requireWebsite }: OutboundFilters) {
-  const conditions = candidateConditions();
+export async function listOutboundCandidates({ limit, cities, sources, requireWebsite, missingEmail }: OutboundFilters) {
+  const conditions = missingEmail ? missingEmailConditions() : candidateConditions();
   if (cities.length) conditions.push(inArray(leads.city, cities));
-  if (requireWebsite) conditions.push(isNotNull(leads.website), ne(leads.website, ""));
+  if (sources.length) conditions.push(or(...sources.flatMap((source) => [eq(leads.source, source), like(leads.source, `${source} / %`)]))!);
+  if (requireWebsite && !missingEmail) conditions.push(...hasWebsite);
   return getDb().select({
     id: leads.id, organization: leads.organization, name: leads.name, decisionMaker: leads.decisionMaker, email: leads.email,
     phone: leads.phone, city: leads.city, website: leads.website, students: leads.students, grades: leads.grades,
     program: leads.program, painPoints: leads.painPoints, competitors: leads.competitors, message: leads.message,
-    techLevel: leads.techLevel, sector: leads.sector, budgetRange: leads.budgetRange,
+    techLevel: leads.techLevel, sector: leads.sector, budgetRange: leads.budgetRange, calendar: leads.calendar, source: leads.source,
   }).from(leads).where(and(...conditions)).orderBy(desc(leads.score), asc(leads.createdAt)).limit(limit);
 }
 
-export const harveyEventTypes = ["enqueued", "skipped", "sent", "reply", "meeting", "optout", "bounce", "invalid_email"] as const;
+export const harveyEventTypes = ["enqueued", "skipped", "sent", "reply", "meeting", "optout", "bounce", "invalid_email", "email_found", "email_not_found"] as const;
 
 export type HarveyEvent = {
   /** Única por evento dentro de Harvey (id del correo en el outbox, de la conversación, del prospecto…). */
@@ -102,8 +112,12 @@ function describe(event: HarveyEvent): { type: string; summary: string } {
     case "optout": return { type: "note", summary: "Pidió no recibir más correos. Harvey lo dejó en la lista de no contacto." };
     case "bounce": return { type: "note", summary: `El correo ${event.email ?? ""} rebotó; Harvey detuvo la secuencia.`.replace("  ", " ") };
     case "invalid_email": return { type: "note", summary: `La verificación marcó el correo ${event.email ?? ""} como inválido; Harvey no le escribirá.`.replace("  ", " ") };
+    case "email_found": return { type: "note", summary: `Harvey encontró el correo institucional ${event.email ?? ""} publicado en el sitio web${event.excerpt ? ` (${event.excerpt.trim()})` : ""}.`.replace("  ", " ") };
+    case "email_not_found": return { type: "note", summary: `Harvey revisó el sitio web y no encontró un correo institucional publicado${event.excerpt ? `: ${event.excerpt.trim()}` : "."}` };
   }
 }
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function eventDate(at?: string | null) {
   const date = at ? new Date(at) : new Date();
@@ -124,7 +138,8 @@ async function findLead(event: HarveyEvent) {
 }
 
 async function applyOne(event: HarveyEvent): Promise<HarveyEventResult> {
-  const leadId = await findLead(event);
+  // El correo encontrado todavía no está en la ficha: solo se busca por id, nunca por ese correo.
+  const leadId = event.type === "email_found" || event.type === "email_not_found" ? await findLead({ ...event, email: null }) : await findLead(event);
   if (!leadId) return { key: event.key, status: "not_found" };
   const activityId = perLeadTypes.has(event.type) ? `hv:${event.type}:${leadId}` : `hv:${event.type}:${event.key}`;
   const { type, summary } = describe(event);
@@ -136,7 +151,7 @@ async function applyOne(event: HarveyEvent): Promise<HarveyEventResult> {
       .onConflictDoNothing().returning({ id: leadActivities.id });
     if (!inserted.length) return { key: event.key, status: "duplicate", leadId };
 
-    const [current] = await tx.select({ stage: leads.stage }).from(leads).where(eq(leads.id, leadId)).limit(1);
+    const [current] = await tx.select({ stage: leads.stage, email: leads.email, nextAction: leads.nextAction }).from(leads).where(eq(leads.id, leadId)).limit(1);
     const now = new Date();
     const changes: Record<string, unknown> = { updatedAt: now };
     let moveTo: string | null = null;
@@ -169,6 +184,15 @@ async function applyOne(event: HarveyEvent): Promise<HarveyEventResult> {
       case "invalid_email":
         changes.nextAction = "Conseguir un correo válido del colegio";
         break;
+      case "email_found": {
+        // Solo llena la ficha si sigue sin correo: lo que el asesor haya escrito a mano manda.
+        const email = event.email?.trim().toLowerCase() ?? "";
+        if (!current.email && EMAIL.test(email)) changes.email = email;
+        break;
+      }
+      case "email_not_found":
+        if (!current.email && !current.nextAction) changes.nextAction = "Conseguir el correo del colegio (llamar o escribir por WhatsApp)";
+        break;
     }
 
     if (moveTo && moveTo !== current.stage) {
@@ -187,10 +211,14 @@ async function applyOne(event: HarveyEvent): Promise<HarveyEventResult> {
 
 // ── Estado para el panel (/admin/harvey) ─────────────────────────────────────
 
-/** Resumen que Harvey manda al final de cada sincronización: solo conteos de su base local, sin datos de los colegios. */
+/**
+ * Resumen que Harvey manda al final de cada sincronización: conteos de su base local y `recent`, sus últimas acciones
+ * en una línea cada una ("Redactó 8 correos", "Envió 3 correos"), sin datos de los colegios.
+ */
 export type HarveySnapshot = {
   prospects: number; verified: number; pendingVerification: number; risky: number; invalid: number;
   outboxPending: number; outboxApproved: number; sent: number; sendingPaused: boolean; lastCycleAt: string | null;
+  recent?: { at: string; text: string }[];
 };
 export type HarveySync = { lastRequestAt: string; lastRequest: "leads" | "events" | "status"; snapshot?: HarveySnapshot & { at: string } };
 
@@ -223,10 +251,11 @@ export async function getHarveyOverview() {
   const ownEvents = and(like(leadActivities.id, "hv:%"), notLike(leadActivities.id, "%:stage"));
   const inHarvey = sql`exists (select 1 from lead_activities where lead_activities.id = 'hv:enqueued:' || ${leads.id})`;
 
-  const [totals, pendingByCity, stages, recent, toAttend, sync] = await Promise.all([
+  const [totals, pendingByCity, [missingEmail], stages, recent, toAttend, sync] = await Promise.all([
     db.select({ kind: sql<string>`substr(${leadActivities.id}, 4, instr(substr(${leadActivities.id}, 4), ':') - 1)`, total: count() })
       .from(leadActivities).where(ownEvents).groupBy(sql`1`),
     db.select({ city: leads.city, total: count() }).from(leads).where(and(...candidateConditions())).groupBy(leads.city).orderBy(desc(count())),
+    db.select({ total: count() }).from(leads).where(and(...missingEmailConditions(), like(leads.source, `${PROSPECT_SOURCE}%`))),
     db.select({ stage: leads.stage, total: count() }).from(leads).where(inHarvey).groupBy(leads.stage),
     db.select({ id: leadActivities.id, summary: leadActivities.summary, at: leadActivities.createdAt, leadId: leads.id, organization: leads.organization, city: leads.city })
       .from(leadActivities).innerJoin(leads, eq(leads.id, leadActivities.leadId))
@@ -246,7 +275,7 @@ export async function getHarveyOverview() {
     configured: (process.env.HARVEY_SYNC_TOKEN ?? "").length >= 24,
     sync,
     counts,
-    pending: { total: pendingByCity.reduce((sum, row) => sum + Number(row.total), 0), byCity: pendingByCity.map((row) => ({ city: row.city || "Sin ciudad", total: Number(row.total) })) },
+    pending: { total: pendingByCity.reduce((sum, row) => sum + Number(row.total), 0), byCity: pendingByCity.map((row) => ({ city: row.city || "Sin ciudad", total: Number(row.total) })), missingEmail: Number(missingEmail?.total ?? 0) },
     stages: stages.map((row) => ({ stage: row.stage, total: Number(row.total) })),
     recent: recent.map((row) => ({ ...row, kind: kindOf(row.id) })),
     toAttend,

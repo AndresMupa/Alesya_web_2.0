@@ -574,4 +574,5 @@ a.activity-item:hover span { text-decoration:underline; }
 /* Harvey (/admin/harvey): color del punto según el evento. */
 .activity-dot[data-kind="reply"], .activity-dot[data-kind="meeting"] { background:var(--signal-lime); }
 .activity-dot[data-kind="optout"], .activity-dot[data-kind="bounce"], .activity-dot[data-kind="invalid_email"] { background:var(--signal-coral); }
-.activity-dot[data-kind="skipped"] { background:#b4bcc6; }
+.activity-dot[data-kind="skipped"], .activity-dot[data-kind="email_not_found"] { background:#b4bcc6; }
+.activity-dot[data-kind="email_found"] { background:#5aa9d6; }

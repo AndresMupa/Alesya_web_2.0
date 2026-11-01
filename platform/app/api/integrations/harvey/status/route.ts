@@ -8,11 +8,13 @@ const schema = z.object({
   outboxPending: total, outboxApproved: total, sent: total,
   sendingPaused: z.boolean(),
   lastCycleAt: z.string().trim().max(40).nullable(),
+  recent: z.array(z.object({ at: z.string().trim().max(40), text: z.string().trim().min(1).max(200) })).max(20).optional(),
 });
 
 /**
  * Resumen de la base local de Harvey al final de cada sincronización (solo conteos de los colegios que vinieron del CRM).
- * Lo muestra /admin/harvey: verificación de correos, correos esperando aprobación, envíos pausados y último ciclo.
+ * Lo muestra /admin/harvey: verificación de correos, correos esperando aprobación, envíos pausados, último ciclo y
+ * sus últimas acciones ("En vivo").
  */
 export async function POST(request: Request) {
   if (!harveyAuthorized(request)) return Response.json({ message: "No autorizado" }, { status: 401, headers: noStore });

@@ -206,6 +206,8 @@ export type LeadPatch = Partial<{
   notes: string; lastContact: string | null; nextFollowUp: string | null; estimatedValueInCents: number; lostReason: string | null;
   nextAction: string | null; expectedClose: string | null; students: number; program: string | null; decisionMaker: string | null;
   grades: string | null; sector: string | null; calendar: string | null; techLevel: string | null; budgetRange: string | null; painPoints: string; competitors: string | null;
+  /** Origen: un canal de `leadSources`, con subcanal opcional ("base_colegios_2026 / Clientes potenciales Colombia"). */
+  source: string;
 }>;
 
 const CONTACT_TYPES = activityTypes.filter((type) => type.contact).map((type) => type.value);
@@ -548,6 +550,8 @@ const fromLabel = <T extends string>(list: readonly { value: T; label: string }[
   return list.find((item) => item.value === value || item.label.toLowerCase() === value)?.value ?? fallback;
 };
 const isoDay = (value: string) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+const sectorValue = (value: string) => (/^priv/i.test(value.trim()) ? "privado" : /^(p[uú]bl|ofic)/i.test(value.trim()) ? "publico" : null);
+const calendarValue = (value: string) => (/^[AB]$/i.test(value.trim()) ? value.trim().toUpperCase() : null);
 
 /**
  * Importa contactos desde un CSV (el mismo formato que exporta el panel, o columnas equivalentes como
@@ -579,6 +583,9 @@ export async function importLeads(records: Record<string, string>[]) {
       priority: fromLabel(leadPriorities, pick(record, "prioridad", "priority"), "medium"), owner: pick(record, "responsable", "owner", "asesor").slice(0, 120),
       estimatedValueInCents: Math.max(0, Math.round(Number(pick(record, "valor_estimado_cop", "valor_estimado", "valor").replace(/[^\d.]/g, "")) || 0)) * 100,
       nextFollowUp: isoDay(pick(record, "proximo_seguimiento", "next_follow_up")),
+      nextAction: pick(record, "proxima_accion", "next_action").slice(0, 200) || null,
+      sector: sectorValue(pick(record, "sector")), calendar: calendarValue(pick(record, "calendario", "calendar")),
+      grades: pick(record, "grados", "nivel_educativo", "grades").slice(0, 80) || null,
     }, now);
     const stage = fromLabel(leadStages, pick(record, "etapa", "stage"), "new");
     const optedOutAt = inheritedOptOut(optOuts, value);

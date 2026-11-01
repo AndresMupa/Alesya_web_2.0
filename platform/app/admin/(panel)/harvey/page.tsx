@@ -6,18 +6,19 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { getHarveyOverview, type HarveyEventKind, type HarveyOverview } from "@/lib/crm/harvey";
 import { leadStageLabel, leadStages } from "@/lib/crm/constants";
 import { formatDay, plural } from "@/lib/format";
+import { AutoRefresh } from "@/components/admin/auto-refresh";
 import { HBarChart } from "@/components/admin/charts";
 import { Metric, PageHeader } from "@/components/admin/kit";
 
 export const metadata = { title: "Harvey" };
 
-/** La sincronización corre cada 15 minutos en el equipo del asesor; más de 45 sin noticias es que el equipo está apagado o algo falló. */
-const SYNC_STALE_MS = 45 * 60_000;
+/** La sincronización corre cada 5 minutos en el equipo del asesor; más de 20 sin noticias es que el equipo está apagado o algo falló. */
+const SYNC_STALE_MS = 20 * 60_000;
 const CYCLE_STALE_MS = 60 * 60_000;
 
 const kindLabels: Record<HarveyEventKind, string> = {
   enqueued: "Entregado", skipped: "Descartado", sent: "Correo enviado", reply: "Respuesta", meeting: "Reunión",
-  optout: "Baja", bounce: "Rebote", invalid_email: "Correo inválido",
+  optout: "Baja", bounce: "Rebote", invalid_email: "Correo inválido", email_found: "Correo encontrado", email_not_found: "Sin correo publicado",
 };
 
 const ago = (value: string | number | Date) => formatDistanceToNow(new Date(value), { locale: es, addSuffix: true });
@@ -37,7 +38,7 @@ function Status({ data }: { data: HarveyOverview }) {
     },
     {
       icon: RefreshCw, name: "Sincronización programada",
-      detail: sync ? `Última llamada ${ago(sync.lastRequestAt)}. Corre cada 15 minutos mientras el equipo del asesor esté encendido.` : "Harvey todavía no se ha comunicado con el CRM.",
+      detail: sync ? `Última llamada ${ago(sync.lastRequestAt)}. Corre cada 5 minutos mientras el equipo del asesor esté encendido.` : "Harvey todavía no se ha comunicado con el CRM.",
       state: !sync ? "Sin datos" : syncStale ? "Retrasada" : "Al día", ok: Boolean(sync) && !syncStale,
     },
     {
@@ -67,8 +68,15 @@ export default async function HarveyPage() {
   const funnel = [...stages].sort((a, b) => stageOrder.indexOf(a.stage) - stageOrder.indexOf(b.stage)).map((row) => ({ etapa: leadStageLabel(row.stage), colegios: row.total }));
 
   return <>
-    <PageHeader title="Harvey" description="El agente de prospección por correo: qué colegios tiene, qué ha enviado y quién respondió." />
+    <AutoRefresh seconds={60} />
+    <PageHeader title="Harvey" description="El agente de prospección por correo: qué colegios tiene, qué ha enviado y quién respondió. Se actualiza solo cada minuto." />
     <Status data={data} />
+
+    <section className="panel adm-section">
+      <div className="panel-header"><h2><Activity size={16} /> En vivo: lo último que hizo Harvey</h2>{snapshot && <span>Reportado {ago(snapshot.at)}</span>}</div>
+      {snapshot?.recent?.length ? <div className="activity-list">{snapshot.recent.map((row, index) => <div className="activity-item" key={`${row.at}-${index}`}><i className="activity-dot" /><span>{row.text}</span><small>{ago(row.at)}</small></div>)}</div>
+        : <p className="adm-muted">Las acciones de Harvey (buscar correos, redactar, enviar, leer respuestas) aparecen aquí con cada sincronización.</p>}
+    </section>
 
     <section className="admin-summary">
       <Metric label="Colegios en Harvey" value={counts.enqueued.toLocaleString("es-CO")} hint={snapshot ? `${snapshot.verified} con correo verificado · ${snapshot.pendingVerification} por verificar` : `${plural(counts.skipped, "descartado", "descartados")} por correo personal`} />
@@ -85,7 +93,7 @@ export default async function HarveyPage() {
       <article className="panel">
         <div className="panel-header"><h2>Por entregar a Harvey</h2><span>{plural(pending.total, "colegio", "colegios")}</span></div>
         {pending.byCity.length ? <HBarChart data={pending.byCity.slice(0, 8).map((row) => ({ ciudad: row.city, colegios: row.total }))} x="ciudad" y="colegios" unit="colegios" labelWidth={110} /> : <p className="adm-muted">No quedan colegios nuevos con correo por entregar.</p>}
-        <p className="adm-muted adm-small">Etapa Nuevo, con correo y sin baja. Harvey toma 20 por ronda de las ciudades configuradas en su .env (CRM_SYNC_CITIES).</p>
+        <p className="adm-muted adm-small">Etapa Nuevo, con correo y sin baja. Harvey toma hasta 20 por día de las ciudades y bases configuradas en su .env (CRM_SYNC_CITIES y CRM_SYNC_SOURCES).{pending.missingEmail ? ` Otros ${plural(pending.missingEmail, "colegio de la base de prospección no tiene", "colegios de la base de prospección no tienen")} correo: Harvey lo busca en su sitio web.` : ""}</p>
       </article>
     </section>
 
