@@ -14,7 +14,11 @@ export const metadata = { title: "Harvey" };
 
 /** La sincronización corre cada 5 minutos en el equipo del asesor; más de 20 sin noticias es que el equipo está apagado o algo falló. */
 const SYNC_STALE_MS = 20 * 60_000;
-const CYCLE_STALE_MS = 60 * 60_000;
+/**
+ * `lastCycleAt` es la última señal del ciclo (una acción o una línea de su log). En pausa por el tope de uso de Claude
+ * o en horario de silencio Harvey se despierta cada hora a revisar, así que solo tras 2 horas sin señal está detenido.
+ */
+const CYCLE_STALE_MS = 2 * 60 * 60_000;
 
 const kindLabels: Record<HarveyEventKind, string> = {
   enqueued: "Entregado", skipped: "Descartado", sent: "Correo enviado", reply: "Respuesta", meeting: "Reunión",
@@ -43,7 +47,7 @@ function Status({ data }: { data: HarveyOverview }) {
     },
     {
       icon: Activity, name: "Ciclo de Harvey",
-      detail: !snapshot ? "Sin resumen todavía: llega con la próxima sincronización." : snapshot.lastCycleAt ? `Su última acción fue ${ago(snapshot.lastCycleAt)}. Mientras el ciclo esté detenido no redacta, no envía ni lee respuestas.` : "Harvey no ha registrado acciones.",
+      detail: !snapshot ? "Sin resumen todavía: llega con la próxima sincronización." : !snapshot.lastCycleAt ? "Harvey no ha registrado actividad." : cycleStale ? `Su última señal fue ${ago(snapshot.lastCycleAt)}. Mientras el ciclo esté detenido no redacta, no envía ni lee respuestas: revisa la tarea "Alesya Harvey Ciclo" en el equipo del asesor.` : `Su última señal fue ${ago(snapshot.lastCycleAt)}. Puede estar en pausa (horario de silencio o tope de uso de Claude): vuelve a revisar cada hora.`,
       state: !snapshot ? "Sin datos" : cycleStale ? "Detenido" : "Trabajando", ok: Boolean(snapshot) && !cycleStale,
     },
     {
@@ -93,7 +97,7 @@ export default async function HarveyPage() {
       <article className="panel">
         <div className="panel-header"><h2>Por entregar a Harvey</h2><span>{plural(pending.total, "colegio", "colegios")}</span></div>
         {pending.byCity.length ? <HBarChart data={pending.byCity.slice(0, 8).map((row) => ({ ciudad: row.city, colegios: row.total }))} x="ciudad" y="colegios" unit="colegios" labelWidth={110} /> : <p className="adm-muted">No quedan colegios nuevos con correo por entregar.</p>}
-        <p className="adm-muted adm-small">Etapa Nuevo, con correo y sin baja. Harvey toma hasta 20 por día de las ciudades y bases configuradas en su .env (CRM_SYNC_CITIES y CRM_SYNC_SOURCES).{pending.missingEmail ? ` Otros ${plural(pending.missingEmail, "colegio de la base de prospección no tiene", "colegios de la base de prospección no tienen")} correo: Harvey lo busca en su sitio web.` : ""}</p>
+        <p className="adm-muted adm-small">Etapa Nuevo, con correo y sin baja, de {pending.scoped ? "las ciudades y bases que Harvey tiene configuradas" : "todo el CRM"} (CRM_SYNC_CITIES y CRM_SYNC_SOURCES en su .env). Harvey toma hasta 20 por día.{pending.missingEmail ? ` Otros ${plural(pending.missingEmail, "colegio tiene", "colegios tienen")} sitio web pero no correo: Harvey busca en el sitio el correo institucional publicado.` : ""}</p>
       </article>
     </section>
 
