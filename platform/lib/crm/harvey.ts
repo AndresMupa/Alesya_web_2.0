@@ -53,10 +53,19 @@ const missingEmailConditions = () => [
   sql`not exists (select 1 from lead_activities where lead_activities.id in ('hv:email_found:' || ${leads.id}, 'hv:email_not_found:' || ${leads.id}))`,
 ];
 
+type Scope = Pick<OutboundFilters, "cities" | "sources">;
+
+/** Una condición por filtro presente: ciudad en `cities`; origen en `sources`, con sus subcanales. */
+const scopeParts = ({ cities, sources }: Scope) => [
+  ...(cities.length ? [inArray(leads.city, cities)] : []),
+  ...(sources.length ? [or(...sources.flatMap((source) => [eq(leads.source, source), like(leads.source, `${source} / %`)]))!] : []),
+];
+
+/** Lo que Harvey trabaja: Harvey pide por ciudades y por orígenes en llamadas separadas, así que es la unión de ambos. */
+const harveyScope = (scope: Scope) => { const parts = scopeParts(scope); return parts.length ? [or(...parts)!] : []; };
+
 export async function listOutboundCandidates({ limit, cities, sources, requireWebsite, missingEmail }: OutboundFilters) {
-  const conditions = missingEmail ? missingEmailConditions() : candidateConditions();
-  if (cities.length) conditions.push(inArray(leads.city, cities));
-  if (sources.length) conditions.push(or(...sources.flatMap((source) => [eq(leads.source, source), like(leads.source, `${source} / %`)]))!);
+  const conditions = [...(missingEmail ? missingEmailConditions() : candidateConditions()), ...scopeParts({ cities, sources })];
   if (requireWebsite && !missingEmail) conditions.push(...hasWebsite);
   return getDb().select({
     id: leads.id, organization: leads.organization, name: leads.name, decisionMaker: leads.decisionMaker, email: leads.email,
@@ -219,6 +228,8 @@ export type HarveySnapshot = {
   prospects: number; verified: number; pendingVerification: number; risky: number; invalid: number;
   outboxPending: number; outboxApproved: number; sent: number; sendingPaused: boolean; lastCycleAt: string | null;
   recent?: { at: string; text: string }[];
+  /** Ciudades y orígenes configurados en Harvey (CRM_SYNC_CITIES / CRM_SYNC_SOURCES): el panel cuenta solo lo que Harvey trabaja. */
+  filters?: Scope;
 };
 export type HarveySync = { lastRequestAt: string; lastRequest: "leads" | "events" | "status"; snapshot?: HarveySnapshot & { at: string } };
 
@@ -251,11 +262,16 @@ export async function getHarveyOverview() {
   const ownEvents = and(like(leadActivities.id, "hv:%"), notLike(leadActivities.id, "%:stage"));
   const inHarvey = sql`exists (select 1 from lead_activities where lead_activities.id = 'hv:enqueued:' || ${leads.id})`;
 
-  const [totals, pendingByCity, [missingEmail], stages, recent, toAttend, sync] = await Promise.all([
+  const sync = await readSync();
+  const filters = sync?.snapshot?.filters;
+  const scope = filters ? harveyScope(filters) : [];
+
+  const [totals, pendingByCity, [missingEmail], stages, recent, toAttend] = await Promise.all([
     db.select({ kind: sql<string>`substr(${leadActivities.id}, 4, instr(substr(${leadActivities.id}, 4), ':') - 1)`, total: count() })
       .from(leadActivities).where(ownEvents).groupBy(sql`1`),
-    db.select({ city: leads.city, total: count() }).from(leads).where(and(...candidateConditions())).groupBy(leads.city).orderBy(desc(count())),
-    db.select({ total: count() }).from(leads).where(and(...missingEmailConditions(), like(leads.source, `${PROSPECT_SOURCE}%`))),
+    db.select({ city: leads.city, total: count() }).from(leads).where(and(...candidateConditions(), ...scope)).groupBy(leads.city).orderBy(desc(count())),
+    // Sin filtros conocidos (Harvey aún no los reporta) se cuenta solo la base de prospección, no los entrantes.
+    db.select({ total: count() }).from(leads).where(and(...missingEmailConditions(), ...(scope.length ? scope : [like(leads.source, `${PROSPECT_SOURCE}%`)]))),
     db.select({ stage: leads.stage, total: count() }).from(leads).where(inHarvey).groupBy(leads.stage),
     db.select({ id: leadActivities.id, summary: leadActivities.summary, at: leadActivities.createdAt, leadId: leads.id, organization: leads.organization, city: leads.city })
       .from(leadActivities).innerJoin(leads, eq(leads.id, leadActivities.leadId))
@@ -265,7 +281,6 @@ export async function getHarveyOverview() {
         sql`exists (select 1 from lead_activities where lead_activities.lead_id = ${leads.id} and lead_activities.id like 'hv:reply:%')`,
         isNotNull(leads.nextFollowUp), notInArray(leads.stage, ["won", "lost"]),
       )).orderBy(asc(leads.nextFollowUp)).limit(15),
-    readSync(),
   ]);
 
   const counts = Object.fromEntries(harveyEventTypes.map((kind) => [kind, 0])) as Record<HarveyEventKind, number>;
@@ -275,7 +290,7 @@ export async function getHarveyOverview() {
     configured: (process.env.HARVEY_SYNC_TOKEN ?? "").length >= 24,
     sync,
     counts,
-    pending: { total: pendingByCity.reduce((sum, row) => sum + Number(row.total), 0), byCity: pendingByCity.map((row) => ({ city: row.city || "Sin ciudad", total: Number(row.total) })), missingEmail: Number(missingEmail?.total ?? 0) },
+    pending: { total: pendingByCity.reduce((sum, row) => sum + Number(row.total), 0), byCity: pendingByCity.map((row) => ({ city: row.city || "Sin ciudad", total: Number(row.total) })), missingEmail: Number(missingEmail?.total ?? 0), scoped: scope.length > 0 },
     stages: stages.map((row) => ({ stage: row.stage, total: Number(row.total) })),
     recent: recent.map((row) => ({ ...row, kind: kindOf(row.id) })),
     toAttend,

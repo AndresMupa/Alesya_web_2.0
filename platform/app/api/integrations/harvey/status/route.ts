@@ -9,6 +9,7 @@ const schema = z.object({
   sendingPaused: z.boolean(),
   lastCycleAt: z.string().trim().max(40).nullable(),
   recent: z.array(z.object({ at: z.string().trim().max(40), text: z.string().trim().min(1).max(200) })).max(20).optional(),
+  filters: z.object({ cities: z.array(z.string().trim().min(1).max(100)).max(50), sources: z.array(z.string().trim().min(1).max(80)).max(20) }).optional(),
 });
 
 /**
