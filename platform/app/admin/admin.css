@@ -453,7 +453,6 @@ a.activity-item:hover span { text-decoration:underline; }
   .adm-metrics, .adm-metrics-3 { grid-template-columns:1fr 1fr; }
   .adm-nav { margin-bottom:0; }
   .adm-nav-group > span { display:none; }
-  .adm-nav a.is-active { font-size:0; }
 }
 @media (max-width:760px) {
   .adm-topbar-title { display:none; }
