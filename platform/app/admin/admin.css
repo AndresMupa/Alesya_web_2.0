@@ -571,3 +571,8 @@ a.activity-item:hover span { text-decoration:underline; }
 .adm-inbox-list .status-pill { margin-right:4px; padding:3px 7px; }
 .status-pill[data-result="matched"] { background:#dff3fb; color:#155a78; }
 .status-pill[data-result="skipped"] { background:#eceff2; color:#5b6573; }
+
+/* Harvey (/admin/harvey): color del punto según el evento. */
+.activity-dot[data-kind="reply"], .activity-dot[data-kind="meeting"] { background:var(--signal-lime); }
+.activity-dot[data-kind="optout"], .activity-dot[data-kind="bounce"], .activity-dot[data-kind="invalid_email"] { background:var(--signal-coral); }
+.activity-dot[data-kind="skipped"] { background:#b4bcc6; }
