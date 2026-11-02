@@ -230,6 +230,8 @@ export type HarveySnapshot = {
   recent?: { at: string; text: string }[];
   /** Ciudades y orígenes configurados en Harvey (CRM_SYNC_CITIES / CRM_SYNC_SOURCES): el panel cuenta solo lo que Harvey trabaja. */
   filters?: Scope;
+  /** Horario de silencio de Harvey (usage.quiet_hours): de noche el ciclo duerme sin dar señal. */
+  quietHours?: { start: string; end: string; timezone: string };
 };
 export type HarveySync = { lastRequestAt: string; lastRequest: "leads" | "events" | "status"; snapshot?: HarveySnapshot & { at: string } };
 
