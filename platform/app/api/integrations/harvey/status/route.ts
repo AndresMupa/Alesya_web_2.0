@@ -3,6 +3,8 @@ import { harveyAuthorized, recordHarveyContact } from "@/lib/crm/harvey";
 import { handleError, noStore, readBody } from "@/lib/http";
 
 const total = z.number().int().min(0).max(1_000_000);
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const validTimeZone = (zone: string) => { try { new Intl.DateTimeFormat("es-CO", { timeZone: zone }); return true; } catch { return false; } };
 const schema = z.object({
   prospects: total, verified: total, pendingVerification: total, risky: total, invalid: total,
   outboxPending: total, outboxApproved: total, sent: total,
@@ -10,6 +12,7 @@ const schema = z.object({
   lastCycleAt: z.string().trim().max(40).nullable(),
   recent: z.array(z.object({ at: z.string().trim().max(40), text: z.string().trim().min(1).max(200) })).max(20).optional(),
   filters: z.object({ cities: z.array(z.string().trim().min(1).max(100)).max(50), sources: z.array(z.string().trim().min(1).max(80)).max(20) }).optional(),
+  quietHours: z.object({ start: hhmm, end: hhmm, timezone: z.string().trim().min(1).max(60).refine(validTimeZone, "Zona horaria no válida") }).optional(),
 });
 
 /**

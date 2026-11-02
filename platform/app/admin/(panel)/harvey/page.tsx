@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Activity, ArrowRight, Bot, KeyRound, MailCheck, MessageSquareReply, RefreshCw, Send } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getHarveyOverview, type HarveyEventKind, type HarveyOverview } from "@/lib/crm/harvey";
+import { getHarveyOverview, type HarveyEventKind, type HarveyOverview, type HarveySnapshot } from "@/lib/crm/harvey";
 import { leadStageLabel, leadStages } from "@/lib/crm/constants";
 import { formatDay, plural } from "@/lib/format";
 import { AutoRefresh } from "@/components/admin/auto-refresh";
@@ -16,7 +16,8 @@ export const metadata = { title: "Harvey" };
 const SYNC_STALE_MS = 20 * 60_000;
 /**
  * `lastCycleAt` es la última señal del ciclo (una acción o una línea de su log). En pausa por el tope de uso de Claude
- * o en horario de silencio Harvey se despierta cada hora a revisar, así que solo tras 2 horas sin señal está detenido.
+ * Harvey se despierta cada hora a revisar, así que solo tras 2 horas sin señal está detenido. En horario de silencio
+ * duerme de un tirón hasta la hora de salida: ese tiempo no cuenta.
  */
 const CYCLE_STALE_MS = 2 * 60 * 60_000;
 
@@ -27,13 +28,28 @@ const kindLabels: Record<HarveyEventKind, string> = {
 
 const ago = (value: string | number | Date) => formatDistanceToNow(new Date(value), { locale: es, addSuffix: true });
 const isStale = (value: string | null | undefined, limit: number) => !value || Date.now() - new Date(value).getTime() > limit;
+const minutesOf = (hhmm: string) => { const [hours, minutes] = hhmm.split(":").map(Number); return hours * 60 + minutes; };
+
+/** Si ahora es horario de silencio de Harvey, el instante en que empezó; si no, null. */
+function quietSince(quiet: NonNullable<HarveySnapshot["quietHours"]>, now: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: quiet.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const current = Number(parts.find((part) => part.type === "hour")?.value) * 60 + Number(parts.find((part) => part.type === "minute")?.value);
+  // 15 minutos de gracia al salir: la primera señal del día llega con la siguiente sincronización (cada 5 minutos).
+  const start = minutesOf(quiet.start), end = (minutesOf(quiet.end) + 15) % 1440;
+  const inside = start > end ? current >= start || current < end : current >= start && current < end;
+  return inside ? new Date(now.getTime() - (((current - start + 1440) % 1440) * 60_000 + now.getSeconds() * 1000)) : null;
+}
 const leadHref = (id: string) => `/admin/crm?lead=${encodeURIComponent(id)}`;
 
 function Status({ data }: { data: HarveyOverview }) {
   const { sync, configured } = data;
   const snapshot = sync?.snapshot;
   const syncStale = isStale(sync?.lastRequestAt, SYNC_STALE_MS);
-  const cycleStale = isStale(snapshot?.lastCycleAt, CYCLE_STALE_MS);
+  // En horario de silencio el ciclo duerme hasta la hora de salida: está detenido solo si ya no daba señal antes de empezar.
+  const now = new Date();
+  const sleeping = snapshot?.quietHours ? quietSince(snapshot.quietHours, now) : null;
+  const cycleStale = isStale(snapshot?.lastCycleAt, CYCLE_STALE_MS + (sleeping ? now.getTime() - sleeping.getTime() : 0));
+  const quietNote = sleeping && snapshot?.quietHours ? `Está en horario de silencio (${snapshot.quietHours.start} a ${snapshot.quietHours.end}): duerme y retoma a las ${snapshot.quietHours.end}. ` : "";
   const items = [
     {
       icon: KeyRound, name: "Conexión con el CRM",
@@ -47,8 +63,8 @@ function Status({ data }: { data: HarveyOverview }) {
     },
     {
       icon: Activity, name: "Ciclo de Harvey",
-      detail: !snapshot ? "Sin resumen todavía: llega con la próxima sincronización." : !snapshot.lastCycleAt ? "Harvey no ha registrado actividad." : cycleStale ? `Su última señal fue ${ago(snapshot.lastCycleAt)}. Mientras el ciclo esté detenido no redacta, no envía ni lee respuestas: revisa la tarea "Alesya Harvey Ciclo" en el equipo del asesor.` : `Su última señal fue ${ago(snapshot.lastCycleAt)}. Puede estar en pausa (horario de silencio o tope de uso de Claude): vuelve a revisar cada hora.`,
-      state: !snapshot ? "Sin datos" : cycleStale ? "Detenido" : "Trabajando", ok: Boolean(snapshot) && !cycleStale,
+      detail: !snapshot ? "Sin resumen todavía: llega con la próxima sincronización." : !snapshot.lastCycleAt ? "Harvey no ha registrado actividad." : cycleStale ? `Su última señal fue ${ago(snapshot.lastCycleAt)}. Mientras el ciclo esté detenido no redacta, no envía ni lee respuestas: revisa la tarea "Alesya Harvey Ciclo" en el equipo del asesor.` : quietNote ? `${quietNote}Su última señal fue ${ago(snapshot.lastCycleAt)}.` : `Su última señal fue ${ago(snapshot.lastCycleAt)}. Puede estar en pausa (horario de silencio o tope de uso de Claude): vuelve a revisar cada hora.`,
+      state: !snapshot ? "Sin datos" : cycleStale ? "Detenido" : quietNote ? "En silencio" : "Trabajando", ok: Boolean(snapshot) && !cycleStale,
     },
     {
       icon: Send, name: "Envíos",
