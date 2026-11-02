@@ -358,13 +358,16 @@ h1 em, h2 em { color: var(--signal-lime); font-family: Georgia, serif; font-weig
 .schools-steps span { display:block; margin-top:28px; color:var(--muted); font-size:12px; }
 .schools-steps h3 { margin:8px 0; font-size:22px; }
 .schools-steps p { margin:0; color:var(--muted); line-height:1.6; }
+.schools-ally { display:grid; grid-template-columns:240px 1fr; gap:24px 48px; border-top:1px solid var(--line); }
+.schools-ally h2 { margin:0 0 14px; font-size:clamp(28px,3vw,40px); line-height:1.1; }
+.schools-ally p:not(.eyebrow) { max-width:680px; margin:0 0 20px; color:var(--muted); line-height:1.7; }
 .schools-conversion { display:grid; grid-template-columns:1fr 1fr; margin-bottom:100px; background:var(--ink); color:#fff; }
 .schools-conversion > div:first-child { padding:clamp(32px,5vw,70px); align-self:center; }
 .schools-conversion h2 { margin:0 0 22px; font-size:clamp(36px,4vw,58px); line-height:1.04; }
 .schools-conversion > div:first-child > p:not(.eyebrow) { max-width:560px; color:#c8d0d9; line-height:1.7; }
 .schools-conversion .text-link-light { margin-top:30px; }
 .schools-conversion .lead-form { min-height:570px; }
-@media (max-width:900px) { .schools-steps { grid-template-columns:repeat(2,1fr); } .schools-conversion { grid-template-columns:1fr; } }
+@media (max-width:900px) { .schools-steps { grid-template-columns:repeat(2,1fr); } .schools-ally { grid-template-columns:1fr; } .schools-conversion { grid-template-columns:1fr; } }
 @media (max-width:600px) { .schools-hero { min-height:600px; } .schools-steps { grid-template-columns:1fr; } .schools-conversion { width:100%; margin-bottom:0; } }
 
 /* CRM comercial */

@@ -46,6 +46,18 @@ export const site = {
   /** Perfiles oficiales (Instagram, YouTube, LinkedIn…). Con URLs aquí, la entidad de la organización las declara en `sameAs`. */
   instagram: "https://www.instagram.com/alesya0108/",
   socials: ["https://www.instagram.com/alesya0108/"] as string[],
+  /** Alianza académica publicada por la propia universidad: se muestra en /colegios y el pie, y entra a los datos estructurados como mención externa. */
+  academicAlly: {
+    name: "Universidad Cooperativa de Colombia",
+    unit: "Facultad de Ingeniería del campus Bogotá",
+    url: "https://ucc.edu.co",
+    note: {
+      headline: "La Facultad de Ingeniería fortalece alianza con Alesya Ediciones para promover innovación y divulgación científica",
+      url: "https://ucc.edu.co/actualidad-ucc/noticias/Paginas/la-facultad-de-ingenieria-fortalece-alianza-con-alesya-ediciones-para-promover-innovaci%C3%B3n-y-divulgacion-cientifica.aspx",
+      datePublished: "2025-12-10",
+      dateLabel: "10 de diciembre de 2025",
+    },
+  },
 } as const;
 
 /** Serializa datos estructurados (JSON-LD) escapando `<` para que un texto nunca cierre la etiqueta `<script>`. */
@@ -62,6 +74,8 @@ export function organizationJsonLd() {
       logo: absoluteUrl(site.logo), image: absoluteUrl(site.ogImage.url), email: site.email, telephone: site.phone,
       address: { "@type": "PostalAddress", streetAddress: site.address.street, addressLocality: site.address.city, addressRegion: site.address.region, addressCountry: site.address.country },
       contactPoint: [{ "@type": "ContactPoint", contactType: "sales", telephone: site.phone, email: site.email, areaServed: "CO", availableLanguage: ["es"] }],
+      subjectOf: { "@type": "NewsArticle", headline: site.academicAlly.note.headline, url: site.academicAlly.note.url, datePublished: site.academicAlly.note.datePublished, inLanguage: "es-CO",
+        publisher: { "@type": "CollegeOrUniversity", name: site.academicAlly.name, url: site.academicAlly.url } },
     },
     { "@context": "https://schema.org", "@type": "WebSite", "@id": `${url}/#sitio`, url, name: site.name, inLanguage: "es-CO", publisher: { "@id": `${url}/#organizacion` },
       potentialAction: { "@type": "SearchAction", target: { "@type": "EntryPoint", urlTemplate: `${url}/catalogo?q={search_term_string}` }, "query-input": "required name=search_term_string" } },
