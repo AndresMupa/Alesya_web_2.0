@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, GraduationCap, School, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, GraduationCap, School, ShieldCheck, Sparkles } from "lucide-react";
 import { LeadForm } from "@/components/lead-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { pageMetadata } from "@/lib/seo";
 import { storeConfig } from "@/lib/settings";
-import { jsonLd, siteUrl } from "@/lib/site";
+import { jsonLd, site, siteUrl } from "@/lib/site";
 
 // Dinámica para que el enlace canónico use el dominio de PRODUCTION_URL del servidor (no el del momento de compilar).
 export const dynamic = "force-dynamic";
@@ -39,6 +39,11 @@ export default async function SchoolsPage() {
           <article><GraduationCap /><span>03</span><h3>Formación</h3><p>Acompañamos a los docentes para llevar la ruta al aula.</p></article>
           <article><ShieldCheck /><span>04</span><h3>Implementación</h3><p>Articulamos materiales, actividades y seguimiento.</p></article>
         </div>
+      </section>
+      <section className="section page-width schools-ally" aria-labelledby="aliado-academico">
+        <p className="eyebrow">Aliado académico</p>
+        <div><h2 id="aliado-academico">{site.academicAlly.name}</h2><p>Con la {site.academicAlly.unit}, iniciamos una colaboración para abrir espacios de intercambio académico y producción intelectual alrededor de la robótica y los programas STEAM, con estudiantes, profesores y egresados.</p>
+          <a className="underlined-link" href={site.academicAlly.note.url} target="_blank" rel="noopener noreferrer">Leer la nota de la universidad ({site.academicAlly.note.dateLabel}) <ArrowUpRight size={17} /></a></div>
       </section>
       <section className="schools-conversion page-width" id="diagnostico">
         <div><p className="eyebrow eyebrow-light">Empecemos por tu institución</p><h2>Cuéntanos qué quieres lograr.</h2><p>Déjanos los datos de tu colegio y el reto que buscas resolver. El equipo comercial podrá preparar una conversación enfocada en tu contexto.</p><Link href="/proyectos" className="text-link-light">Explorar proyectos <ArrowRight size={17} /></Link></div>

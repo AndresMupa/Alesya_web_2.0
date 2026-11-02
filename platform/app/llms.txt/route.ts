@@ -34,6 +34,7 @@ export async function GET() {
     "- Envíos: a toda Colombia; la entrega se coordina al confirmar el pago.",
     "- Pagos: en línea con Wompi (tarjeta, PSE, Nequi o Botón Bancolombia) o por transferencia o Nequi confirmada por el equipo.",
     "- Idioma: español (Colombia). Moneda: pesos colombianos (COP).",
+    `- Aliado académico: ${site.academicAlly.name} (${site.academicAlly.unit}), según [nota de la universidad](${site.academicAlly.note.url}) del ${site.academicAlly.note.dateLabel}.`,
     "",
     "## Páginas principales",
     `- [Inicio](${base}/): portada con proyectos, tienda y programas.`,
