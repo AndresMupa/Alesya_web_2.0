@@ -25,13 +25,13 @@ export const site = {
   publisher: "Alesya Ediciones",
   title: "Alesya X-Tech | Robótica educativa, Arduino e impresión 3D en Colombia",
   description: "Kits de robótica LEGO, Arduino, sensores, impresión 3D, bricolaje y libros, con programas para colegios y formación docente. Aprende construyendo, con envíos a toda Colombia.",
-  keywords: ["robótica educativa", "kits de robótica", "LEGO EV3", "LEGO WeDo", "Arduino", "impresión 3D", "cultura maker", "STEAM", "robótica para colegios", "formación docente", "editorial", "libros escolares", "cuentos", "producción editorial", "plan lector", "preicfes", "pruebas Saber 11", "capacitación docente", "Colombia"],
+  keywords: ["robótica educativa", "kits de robótica", "TECH-R3", "MART-02", "compatible con LEGO", "Arduino", "impresión 3D", "cultura maker", "STEAM", "robótica para colegios", "formación docente", "editorial", "libros escolares", "cuentos", "producción editorial", "plan lector", "preicfes", "pruebas Saber 11", "capacitación docente", "Colombia"],
   /** Quiénes somos para buscadores y asistentes de IA: todas las líneas de la empresa, no solo la tienda de tecnología. */
   about: "Alesya Ediciones es una editorial colombiana con sede en Funza (Cundinamarca). Publica libros escolares, literatura y cuentos, ofrece producción editorial, plan lector, preparación preicfes y capacitaciones para docentes. Su línea Alesya X-Tech lleva la robótica educativa, la electrónica y la impresión 3D a colegios y familias, con libros y con robots.",
   businessLines: [
     { name: "Editorial", detail: "Libros escolares, literatura y cuentos, y servicios de producción editorial." },
     { name: "Plan lector", detail: "Plan lector para colegios." },
-    { name: "Robótica", detail: "Libros de robótica y kits de robots, como LEGO EV3 y LEGO WeDo, para aprender construyendo." },
+    { name: "Robótica", detail: "Libros de robótica y kits de robots, como TECH-R3 y MART-02, para aprender construyendo." },
     { name: "Electrónica e impresión 3D", detail: "Arduino, sensores, componentes e impresión 3D." },
     { name: "Preicfes", detail: "Preparación para las pruebas Saber 11 del ICFES." },
     { name: "Capacitaciones", detail: "Formación y capacitación para docentes." },

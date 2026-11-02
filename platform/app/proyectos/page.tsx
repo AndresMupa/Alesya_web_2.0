@@ -11,23 +11,26 @@ type Project = { title: string; tech: string[]; age: string; time: string; level
 
 const projects: Project[] = [
   { title: "Robot que esquiva obstáculos", tech: ["Arduino", "Sensores"], age: "11+", time: "4 sesiones", level: "Intermedio", video: "/media/robotica-aula.mp4" },
-  { title: "Brazo mecánico programable", tech: ["LEGO EV3", "Mecanismos"], age: "10+", time: "6 sesiones", level: "Intermedio", video: "/media/lego-ev3.mp4" },
-  { title: "Máquinas simples en movimiento", tech: ["LEGO WeDo", "Mecanismos"], age: "7+", time: "4 sesiones", level: "Inicial", image: "/media/clientes-lego-wedo.jpeg" },
+  { title: "Brazo mecánico programable", tech: ["TECH-R3", "Mecanismos"], age: "10+", time: "6 sesiones", level: "Intermedio", video: "/media/lego-ev3.mp4" },
+  { title: "Máquinas simples en movimiento", tech: ["MART-02", "Mecanismos"], age: "7+", time: "4 sesiones", level: "Inicial", image: "/media/clientes-lego-wedo.jpeg" },
   { title: "Diseña una pieza funcional", tech: ["Impresión 3D", "Diseño"], age: "12+", time: "5 sesiones", level: "Inicial", video: "/media/impresion-3d.mp4" },
   { title: "Circuitos con propósito", tech: ["Electrónica", "Bricolaje"], age: "8+", time: "3 sesiones", level: "Inicial", video: "/media/electronica.mp4" },
 ];
-const filters = ["Todos", "LEGO EV3", "LEGO WeDo", "Arduino", "Impresión 3D", "Bricolaje"];
+const filters = ["Todos", "TECH-R3", "MART-02", "Arduino", "Impresión 3D", "Bricolaje"];
+// Filtros con el nombre anterior de los kits (enlaces viejos y portadas ya publicadas).
+const renamedFilters: Record<string, string> = { "LEGO EV3": "TECH-R3", "LEGO WeDo": "MART-02" };
 
 // Los filtros son la misma página: todas apuntan a /proyectos como canónica para no duplicar contenido.
 export const generateMetadata = () => pageMetadata({
   title: "Proyectos de robótica, Arduino e impresión 3D para el aula",
-  description: "Biblioteca de proyectos maker con LEGO EV3, LEGO WeDo, Arduino, impresión 3D y bricolaje: objetivo pedagógico, guía paso a paso, materiales y evaluación por edad y nivel.",
+  description: "Biblioteca de proyectos maker con los kits TECH-R3 y MART-02 (compatibles con LEGO EV3 y WeDo), Arduino, impresión 3D y bricolaje: objetivo pedagógico, guía paso a paso, materiales y evaluación por edad y nivel.",
   path: "/proyectos",
-  image: { url: "/media/posters/lego-ev3.jpg", alt: "Proyecto de robótica con LEGO EV3" },
+  image: { url: "/media/posters/lego-ev3.jpg", alt: "Proyecto de robótica con el kit TECH-R3" },
 });
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ categoria?: string }> }) {
-  const { categoria } = await searchParams;
+  const { categoria: requested } = await searchParams;
+  const categoria = requested && (renamedFilters[requested] ?? requested);
   const active = filters.includes(categoria ?? "") ? categoria! : "Todos";
   const visible = active === "Todos" ? projects : projects.filter((project) => project.tech.includes(active));
   return <div className="site-shell"><div className="interior-header"><SiteHeader /></div><main><section className="page-hero"><div className="page-width"><p className="eyebrow eyebrow-light">Biblioteca de proyectos</p><h1>Construye, programa<br />y comprende.</h1><p>Rutas listas para aprender haciendo. Cada proyecto conecta una pregunta, una tecnología y un resultado que se puede mostrar.</p></div></section><section className="section page-width">

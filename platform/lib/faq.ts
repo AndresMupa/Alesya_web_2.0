@@ -25,7 +25,7 @@ export const faqs: Faq[] = [
   },
   {
     question: "¿Tienen libros de robótica?",
-    answer: "Sí. La robótica la trabajamos tanto con libros como con robots: hay libros con rutas pedagógicas y guías docentes, como la Ruta LEGO EV3, y kits como LEGO EV3 y LEGO WeDo para construir y programar.",
+    answer: "Sí. La robótica la trabajamos tanto con libros como con robots: hay libros con rutas pedagógicas y guías docentes, como la Ruta TECH-R3, y kits como TECH-R3 y MART-02 (compatibles con LEGO EV3 y WeDo) para construir y programar.",
   },
   {
     question: "¿Hacen envíos a toda Colombia?",
@@ -37,7 +37,7 @@ export const faqs: Faq[] = [
   },
   {
     question: "¿Para qué edades son los proyectos?",
-    answer: "Los proyectos de la página de proyectos van desde los 7 años (LEGO WeDo) hasta los 12 años (impresión 3D). Cada proyecto indica su edad sugerida, duración y nivel.",
+    answer: "Los proyectos de la página de proyectos van desde los 7 años (MART-02) hasta los 12 años (impresión 3D). Cada proyecto indica su edad sugerida, duración y nivel.",
   },
   {
     question: "¿Ofrecen programas de robótica para colegios?",

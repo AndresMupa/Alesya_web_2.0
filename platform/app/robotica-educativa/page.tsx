@@ -47,8 +47,8 @@ export default function RoboticaEducativaPage() {
           <h2>Tecnologías y edades sugeridas</h2>
           <p>Cada tecnología tiene su punto de entrada. En nuestros proyectos, las edades sugeridas van así:</p>
           <ul>
-            <li>LEGO WeDo: mecanismos y máquinas simples, desde los 7 años.</li>
-            <li>LEGO EV3: construcción, sensores, motores y programación por bloques, desde los 10 años.</li>
+            <li>MART-02 (compatible con LEGO WeDo): mecanismos y máquinas simples, desde los 7 años.</li>
+            <li>TECH-R3 (compatible con LEGO EV3): construcción, sensores, motores y programación por bloques, desde los 10 años.</li>
             <li>Arduino y electrónica: sensores, luces y circuitos, desde los 8 y 11 años según el proyecto.</li>
             <li>Impresión 3D y diseño: modelar y fabricar piezas funcionales, desde los 12 años.</li>
           </ul>

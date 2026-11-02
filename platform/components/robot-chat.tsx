@@ -19,7 +19,7 @@ const intents: Intent[] = [
   },
   {
     keys: ["precio", "cuesta", "vale", "valor", "cuanto", "costo", "tarifa"],
-    reply: "Estos son algunos precios de referencia:\n• Kit Arduino Explorador — $289.000\n• Ruta LEGO EV3 (libro + recursos) — $119.000\n• Kit Mecanismos WeDo — $349.000\n• Laboratorio de impresión 3D — $179.000\n¿Quieres ver el catálogo completo?",
+    reply: "Estos son algunos precios de referencia:\n• Kit Arduino Explorador — $289.000\n• Ruta TECH-R3 (libro + recursos) — $119.000\n• Kit Mecanismos MART-02 — $349.000\n• Laboratorio de impresión 3D — $179.000\n¿Quieres ver el catálogo completo?",
     actions: [{ label: "Ver catálogo", href: "/catalogo" }],
   },
   {
@@ -28,11 +28,11 @@ const intents: Intent[] = [
     actions: [{ label: "Comprar Arduino", href: "/checkout?producto=kit-arduino-explorador" }],
   },
   {
-    keys: ["lego", "ev3", "wedo", "robotica", "robot"],
-    reply: "En robótica tenemos LEGO EV3 y WeDo: construcción, sensores, motores y programación por bloques. La Ruta LEGO EV3 incluye 8 retos con guía docente ($119.000).",
+    keys: ["lego", "ev3", "wedo", "tech-r3", "mart-02", "robotica", "robot"],
+    reply: "En robótica tenemos los kits TECH-R3 para bachillerato y MART-02 para primaria, compatibles con LEGO EV3 y WeDo: construcción, sensores, motores y programación por bloques. La Ruta TECH-R3 incluye 8 retos con guía docente ($119.000).",
     actions: [
       { label: "Ver proyectos", href: "/proyectos" },
-      { label: "Ruta LEGO EV3", href: "/checkout?producto=ruta-lego-ev3" },
+      { label: "Ruta TECH-R3", href: "/checkout?producto=ruta-lego-ev3" },
     ],
   },
   {
@@ -42,7 +42,7 @@ const intents: Intent[] = [
   },
   {
     keys: ["proyecto", "ruta", "aprender", "curso", "aprendizaje", "clase"],
-    reply: "Tenemos rutas de aprendizaje desde inicial hasta avanzado: circuitos, robot seguidor de línea, mecanismos WeDo y diseño con impresión 3D. Cada una con guías y actividades de aula.",
+    reply: "Tenemos rutas de aprendizaje desde inicial hasta avanzado: circuitos, robot seguidor de línea, mecanismos con MART-02 y diseño con impresión 3D. Cada una con guías y actividades de aula.",
     actions: [{ label: "Explorar proyectos", href: "/proyectos" }],
   },
   {
