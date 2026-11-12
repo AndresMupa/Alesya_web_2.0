@@ -36,6 +36,7 @@ export async function GET() {
     "- Idioma: español (Colombia). Moneda: pesos colombianos (COP).",
     "",
     "## Páginas principales",
+    `- [Formación en ChatGPT Business](${base}/chatgpt-business): propuesta de piloto para equipos educativos y organizaciones; acompañamiento independiente de OpenAI.`,
     `- [Inicio](${base}/): portada con proyectos, tienda y programas.`,
     `- [Tienda](${base}/catalogo): catálogo completo de kits, electrónica, impresión 3D, bricolaje y libros.`,
     `- [Colegios](${base}/colegios): programa de robótica educativa y cultura maker para colegios, con diagnóstico, dotación y formación docente.`,
