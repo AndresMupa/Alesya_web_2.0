@@ -4,7 +4,7 @@
  * cambiar esa variable a https://www.alesyaediciones.com y reiniciar: enlaces canónicos, sitemap, robots, datos
  * estructurados, correos y pagos toman el nuevo dominio.
  */
-const FALLBACK_URL = "https://nueva.alesyaediciones.com";
+const FALLBACK_URL = "https://www.alesyaediciones.com";
 
 export function siteUrl() {
   const value = (typeof process !== "undefined" ? process.env.PRODUCTION_URL : undefined)?.trim().replace(/\/+$/, "");

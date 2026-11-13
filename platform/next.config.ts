@@ -13,8 +13,8 @@ const root = path.dirname(fileURLToPath(import.meta.url));
  * páginas legales) no necesitan redirección.
  */
 const wordpress: [source: string, destination: string][] = [
-  ["/shop", "/catalogo"], ["/tienda", "/catalogo"], ["/product/:slug*", "/catalogo"], ["/producto/:slug*", "/catalogo"],
-  ["/product-category/robotica", "/catalogo?categoria=robotica"], ["/product-category/:slug*", "/catalogo"], ["/categoria-producto/:slug*", "/catalogo"],
+  ["/shop", "/catalogo"], ["/tienda", "/catalogo"], ["/product/robotica-educativa-modulo-:numero(\\d+)", "/catalogo?categoria=Libros"], ["/product/:slug", "/catalogo"], ["/producto/:slug", "/catalogo"],
+  ["/product-category/robotica", "/catalogo?categoria=robotica"], ["/product-category/planlector", "/plan-lector"], ["/product-category/:slug", "/catalogo"], ["/categoria-producto/:slug", "/catalogo"],
   ["/cart", "/carrito"], ["/finalizar-compra", "/checkout"],
   ["/mi-cuenta/:path*", "/pedido"], ["/cuenta-de-usuario", "/pedido"], ["/iniciar-sesion", "/pedido"], ["/registro", "/pedido"], ["/forgot-password", "/pedido"], ["/restablecer-contrasena", "/pedido"], ["/lp-profile/:path*", "/pedido"], ["/lp-checkout", "/pedido"],
   ["/contacto", "/colegios#diagnostico"], ["/contact", "/colegios#diagnostico"], ["/faqs", "/colegios"],
