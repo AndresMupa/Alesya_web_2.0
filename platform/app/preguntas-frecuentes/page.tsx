@@ -34,7 +34,7 @@ export default function FaqPage() {
         <section>
           <h2>¿Otra pregunta?</h2>
           <p>Escríbenos por WhatsApp o visita la <Link href="/catalogo">tienda</Link> para encontrar el kit adecuado para tu proyecto.</p>
-          <p>Si quieres formar a tu equipo de trabajo o a tus docentes, consulta la <Link href="/chatgpt-business">capacitación en ChatGPT Business para empresas y colegios</Link>.</p>
+          <p>Si buscas una propuesta para tu institución, consulta el <Link href="/colegios">programa de robótica para colegios</Link> o el <Link href="/plan-lector">plan lector de Alesya Ediciones</Link>.</p>
         </section>
       </article>
     </main>
