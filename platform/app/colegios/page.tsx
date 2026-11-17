@@ -10,8 +10,8 @@ import { jsonLd, siteUrl } from "@/lib/site";
 // Dinámica para que el enlace canónico use el dominio de PRODUCTION_URL del servidor (no el del momento de compilar).
 export const dynamic = "force-dynamic";
 
-const description = "Diagnóstico, dotación, formación docente y rutas de proyectos para implementar robótica educativa y cultura maker en colegios de Colombia.";
-export const generateMetadata = () => pageMetadata({ title: "Programas de robótica educativa para colegios", description, path: "/colegios", image: { url: "/media/clientes-robotica-ev3.jpeg", alt: "Estudiantes presentando proyectos de robótica educativa" } });
+const description = "Programas de robótica educativa para colegios en Colombia con kits, proyectos y formación docente. Solicita un diagnóstico según los grados y recursos de tu institución.";
+export const generateMetadata = () => pageMetadata({ title: "Robótica educativa para colegios en Colombia", description, path: "/colegios", image: { url: "/media/clientes-robotica-ev3.jpeg", alt: "Estudiantes presentando proyectos de robótica educativa" } });
 
 const serviceJsonLd = () => ({
   "@context": "https://schema.org", "@type": "Service", name: "Programa de robótica educativa para colegios", serviceType: "Robótica educativa y cultura maker", description,
@@ -28,7 +28,7 @@ export default async function SchoolsPage() {
       <section className="page-hero schools-hero"><div className="page-width">
         <p className="eyebrow eyebrow-light">Alesya para instituciones educativas</p>
         <h1>Robótica para<br />todo el colegio.</h1>
-        <p>Diseñamos contigo una implementación por grados: recursos, proyectos y acompañamiento docente en una sola ruta.</p>
+        <p>Alesya X-Tech implementa programas de robótica educativa para colegios en Colombia. Diseñamos la ruta por grados según las metas de tu institución, con kits, proyectos de aula y formación docente.</p>
         <div className="schools-actions"><a className="button button-primary" href="#diagnostico">Solicitar diagnóstico <ArrowRight size={17} /></a><a className="button button-ghost-light" href={whatsapp} target="_blank" rel="noopener noreferrer">Conversar por WhatsApp</a></div>
       </div></section>
       <section className="section page-width schools-program">
@@ -41,7 +41,7 @@ export default async function SchoolsPage() {
         </div>
       </section>
       <section className="schools-conversion page-width" id="diagnostico">
-        <div><p className="eyebrow eyebrow-light">Empecemos por tu institución</p><h2>Cuéntanos qué quieres lograr.</h2><p>Déjanos los datos de tu colegio y el reto que buscas resolver. El equipo comercial podrá preparar una conversación enfocada en tu contexto.</p><Link href="/proyectos" className="text-link-light">Explorar proyectos <ArrowRight size={17} /></Link></div>
+        <div><p className="eyebrow eyebrow-light">Empecemos por tu institución</p><h2>Cuéntanos qué quieres lograr.</h2><p>Para preparar el diagnóstico, indícanos la ciudad, los grados, cuántos estudiantes participarían y qué equipos o materiales ya tienen. Así podemos plantear un primer proyecto para tu colegio.</p><Link href="/proyectos" className="text-link-light">Explorar proyectos <ArrowRight size={17} /></Link></div>
         <LeadForm program="Robótica" />
       </section>
     </main>
