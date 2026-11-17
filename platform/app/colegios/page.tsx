@@ -32,7 +32,7 @@ export default async function SchoolsPage() {
         <div className="schools-actions"><a className="button button-primary" href="#diagnostico">Solicitar diagnóstico <ArrowRight size={17} /></a><a className="button button-ghost-light" href={whatsapp} target="_blank" rel="noopener noreferrer">Conversar por WhatsApp</a></div>
       </div></section>
       <section className="section page-width schools-program">
-        <div className="section-heading split-heading"><div><p className="eyebrow">De la idea al aula</p><h2>Una ruta para toda la comunidad educativa.</h2></div><p>La propuesta se ajusta al número de estudiantes, grados, recursos existentes y objetivos pedagógicos de cada institución.</p></div>
+        <div className="section-heading split-heading"><div><p className="eyebrow">De la idea al aula</p><h2>Una ruta para toda la comunidad educativa.</h2></div><p>La propuesta se ajusta al número de estudiantes, grados, recursos existentes y objetivos pedagógicos de cada institución. Consulta la <Link href="/robotica-educativa">guía para elegir un kit y organizar un piloto</Link>.</p></div>
         <div className="schools-steps">
           <article><School /><span>01</span><h3>Diagnóstico</h3><p>Conversamos sobre grados, cobertura y metas del colegio.</p></article>
           <article><Sparkles /><span>02</span><h3>Ruta pedagógica</h3><p>Definimos proyectos y contenidos adecuados para cada etapa.</p></article>

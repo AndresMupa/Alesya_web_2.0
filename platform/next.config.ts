@@ -19,7 +19,7 @@ const wordpress: [source: string, destination: string][] = [
   ["/mi-cuenta/:path*", "/pedido"], ["/cuenta-de-usuario", "/pedido"], ["/iniciar-sesion", "/pedido"], ["/registro", "/pedido"], ["/forgot-password", "/pedido"], ["/restablecer-contrasena", "/pedido"], ["/lp-profile/:path*", "/pedido"], ["/lp-checkout", "/pedido"],
   ["/contacto", "/colegios#diagnostico"], ["/contact", "/colegios#diagnostico"], ["/faqs", "/colegios"],
   ["/about-us", "/#clientes"], ["/nosotros", "/#clientes"], ["/quienes-somos", "/#clientes"], ["/galeria", "/#clientes"],
-  ["/robotica", "/proyectos"], ["/recursos", "/proyectos"], ["/videos-educativos", "/proyectos"],
+  ["/robotica", "/robotica-educativa"], ["/recursos", "/proyectos"], ["/videos-educativos", "/proyectos"],
   ["/literatura", "/catalogo?categoria=Libros"], ["/literatura-infantil-2", "/catalogo?categoria=Libros"], ["/literatura-juvenil-2", "/catalogo?categoria=Libros"], ["/literatura-adulta-2", "/catalogo?categoria=Libros"],
   ["/grado-:numero(\\d+)", "/catalogo?categoria=Libros"], ["/modulos-escolares", "/catalogo?categoria=Libros"], ["/area-ingles", "/catalogo?categoria=Libros"], ["/3d-flip-book/:slug*", "/catalogo?categoria=Libros"],
   ["/blog", "/"], ["/author/:slug*", "/"], ["/category/:slug*", "/"], ["/tag/:slug*", "/"], ["/mantenimiento", "/"],
