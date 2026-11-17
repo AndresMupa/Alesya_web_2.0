@@ -358,6 +358,13 @@ h1 em, h2 em { color: var(--signal-lime); font-family: Georgia, serif; font-weig
 .schools-steps span { display:block; margin-top:28px; color:var(--muted); font-size:12px; }
 .schools-steps h3 { margin:8px 0; font-size:22px; }
 .schools-steps p { margin:0; color:var(--muted); line-height:1.6; }
+.schools-roster, .schools-conversion { scroll-margin-top:110px; }
+.schools-roster-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.schools-roster-quote { margin-top:16px; padding:clamp(20px,4vw,36px); background:#fff; border:1px solid var(--line); }
+.schools-roster-quote h3 { margin:0; font-size:22px; }
+.schools-roster-quote ul { margin:14px 0 22px; padding-inline-start:22px; line-height:1.6; color:var(--muted); }
+.schools-roster-quote a { white-space:normal; }
+@media (max-width:760px) { .schools-roster .schools-roster-grid { grid-template-columns:1fr; } }
 .schools-conversion { display:grid; grid-template-columns:1fr 1fr; margin-bottom:100px; background:var(--ink); color:#fff; }
 .schools-conversion > div:first-child { padding:clamp(32px,5vw,70px); align-self:center; }
 .schools-conversion h2 { margin:0 0 22px; font-size:clamp(36px,4vw,58px); line-height:1.04; }
