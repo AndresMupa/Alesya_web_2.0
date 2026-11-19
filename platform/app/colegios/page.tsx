@@ -77,6 +77,12 @@ export default async function SchoolsPage() {
         <div><p className="eyebrow eyebrow-light">Empecemos por tu institución</p><h2>Cuéntanos qué quieres lograr.</h2><p>Para preparar el diagnóstico, indícanos la ciudad, los grados, cuántos estudiantes participarían y qué equipos o materiales ya tienen. Así podemos plantear un primer proyecto para tu colegio.</p><Link href="/proyectos" className="text-link-light">Explorar proyectos <ArrowRight size={17} /></Link></div>
         <LeadForm program="Robótica" />
       </section>
+      <section className="section page-width">
+        <div className="section-heading">
+          <h2>Libros de Plan lector para colegios</h2>
+          <p>Alesya Ediciones ofrece literatura infantil y juvenil y textos escolares. Consulta los <Link className="underlined-link" href="/plan-lector#plan-lector-30-estudiantes">títulos por grado y la ficha para 30 estudiantes</Link>.</p>
+        </div>
+      </section>
     </main>
     <SiteFooter />
   </div>;
