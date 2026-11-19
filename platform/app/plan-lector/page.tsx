@@ -2,18 +2,23 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { pageMetadata } from "@/lib/seo";
-import { jsonLd, site, siteUrl } from "@/lib/site";
+import { absoluteUrl, jsonLd, site, siteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
-const description = "Plan lector de Alesya Ediciones para colegios en Colombia. Consulta cuentos infantiles, relatos para adolescentes y Lectores y punto para primaria, con autores, ISBN y cotización para 30 estudiantes.";
-export const generateMetadata = () => pageMetadata({ title: "Plan lector para colegios en Colombia", description, path: "/plan-lector" });
+const path = "/plan-lector";
+const title = "Plan lector por grado para colegios en Colombia";
+const description = "Alesya Ediciones, proveedor de libros de plan lector para colegios en Colombia. Consulta títulos por grado, autores e ISBN y cotiza ejemplares para 30 estudiantes.";
+export const generateMetadata = () => pageMetadata({ title, description, path });
+
+const childrenAuthor = "Mario Andrés López Zuluaga";
+const schoolAuthor = "Richard Daza Rodríguez";
 
 const literature = [
-  { title: "Igor el Robot", author: "Mario Andrés López Zuluaga", grade: "Preescolar, para lectura en voz alta", isbn: "978-628-96589-7-2", record: 505487 },
-  { title: "Fotón ¿De qué color es tu luz?", author: "Mario Andrés López Zuluaga", grade: "1.º a 3.º de primaria", isbn: "978-628-96589-8-9", record: 505492 },
-  { title: "Hugo el Huevo", author: "Mario Andrés López Zuluaga", grade: "3.º a 5.º de primaria", isbn: "978-628-96589-9-6", record: 505489 },
-  { title: "Cuentos Desilustrados", author: "Mario Andrés López Zuluaga y Yeimy Maricela Arango Escobar", grade: "2.º a 4.º de primaria", isbn: "978-628-97783-0-4", record: 508829 },
-  { title: "Pasajeros", author: "Andrés Henao Flórez", grade: "Secundaria, para adolescentes. Validar el grado con el colegio", isbn: "978-628-96155-1-7", record: 446061 },
+  { title: "Igor el Robot", authors: [childrenAuthor], grade: "Preescolar, para lectura en voz alta", isbn: "978-628-96589-7-2", record: 505487 },
+  { title: "Fotón ¿De qué color es tu luz?", authors: [childrenAuthor], grade: "1.º a 3.º de primaria", isbn: "978-628-96589-8-9", record: 505492 },
+  { title: "Cuentos Desilustrados", authors: [childrenAuthor, "Yeimy Maricela Arango Escobar"], grade: "2.º a 4.º de primaria", isbn: "978-628-97783-0-4", record: 508829 },
+  { title: "Hugo el Huevo", authors: [childrenAuthor], grade: "3.º a 5.º de primaria", isbn: "978-628-96589-9-6", record: 505489 },
+  { title: "Pasajeros", authors: ["Andrés Henao Flórez"], grade: "Secundaria, para adolescentes. Validar el grado con el colegio", isbn: "978-628-96155-1-7", record: 446061 },
 ];
 
 const primaryReaders = [
@@ -22,24 +27,70 @@ const primaryReaders = [
   { title: "Lectores y punto tercero", grade: "3.º", isbn: "978-628-96589-6-5", record: 459257 },
   { title: "Lectores y punto cuarto", grade: "4.º", isbn: "978-628-96589-4-1", record: 459258 },
   { title: "Lectores y punto quinto", grade: "5.º", isbn: "978-628-96589-5-8", record: 459259 },
-];
+].map((book) => ({ ...book, authors: [schoolAuthor], grade: `${book.grade} de primaria` }));
 
-function IsbnLink({ isbn, record }: { isbn: string; record: number }) {
-  return <a className="underlined-link" href={`https://isbn.camlibro.com.co/catalogo.php?mode=detalle&nt=${record}`}
-    aria-label={`ISBN ${isbn} en el registro de la Cámara Colombiana del Libro`}>{isbn}</a>;
+function isbnRecordUrl(record: number) {
+  return `https://isbn.camlibro.com.co/catalogo.php?mode=detalle&nt=${record}`;
+}
+
+function BookTable({ books, labelledBy }: { books: typeof literature; labelledBy: string }) {
+  return <div className="reading-plan-table" role="region" aria-labelledby={labelledBy} tabIndex={0}>
+    <table aria-labelledby={labelledBy}>
+      <thead><tr><th scope="col">Grado recomendado</th><th scope="col">Título</th><th scope="col">Autoría</th><th scope="col">ISBN</th></tr></thead>
+      <tbody>
+        {books.map((book) => (
+          <tr key={book.isbn} id={`libro-${book.isbn}`}>
+            <td>{book.grade}</td>
+            <th scope="row">{book.title}</th>
+            <td>{book.authors.join(" y ")}</td>
+            <td><a className="underlined-link" href={isbnRecordUrl(book.record)}
+              aria-label={`ISBN ${book.isbn} en el registro de la Cámara Colombiana del Libro`}>{book.isbn}</a></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>;
 }
 
 export default function ReadingPlanPage() {
   const whatsapp = "https://wa.me/573005937840?text=" + encodeURIComponent("Hola, quiero consultar el plan lector y la selección editorial para mi colegio.");
   const quoteWhatsapp = "https://wa.me/573005937840?text=" + encodeURIComponent("Hola, quiero cotizar Plan lector para 30 estudiantes. Colegio: __. Ciudad: __. Grado: __. Títulos de interés: __. Fecha requerida: __.");
+  const url = absoluteUrl(path);
+  const publisher = { "@id": `${siteUrl()}/#organizacion`, name: site.publisher };
+  const catalog = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Service", name: title, description, url, provider: publisher, areaServed: { "@type": "Country", name: "Colombia" } },
+      {
+        "@type": "ItemList",
+        name: "Libros de Alesya Ediciones para Plan lector por grado",
+        url: `${url}#plan-lector-30-estudiantes`,
+        itemListElement: [...literature, ...primaryReaders].map((book, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          item: {
+            "@type": "Book",
+            name: book.title,
+            url: `${url}#libro-${book.isbn}`,
+            author: book.authors.map((name) => ({ "@type": "Person", name })),
+            publisher,
+            isbn: book.isbn,
+            sameAs: isbnRecordUrl(book.record),
+            audience: { "@type": "EducationalAudience", educationalRole: "estudiante" },
+            description: `Grado recomendado: ${book.grade}.`,
+          },
+        })),
+      },
+    ],
+  };
   return <div className="site-shell schools-page">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd({ "@context": "https://schema.org", "@type": "Service", name: "Plan lector para colegios", description, url: siteUrl() + "/plan-lector", provider: { "@id": siteUrl() + "/#organizacion" }, areaServed: { "@type": "Country", name: "Colombia" } }) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(catalog) }} />
     <div className="interior-header"><SiteHeader /></div>
     <main>
       <section className="page-hero schools-hero"><div className="page-width">
         <p className="eyebrow eyebrow-light">Alesya Ediciones · Literatura y educación</p>
-        <h1>Plan lector para<br />tu colegio.</h1>
-        <p>Alesya Ediciones es una editorial colombiana con sede en Funza, Cundinamarca. Publicamos literatura, cuentos y libros escolares, y ofrecemos plan lector para instituciones educativas.</p>
+        <h1>{title}</h1>
+        <p>Alesya Ediciones es una editorial y proveedora de libros de plan lector para colegios en Colombia, con sede en Funza, Cundinamarca. El catálogo reúne cuentos para preescolar y primaria, la serie <em>Lectores y punto</em> de 1.º a 5.º y literatura juvenil para secundaria.</p>
         <div className="schools-actions">
           <a href="#plan-lector-30-estudiantes" className="button button-primary">Ver ficha para 30 estudiantes</a>
           <a href={whatsapp} className="button button-ghost-light" target="_blank" rel="noopener noreferrer">Consultar el plan lector</a>
@@ -48,32 +99,15 @@ export default function ReadingPlanPage() {
       </div></section>
       <section className="section page-width schools-roster" id="plan-lector-30-estudiantes" aria-labelledby="plan-lector-30-titulo">
         <div className="section-heading split-heading">
-          <div><p className="eyebrow">Ficha para colegios</p><h2 id="plan-lector-30-titulo">Plan lector para 30 estudiantes</h2></div>
-          <p>Para un curso de 30 estudiantes, puedes consultar por 30 ejemplares de un mismo título, uno por estudiante. Si el colegio prefiere combinar títulos o compartir ejemplares, indica las cantidades por título al pedir la cotización.</p>
+          <div><h2 id="plan-lector-30-titulo">Plan lector para 30 estudiantes</h2></div>
+          <p>Consulta con Alesya Ediciones por 30 ejemplares de un título, uno por estudiante, o por una selección de varios títulos. Indica el grado, el municipio y las cantidades que necesita el colegio. Alesya confirma existencias, precio y plazos al cotizar.</p>
         </div>
-        <h3>Literatura infantil y juvenil</h3>
-        <p>Los grados de los cuentos son orientativos. Selecciona según el nivel lector del curso. Los enlaces permiten verificar cada edición en la Cámara Colombiana del Libro. Alesya confirma existencias y plazos al cotizar.</p>
-        <div className="schools-steps schools-roster-grid">
-          {literature.map((book) => (
-            <article key={book.isbn}>
-              <h4>{book.title}</h4>
-              <p><strong>Autoría:</strong> {book.author}</p>
-              <p><strong>Grado recomendado:</strong> {book.grade}</p>
-              <p><strong>ISBN:</strong> <IsbnLink isbn={book.isbn} record={book.record} /></p>
-            </article>
-          ))}
-        </div>
-        <h3>Lectores y punto para primaria</h3>
-        <p>Textos escolares de lectura de Richard Daza Rodríguez. Cada título corresponde al grado que indica su edición.</p>
-        <div className="schools-steps schools-roster-grid">
-          {primaryReaders.map((book) => (
-            <article key={book.isbn}>
-              <h4>{book.title}</h4>
-              <p><strong>Grado:</strong> {book.grade} de primaria</p>
-              <p><strong>ISBN:</strong> <IsbnLink isbn={book.isbn} record={book.record} /></p>
-            </article>
-          ))}
-        </div>
+        <h3 id="literatura-por-grado">Literatura infantil y juvenil por grado</h3>
+        <p>Los grados sugeridos para literatura son orientativos. El colegio puede ajustar la selección al nivel lector del curso. Cada ISBN enlaza al registro de esa edición en la Cámara Colombiana del Libro.</p>
+        <BookTable books={literature} labelledBy="literatura-por-grado" />
+        <h3 id="lectores-y-punto">Lectores y punto de 1.º a 5.º de primaria</h3>
+        <p>La serie de textos escolares de lectura tiene una edición para cada grado de primaria.</p>
+        <BookTable books={primaryReaders} labelledBy="lectores-y-punto" />
         <h3>Textos escolares complementarios de preescolar</h3>
         <div className="schools-steps schools-roster-grid">
           <article>
@@ -106,7 +140,7 @@ export default function ReadingPlanPage() {
         </div>
       </section>
       <section className="section page-width"><div className="section-heading"><p className="eyebrow">Preguntas frecuentes</p><h2>Antes de elegir los libros.</h2></div>
-        <h3>¿Dónde consulto los títulos del plan lector?</h3><p>Contacta al equipo comercial para consultar la oferta editorial vigente. La tienda en línea muestra los productos disponibles allí; consulta por otros títulos y solicitudes institucionales.</p>
+        <h3>¿Dónde consulto los títulos del plan lector?</h3><p>La <a className="underlined-link" href="#plan-lector-30-estudiantes">ficha para 30 estudiantes</a> reúne los títulos con su grado recomendado, autoría e ISBN. Para confirmar disponibilidad y cantidades, solicita una cotización al equipo comercial.</p>
         <h3>¿A quién está dirigida esta propuesta?</h3><p>A colegios y equipos docentes que buscan conocer la línea editorial y el plan lector de Alesya Ediciones en Colombia.</p>
         <h3>¿Cómo contacto a Alesya?</h3><p>Escríbenos a <a href={"mailto:" + site.email}>{site.email}</a> o llama al <a href={site.phoneHref}>{site.phone}</a>. Estamos en {site.address.street}, {site.address.city}, {site.address.region}.</p>
       </section>

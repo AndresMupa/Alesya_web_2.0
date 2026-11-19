@@ -368,6 +368,13 @@ h1 em, h2 em { color: var(--signal-lime); font-family: Georgia, serif; font-weig
 #plan-lector-30-estudiantes > h3 + p { max-width:72ch; margin:0 0 16px; line-height:1.6; }
 #plan-lector-30-estudiantes .schools-roster-grid h4 { margin:0 0 10px; font-size:20px; }
 #plan-lector-30-estudiantes .schools-roster-grid p + p { margin-top:6px; }
+.reading-plan-table { overflow-x:auto; border:1px solid var(--line); background:#fff; }
+.reading-plan-table table { width:100%; min-width:540px; border-collapse:collapse; text-align:left; }
+.reading-plan-table th, .reading-plan-table td { padding:12px 14px; vertical-align:top; }
+.reading-plan-table thead { background:var(--paper, #f3f4ef); }
+.reading-plan-table tbody tr { border-top:1px solid var(--line); scroll-margin-top:110px; }
+.reading-plan-table td:last-child { white-space:nowrap; }
+.reading-plan-table tr:target { background:#e8f3ef; }
 @media (max-width:760px) { .schools-roster .schools-roster-grid { grid-template-columns:1fr; } }
 .schools-conversion { display:grid; grid-template-columns:1fr 1fr; margin-bottom:100px; background:var(--ink); color:#fff; }
 .schools-conversion > div:first-child { padding:clamp(32px,5vw,70px); align-self:center; }
