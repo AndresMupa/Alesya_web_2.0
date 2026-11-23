@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { listSitemapProducts, listStoreCategories } from "@/lib/commerce/catalog";
 import { legalPages } from "@/lib/legal";
+import { educationServices } from "@/lib/education-services";
 import { absoluteUrl, siteUrl } from "@/lib/site";
 
 // Se arma en cada solicitud: el catálogo cambia desde el panel y el dominio sale de PRODUCTION_URL en el servidor.
@@ -13,6 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${base}/catalogo`, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/plan-lector`, lastModified: "2026-11-19", changeFrequency: "monthly", priority: 0.7 },
+    ...Object.values(educationServices).map(({ path }) => ({ url: absoluteUrl(path), changeFrequency: "monthly" as const })),
     { url: `${base}/colegios`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/proyectos`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${base}/robotica-educativa`, changeFrequency: "monthly", priority: 0.7 },

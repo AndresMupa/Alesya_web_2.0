@@ -382,6 +382,23 @@ h1 em, h2 em { color: var(--signal-lime); font-family: Georgia, serif; font-weig
 .schools-conversion > div:first-child > p:not(.eyebrow) { max-width:560px; color:#c8d0d9; line-height:1.7; }
 .schools-conversion .text-link-light { margin-top:30px; }
 .schools-conversion .lead-form { min-height:570px; }
+.services-directory { scroll-margin-top:110px; }
+.education-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.service-directory-link { display:block; padding:24px; background:white; border:1px solid var(--line); }
+.service-directory-link:hover { border-color:var(--ink); }
+.service-directory-link:focus-visible, .main-nav a:focus-visible { outline:2px solid currentColor; outline-offset:4px; }
+.service-directory-link h3 { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 8px; font-size:22px; }
+.service-directory-link h3 svg { flex:none; }
+.service-directory-link p { margin:0; color:var(--muted); line-height:1.6; }
+.education-service-hero { padding:clamp(120px,14vw,180px) 0 56px; }
+.education-service-hero h1 { font-size:clamp(38px,6vw,78px); line-height:1; overflow-wrap:break-word; }
+.education-service-hero p { max-width:66ch; color:#dbe2e9; line-height:1.65; }
+.quote-section .lead-form { min-height:0; }
+.interior-header .site-header { background:var(--ink); }
+.quote-section .lead-form :is(input, textarea, button, a) { scroll-margin-block:105px 20px; }
+.quote-section .lead-form :is(input, textarea):focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+@media (max-width:900px) { .education-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:600px) { .education-grid { grid-template-columns:1fr; } }
 @media (max-width:900px) { .schools-steps { grid-template-columns:repeat(2,1fr); } .schools-conversion { grid-template-columns:1fr; } }
 @media (max-width:600px) { .schools-hero { min-height:600px; } .schools-steps { grid-template-columns:1fr; } .schools-conversion { width:100%; margin-bottom:0; } }
 

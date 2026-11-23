@@ -23,8 +23,8 @@ export const site = {
   name: "Alesya X-Tech",
   legalName: "Alesya Ediciones S.A.",
   publisher: "Alesya Ediciones",
-  title: "Alesya X-Tech | Robótica educativa, Arduino e impresión 3D en Colombia",
-  description: "Kits de robótica LEGO, Arduino, sensores, impresión 3D, bricolaje y libros, con programas para colegios y formación docente. Aprende construyendo, con envíos a toda Colombia.",
+  title: "Alesya Ediciones y Alesya X-Tech | Libros y tecnología educativa en Colombia",
+  description: "Plan lector, producción editorial, Preicfes y formación docente para colegios. Alesya X-Tech ofrece robótica educativa, kits, Arduino e impresión 3D.",
   keywords: ["robótica educativa", "kits de robótica", "TECH-R3", "MART-02", "compatible con LEGO", "Arduino", "impresión 3D", "cultura maker", "STEAM", "robótica para colegios", "formación docente", "editorial", "libros escolares", "cuentos", "producción editorial", "plan lector", "preicfes", "pruebas Saber 11", "capacitación docente", "Colombia"],
   /** Quiénes somos para buscadores y asistentes de IA: todas las líneas de la empresa, no solo la tienda de tecnología. */
   about: "Alesya Ediciones es una editorial colombiana con sede en Funza (Cundinamarca). Publica libros escolares, literatura y cuentos, ofrece producción editorial, plan lector, preparación preicfes y capacitaciones para docentes. Su línea Alesya X-Tech lleva la robótica educativa, la electrónica y la impresión 3D a colegios y familias, con libros y con robots.",

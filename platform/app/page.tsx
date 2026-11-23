@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { HomeSections } from "@/components/home/home-sections";
 import { PreviewBar } from "@/components/home/preview-bar";
 import { SiteFooter } from "@/components/site-footer";
@@ -7,6 +9,7 @@ import { getFeaturedProducts, type StoreProduct } from "@/lib/commerce/catalog";
 import { getDraftHome, getPublishedHome } from "@/lib/pages/home";
 import { defaultHomeDocument, type HomeDocument, type SectionOf } from "@/lib/pages/home-schema";
 import { pageMetadata } from "@/lib/seo";
+import { serviceDirectory } from "@/lib/education-services";
 import { jsonLd, organizationJsonLd, site } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +39,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ v
     <div className="site-shell immersive-home">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(organizationJsonLd()) }} />
       <SiteHeader />
-      <main>{!hasHero && <h1 className="sr-only">{site.title}</h1>}<HomeSections document={document} featured={featured} /></main>
+      <main>
+        {!hasHero && <h1 className="sr-only">{site.title}</h1>}
+        <HomeSections document={document} featured={featured} />
+        <section className="section page-width services-directory" id="servicios" aria-labelledby="servicios-titulo">
+          <div className="section-heading split-heading">
+            <h2 id="servicios-titulo">Servicios de Alesya para la educación</h2>
+            <p>Alesya Ediciones ofrece libros, producción editorial y programas para colegios en Colombia. Alesya X-Tech es su línea de tecnología educativa para instituciones, docentes y familias.</p>
+          </div>
+          <div className="education-grid">
+            {serviceDirectory.map(({ title, path, description }) => <Link key={path} href={path} className="service-directory-link">
+              <h3>{title} <ArrowRight size={18} aria-hidden /></h3>
+              <p>{description}</p>
+            </Link>)}
+          </div>
+        </section>
+      </main>
       <SiteFooter />
       {preview && <PreviewBar />}
     </div>
