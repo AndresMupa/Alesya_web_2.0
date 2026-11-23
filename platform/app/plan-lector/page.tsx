@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { QuoteLeadForm } from "@/components/lead-form";
 import { pageMetadata } from "@/lib/seo";
 import { absoluteUrl, jsonLd, site, siteUrl } from "@/lib/site";
 
@@ -129,7 +130,12 @@ export default function ReadingPlanPage() {
             <li>Costo y fecha estimada de entrega en el municipio del colegio y condiciones de pago.</li>
           </ul>
           <a href={quoteWhatsapp} className="button button-primary" target="_blank" rel="noopener noreferrer">Cotizar Plan lector para 30 estudiantes</a>
+          <p><a className="underlined-link" href="#cotizar">Solicitar cotización por formulario</a></p>
         </div>
+      </section>
+      <section className="schools-conversion quote-section page-width" id="cotizar">
+        <div><h2>Cotiza Plan lector para tu colegio</h2><p>Indica el municipio, grado, títulos, cantidades y fecha requerida. Alesya confirma existencias, precio y plazos al cotizar.</p></div>
+        <QuoteLeadForm program="Plan lector" />
       </section>
       <section className="section page-width schools-program">
         <div className="section-heading"><p className="eyebrow">Selección editorial</p><h2>Una conversación sobre lo que tu comunidad quiere leer.</h2><p>El plan lector forma parte de nuestra línea editorial, junto con los libros escolares, la literatura y los cuentos. Para conocer títulos, disponibilidad y condiciones, consulta directamente con el equipo de Alesya.</p></div>

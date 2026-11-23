@@ -2,6 +2,7 @@ import { getFeaturedProducts, listStoreCategories } from "@/lib/commerce/catalog
 import { categoryMeta } from "@/lib/content";
 import { formatMoney } from "@/lib/format";
 import { legalPages } from "@/lib/legal";
+import { educationServices } from "@/lib/education-services";
 import { absoluteUrl, site, siteUrl } from "@/lib/site";
 
 // Se arma en cada solicitud: las categorías y los productos cambian desde el panel.
@@ -41,6 +42,7 @@ export async function GET() {
     `- [Colegios](${base}/colegios): programa de robótica educativa y cultura maker para colegios, con diagnóstico, dotación y formación docente.`,
     `- [Plan lector por grado para colegios en Colombia](${base}/plan-lector): Alesya Ediciones provee cuentos infantiles, libros escolares de 1.º a 5.º y literatura juvenil.`,
     `- [Ficha de Plan lector para 30 estudiantes](${base}/plan-lector#plan-lector-30-estudiantes): títulos por grado, autoría, ISBN verificable y cotización institucional.`,
+    ...Object.values(educationServices).map(({ title, path, description }) => `- [${title}](${absoluteUrl(path)}): ${description}`),
     `- [Proyectos](${base}/proyectos): retos de robótica y electrónica por edad, duración y nivel.`,
     `- [Qué es la robótica educativa](${base}/robotica-educativa): guía para entender el aprendizaje con LEGO, Arduino e impresión 3D, y cómo empezar en un colegio.`,
     `- [Preguntas frecuentes](${base}/preguntas-frecuentes): respuestas sobre la editorial, productos, envíos, pagos y servicios para colegios.`,

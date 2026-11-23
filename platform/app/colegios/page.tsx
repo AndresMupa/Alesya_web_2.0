@@ -60,7 +60,7 @@ export default async function SchoolsPage() {
           </article>
           <article>
             <h3>Acompañamiento docente</h3>
-            <p>Alesya ayuda a elegir los retos, preparar el uso de los kits y llevar la ruta al aula. El acompañamiento contempla formación docente y seguimiento de la implementación según el alcance acordado.</p>
+            <p>Alesya ayuda a elegir los retos, preparar el uso de los kits y llevar la ruta al aula. El acompañamiento contempla <Link className="underlined-link" href="/formacion-docente">formación docente</Link> y seguimiento de la implementación según el alcance acordado.</p>
           </article>
         </div>
         <div className="schools-roster-quote">
@@ -71,6 +71,12 @@ export default async function SchoolsPage() {
             <li>Disponibilidad, plazos de entrega, garantías y reposición de piezas, valor total y condiciones de pago.</li>
           </ul>
           <a className="button button-primary" href="#diagnostico">Solicitar una propuesta para 30 estudiantes <ArrowRight size={17} /></a>
+        </div>
+      </section>
+      <section className="section page-width" aria-labelledby="colaboracion-ucc">
+        <div className="section-heading">
+          <h2 id="colaboracion-ucc">Colaboración en robótica y STEAM</h2>
+          <p>La Universidad Cooperativa de Colombia, campus Bogotá, documentó un acercamiento con Alesya para explorar proyectos de robótica, producción intelectual y STEAM. <a className="underlined-link" href="https://www.ucc.edu.co/actualidad-ucc/noticias/Paginas/la-facultad-de-ingenieria-fortalece-alianza-con-alesya-ediciones-para-promover-innovaci%C3%B3n-y-divulgacion-cientifica.aspx">Leer la publicación de la UCC</a>.</p>
         </div>
       </section>
       <section className="schools-conversion page-width" id="diagnostico">

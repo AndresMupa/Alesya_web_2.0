@@ -53,6 +53,29 @@ function ConsentFields({ version }: { version: DataConsentVersion }) {
 
 const selectOptions = (list: readonly { value: string; label: string }[]) => list.map((item) => <option key={item.value} value={item.value}>{item.label}</option>);
 
+function InstitutionContactFields() {
+  return <>
+    <label>Nombre<input required name="name" autoComplete="name" placeholder="Tu nombre" maxLength={120} /></label>
+    <label>Institución<input required name="organization" autoComplete="organization" placeholder="Colegio u organización" maxLength={160} /></label>
+    <label>Correo<input required type="email" name="email" autoComplete="email" placeholder="nombre@institucion.edu.co" maxLength={180} /></label>
+    <label>Celular (opcional)<input type="tel" name="phone" autoComplete="tel" inputMode="tel" maxLength={30} placeholder="300 000 0000" /></label>
+  </>;
+}
+
+export function QuoteLeadForm({ program }: { program: string }) {
+  const version = "datos-diagnostico-v1-borrador";
+  const { state, submit } = useLeadSubmit(version, () => ({ program }));
+  if (state === "done") return <div className="lead-form lead-success" role="status"><CheckCircle2 /><h3>Recibimos tu solicitud.</h3><p>El equipo de Alesya se pondrá en contacto contigo para conocer el alcance.</p></div>;
+  return <form className="lead-form" aria-label={`Cotizar ${program}`} onSubmit={submit}>
+    <h3>{program}</h3>
+    <InstitutionContactFields />
+    <label>¿Qué necesitas?<textarea required name="message" rows={4} minLength={8} maxLength={2000} /></label>
+    <ConsentFields version={version} />
+    <button disabled={state === "saving"} className="button button-primary" type="submit">{state === "saving" ? "Enviando…" : "Enviar solicitud"} <ArrowRight size={18} /></button>
+    {state === "error" && <p className="form-error" role="alert">No pudimos enviar la solicitud. Intenta de nuevo.</p>}
+  </form>;
+}
+
 /**
  * Formulario de diagnóstico para colegios: crea el contacto en el CRM con la red o campaña de origen, la autorización
  * de datos y la calificación opcional (grados, estudiantes y el estudio del colegio que alimenta el puntaje).
@@ -66,10 +89,7 @@ export function LeadForm({ program }: { program?: string }) {
   return <form className="lead-form" onSubmit={submit}>
     <span className="form-kicker">Hablemos de tu institución</span>
     <h3>Diseñemos una ruta para tu comunidad.</h3>
-    <label>Nombre<input required name="name" autoComplete="name" placeholder="Tu nombre" maxLength={120} /></label>
-    <label>Institución<input required name="organization" autoComplete="organization" placeholder="Colegio u organización" maxLength={160} /></label>
-    <label>Correo<input required type="email" name="email" autoComplete="email" placeholder="nombre@institucion.edu.co" maxLength={180} /></label>
-    <label>Celular (opcional)<input type="tel" name="phone" autoComplete="tel" inputMode="tel" maxLength={30} placeholder="300 000 0000" /></label>
+    <InstitutionContactFields />
     <fieldset className="lead-grades"><legend>Grados de interés (opcional)</legend><div>
       {gradeOptions.map((option) => <label key={option.value}><input type="checkbox" name="grades" value={option.value} />{option.label}</label>)}
     </div></fieldset>

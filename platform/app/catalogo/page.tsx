@@ -76,5 +76,11 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         : data.products.length ? <><p className="store-results">{plural(data.products.length, "producto", "productos")}{search ? ` para “${search}”` : ""}{category ? ` en ${category}` : ""}</p><div className="product-grid">{data.products.map((product) => <ProductCard key={product.slug} product={product} />)}</div></>
         : <div className="store-empty"><PackageOpen size={42} strokeWidth={1.2} /><h3>{search ? `Sin resultados para “${search}”` : "Pronto habrá productos aquí"}</h3><p>{search || category ? <Link href="/catalogo#productos" className="underlined-link">Ver todo el catálogo</Link> : "Estamos preparando el catálogo. Escríbenos si buscas algo en particular."}</p></div>}
     </div></section>
+    <section className="section page-width">
+      <div className="section-heading">
+        <h2>Elige materiales según tu proyecto</h2>
+        <p>Explora <Link className="underlined-link" href="/proyectos">proyectos de robótica, Arduino, impresión 3D y bricolaje</Link> por edad, duración y nivel. Para literatura y libros escolares, consulta el <Link className="underlined-link" href="/plan-lector#plan-lector-30-estudiantes">catálogo de Plan lector por grado</Link>.</p>
+      </div>
+    </section>
   </main><SiteFooter /></div>;
 }
