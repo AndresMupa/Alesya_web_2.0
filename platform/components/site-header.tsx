@@ -28,7 +28,7 @@ export function SiteHeader() {
         menuButton.current?.focus();
       }
     }}>
-      <Link href="/#explorar">Explora</Link><Link href="/proyectos">Proyectos</Link><Link href="/catalogo">Tienda</Link><Link href="/colegios">Colegios</Link><Link href="/#servicios">Servicios</Link><Link href="/#clientes">Comunidad</Link>
+      <Link href="/#explorar">Explora</Link><Link href="/proyectos">Proyectos</Link><Link href="/ingles">Inglés</Link><Link href="/catalogo">Tienda</Link><Link href="/colegios">Colegios</Link><Link href="/#servicios">Servicios</Link><Link href="/#clientes">Comunidad</Link>
     </nav>
     <div className="header-actions"><CartButton /></div>
   </div></header>;

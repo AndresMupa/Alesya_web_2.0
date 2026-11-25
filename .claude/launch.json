@@ -23,6 +23,20 @@
       ],
       "port": 3000,
       "url": "http://localhost:3000"
+    },
+    {
+      "name": "alesya-preview-local",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "TURSO_DATABASE_URL=file:.local/preview.db",
+        "npm",
+        "run",
+        "dev",
+        "--prefix",
+        "platform"
+      ],
+      "port": 5173,
+      "url": "http://127.0.0.1:5173"
     }
   ]
 }
