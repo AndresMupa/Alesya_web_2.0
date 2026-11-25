@@ -32,17 +32,40 @@ npm run admin:setup -- --production correo@dominio.co
 
 El correo, la contraseña y las líneas `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH` y `ADMIN_SESSION_SECRET` listas para pegar quedan en `.local/admin-cpanel.txt`; nada se imprime en la terminal. Si el archivo ya existe no se sobrescribe; añade `--force` para regenerarlo.
 
+### Verificación en dos pasos (2FA) del panel
+
+El acceso a `/admin` admite un segundo factor TOTP (código de 6 dígitos de Google Authenticator, Authy y similares), opcional pero recomendado. Se activa con la variable `ADMIN_TOTP_SECRET`:
+
+- **Sin `ADMIN_TOTP_SECRET`** el acceso sigue siendo solo correo + contraseña (así un despliegue no deja al dueño fuera) y el servidor registra un aviso de seguridad `admin_2fa_disabled`.
+- **Con `ADMIN_TOTP_SECRET`** el segundo factor es obligatorio: tras la contraseña correcta el panel pide el código en la misma pantalla y la sesión solo se emite con ambos factores.
+
+Para generar el secreto y los códigos de recuperación:
+
+```sh
+npm run admin:totp                 # local: escribe ADMIN_TOTP_SECRET y ADMIN_RECOVERY_HASHES en .env.local
+npm run admin:totp -- --production # cPanel: deja las variables listas para pegar, sin tocar .env.local
+```
+
+El script escribe en `.local/` (ignorado por Git) el URI `otpauth://` para escanear con la app autenticadora y **10 códigos de recuperación de un solo uso**; de los códigos solo se guarda su hash (`ADMIN_RECOVERY_HASHES`), nunca el código en claro. Guarda los códigos de recuperación en tu gestor de contraseñas. Usa `--quiet` para no mostrar el URI ni los códigos en la terminal y `--force` para rotar uno ya configurado.
+
+**Si pierdes el teléfono:** entra con un código de recuperación (cada uno sirve una vez) y vuelve a ejecutar `npm run admin:totp -- --force` para generar un secreto nuevo. Si no tienes códigos de recuperación, borra la variable `ADMIN_TOTP_SECRET` del entorno (en cPanel, "Setup Node.js App" → **Restart**): el acceso vuelve a ser solo correo + contraseña y puedes reconfigurar el 2FA.
+
 ## Variables de entorno
 
 | Variable | Uso |
 | --- | --- |
 | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Base de datos persistente (producción). |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET` | Acceso al panel `/admin`. Se generan con `npm run admin:setup`. |
+| `ADMIN_TOTP_SECRET`, `ADMIN_RECOVERY_HASHES` | Verificación en dos pasos del panel (opcional). Se generan con `npm run admin:totp`. Con `ADMIN_TOTP_SECRET` el 2FA es obligatorio; sin ella, solo correo + contraseña. |
 | `WOMPI_PUBLIC_KEY`, `WOMPI_INTEGRITY_SECRET` | Firma del checkout. Sin ellas el pedido se registra pero no se abre el cobro. |
 | `WOMPI_EVENTS_SECRET` | Verificación de la firma del webhook `/api/webhooks/wompi`. |
 | `ALESYA_DATA_DIR` | Carpeta privada para SQLite en cPanel; por defecto `~/alesya-data` (con `npm start` en local, `.local`). |
 | `TRUSTED_PROXY_IP_HEADER` | Cabecera de IP saneada por el proxy. En cPanel: `x-forwarded-for`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Correo transaccional (pedido recibido, pago confirmado, envío, avisos al equipo). En cPanel: una cuenta de correo del dominio, puerto 465. Sin ellas no se envía nada; en desarrollo el correo se imprime en la consola. |
+| `IMAP_USER`, `IMAP_PASS`, `IMAP_HOST`, `IMAP_PORT`, `IMAP_MAILBOX` | Captación por correo: buzón que recibe a los clientes (en cPanel, una cuenta del dominio, puerto 993, carpeta `INBOX`). Solo se lee. `IMAP_USER` la activa; si es la misma cuenta de `SMTP_USER`, sin `IMAP_HOST` ni `IMAP_PASS` se usan los de SMTP. |
+| `CRON_SECRET` | Token (16+ caracteres) de los cron de cPanel: `/api/cron/daily` y `/api/cron/inbox`. |
+| `ANTHROPIC_API_KEY`, `CRM_AI_MODEL` | Botón **Borrador con IA** del compositor del CRM (`POST /api/admin/crm/leads/[id]/draft`). Redacta un WhatsApp o correo con la ficha del colegio; no envía nada. `CRM_AI_MODEL` recomendado: `claude-haiku-5-5`. Sin clave, el botón responde que la IA no está configurada. |
+| `HARVEY_SYNC_TOKEN` | Token (24+ caracteres) de Harvey, el agente de prospección por correo: `GET /api/integrations/harvey/leads` (colegios en "Nuevo" con correo y sin baja) y `POST /api/integrations/harvey/events` (envíos, respuestas, reuniones, bajas y rebotes, idempotentes). Se envía como `Authorization: Bearer`. Sin él, ambas rutas responden 401. |
 | `PRODUCTION_URL` | Dominio canónico (`https://nueva.alesyaediciones.com`; tras el cambio, `https://www.alesyaediciones.com`): enlaces canónicos, sitemap, `robots.txt`, datos estructurados, correos y regreso de Wompi. |
 | `CANONICAL_REDIRECT` | `1` redirige de forma permanente cualquier otro nombre del sitio (sin www, `nueva.`) al dominio de `PRODUCTION_URL` (`proxy.ts`). Apagado por defecto; se activa en el cambio de dominio. |
 
@@ -84,7 +107,9 @@ Cada módulo tiene su ruta; todas exigen sesión:
 - **Proceso por etapa** (`stagePlaybook` en `lib/crm/constants.ts`): cada etapa tiene probabilidad de cierre, siguiente acción sugerida y plazo. Al cambiar de etapa (ficha, tablero, resultado de prospección o cotización) se propone la siguiente acción y su fecha; la pestaña **Agenda** lista vencidos, hoy, próximos 7 días y las oportunidades abiertas **sin siguiente acción**.
 - **Estudio del colegio** (ficha → *Estudio del colegio*): estudiantes, sector, calendario, niveles, nivel tecnológico actual, presupuesto, programa de interés, quién decide, necesidades y proveedor actual. Alimenta el **puntaje 0–100** (`lib/crm/score.ts`: ajuste del colegio hasta 60 + avance de la relación hasta 40; A ≥ 65, B ≥ 40, C), que se recalcula al guardar la ficha o registrar una gestión y se muestra en tablero, agenda y tabla del CRM.
 - **Cotizaciones** (`lib/crm/quotes.ts`, tabla `quotes`, numeración `COT-AAAA-NNNN`): se crean desde la ficha con productos del catálogo y renglones libres, descuento, vigencia (15 días por defecto), notas y condiciones. Enlace público `/cotizacion/<token>` imprimible (PDF desde el navegador) donde el colegio **acepta o rechaza en línea**. Enviada → la oportunidad pasa a Propuesta con el valor; aceptada → Ganado. La pestaña **Cotizaciones** muestra el pipeline de propuestas y la tasa de aceptación.
+- **Propuesta viva** (`/propuesta/<token>`, mismo token de la cotización; `lib/crm/proposal.ts` y `lib/crm/proposal-plan.ts`): la cotización presentada como página interactiva para el programa de robótica (resumen, niveles, Arena ALESYA X jugable, calculadora, plan, respaldo y modo presentación con la tecla P). Colegio, asesor (responsable del lead), estudiantes, total y vigencia salen del CRM: los renglones *Robótica · Preescolar/Primaria/Bachillerato* (atajos en el cajón de la cotización) dan los estudiantes por nivel y el paquete de proyectos; el resto (kits, formación) y el descuento se suman aparte. **Aceptar** usa el mismo flujo de `/cotizacion/<token>` y WhatsApp queda como canal secundario. En el cajón de la cotización, **Enviar propuesta** copia el enlace, abre WhatsApp con el mensaje y la marca como enviada. Analítica propia (`POST /api/propuesta/<token>`, con límite de frecuencia): una actividad *Lectura de la propuesta* por visita con secciones vistas, tiempo en pantalla y si jugó la Arena, sin datos del visitante; suma al puntaje (abrió +4, lectura a fondo +3, Arena +3) y la primera apertura avisa al correo del equipo (`mail.notify_to`). Los borradores y las visitas con sesión del panel no se registran. Fotos y brochure en `public/media/propuesta/`.
 - **Analítica** (pestaña, `lib/crm/analytics.ts`): pronóstico ponderado por etapa y mes de cierre, conversión acumulada entre etapas, días promedio por etapa, efectividad por canal (contactos vs. intentos), distribución de puntajes, colegios por ciudad, programas de interés, sector, contactos entrantes por semana, rendimiento por asesor y motivos de pérdida.
+- **Captación por correo** (`lib/inbox.ts` lee el buzón por IMAP en modo lectura; `lib/crm/inbox.ts` decide; tabla `inbound_emails`): cada correo que llega al buzón comercial entra solo al CRM. Si quien escribe ya es un contacto (mismo correo, o el único contacto de su dominio institucional), queda en su historial como *Correo recibido* y la oportunidad abierta pasa a prioridad alta con seguimiento para hoy ("Responder el correo recibido"); una perdida que vuelve a escribir se reabre como Contactado. Si no, se crea un lead (origen *Correo*, prioridad alta) con nombre, institución (el dominio, o el nombre si escribe desde Gmail/Hotmail), celular encontrado en el texto y el mensaje sin la conversación citada ni la firma. Los formularios de terceros que llegan desde un no-reply usan la persona de *Reply-To*. Se omiten el propio equipo, respuestas automáticas, boletines, spam, no-reply y los remitentes de *Configuración → Remitentes que no son clientes*. Cada correo se procesa una vez (Message-ID); la primera revisión trae los últimos 3 días y luego sigue desde el último UID. Corre con el cron `GET /api/cron/inbox?token=CRON_SECRET` (cada 10 minutos), al abrir la máquina de ventas (si la última revisión tiene más de 5 minutos) y con **Revisar ahora** en *Máquina de ventas → Captación*, donde se ven los últimos correos y qué se hizo con cada uno.
 - **Resumen diario por correo** (`GET /api/cron/daily?token=CRON_SECRET`): seguimientos del día por asesor, entrantes sin atender, oportunidades sin siguiente acción, cotizaciones por vencer y gestiones de ayer frente a la meta. Se programa como cron en cPanel (ver `DEPLOYMENT_STATUS.md`).
 - **Máquina de ventas** (`/admin/ventas`): métricas (embudo abierto, ganado en el mes, tasa de cierre, seguimientos vencidos, entrantes sin atender), agenda de seguimientos con acceso directo a WhatsApp, cola de prospección de la base de colegios (filtrable por ciudad), tablero por etapas con arrastrar y soltar (al pasar a *Perdido* pide el motivo), rendimiento por asesor y conversión por canal, y enlaces de campaña por red social. El selector **Ver** filtra todo por asesor.
   - **Modo prospección:** recorre la cola colegio por colegio. Muestra los datos de contacto, una plantilla de WhatsApp o correo lista para enviar (`lib/crm/templates.ts`, editable antes de abrir la app) y cinco resultados de un clic: *Contestó · interesado* (pasa a Contactado y programa seguimiento a 3 días), *Reunión agendada* (pasa a Reunión con la fecha), *Sin respuesta* (queda como intento y vuelve a la cola en 2 días; al tercer intento sugiere marcarlo perdido), *No interesa* y *Datos errados* (pasan a Perdido con el motivo). La cola prioriza alta prioridad y colegios con celular.
@@ -131,6 +156,7 @@ Material del libro de inglés Alesya para 1° a 5° de primaria (el sitio anteri
 - `npm run build`: compilación de producción en `.next/standalone`, con estáticos y `public/` copiados.
 - `npm start`: aplica las migraciones pendientes y arranca el servidor standalone (requiere `npm run build`).
 - `npm run admin:setup -- correo@dominio.co`: credenciales de `/admin` en `.env.local`. Con `--production` las escribe en `.local/admin-cpanel.txt` para cPanel (`--force` para sobrescribir).
+- `npm run admin:totp`: secreto TOTP y códigos de recuperación para la verificación en dos pasos del panel (ver "Verificación en dos pasos"). Con `--production` deja las variables listas para cPanel; `--quiet` oculta el URI y los códigos en la terminal; `--force` rota uno existente.
 - `npm run lint`: ESLint.
 - `npm run db:generate`: genera una migración después de cambiar `db/schema.ts`.
 - `npm run db:migrate`: aplica las migraciones pendientes (usa `TURSO_DATABASE_URL` si está definida).
@@ -148,8 +174,12 @@ Usa enlaces con `utm_source` y `utm_campaign` al publicar o prospectar. Ejemplos
 - Instagram: `/colegios?utm_source=instagram&utm_campaign=colegios_2026`
 - Facebook: `/colegios?utm_source=facebook&utm_campaign=colegios_2026`
 - WhatsApp: `/colegios?utm_source=whatsapp&utm_campaign=colegios_2026`
+- Evento o feria: `/colegios?utm_source=event&utm_campaign=feria_bogota`
+- Brochure impreso (QR): `/colegios?utm_source=brochure&utm_campaign=robotica_brochure#diagnostico`
 
-El formulario acepta las fuentes `website`, `linkedin`, `instagram`, `facebook` y `whatsapp`. La campaña admite hasta 40 caracteres alfanuméricos, guion o guion bajo. Ambos datos se guardan en `leads.source` y aparecen en la ficha del contacto en `/admin/crm` (filtro *Origen*). Cada envío del formulario entra con prioridad alta y aparece en la columna *Nuevo* de la máquina de ventas. La captura de fuente ocurre al enviar el formulario, por lo que conserva el enlace de campaña al compartirlo.
+El formulario acepta las fuentes `website`, `linkedin`, `instagram`, `facebook`, `whatsapp` y `event`; `brochure` entra como `website` y la campaña dice qué pieza fue (sin campaña queda `website / brochure`). La campaña admite hasta 40 caracteres alfanuméricos, guion o guion bajo. Ambos datos se guardan en `leads.source` y aparecen en la ficha del contacto en `/admin/crm` (filtro *Origen*). La captura de fuente ocurre al enviar el formulario, por lo que conserva el enlace de campaña al compartirlo.
+
+Cada envío entra con prioridad alta en la columna *Nuevo* y en la agenda del día (siguiente acción "Primer contacto (meta: menos de 5 minutos)"). Guarda la fecha de la autorización de datos (`leads.consent_at`, Ley 1581) y, si los indica, los grados y el número aproximado de estudiantes (`grades`, `students`); `/colegios` registra además el programa (`program = "Robótica"`). Después de responder se envían dos correos: el aviso al equipo y una respuesta al contacto con la promesa de contacto el mismo día hábil y el WhatsApp de `/admin/configuracion`. Ambos requieren SMTP; si falla, el lead queda igual en el CRM.
 
 ## Base de colegios 2026
 

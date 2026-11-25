@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./store.css";
 import { Toaster } from "sonner";
+import { AttributionCapture } from "@/components/attribution-capture";
 import { RobotChatLoader } from "@/components/robot-chat-loader";
 import { site, siteUrl } from "@/lib/site";
 
@@ -27,5 +28,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: "#080f1b", colorScheme: "light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es-CO"><body>{children}<RobotChatLoader /><Toaster position="bottom-center" richColors closeButton /></body></html>;
+  return <html lang="es-CO"><body>{children}<AttributionCapture /><RobotChatLoader /><Toaster position="bottom-center" richColors closeButton /></body></html>;
 }

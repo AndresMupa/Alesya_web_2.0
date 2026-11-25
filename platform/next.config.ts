@@ -13,13 +13,13 @@ const root = path.dirname(fileURLToPath(import.meta.url));
  * páginas legales) no necesitan redirección.
  */
 const wordpress: [source: string, destination: string][] = [
-  ["/shop", "/catalogo"], ["/tienda", "/catalogo"], ["/product/:slug*", "/catalogo"], ["/producto/:slug*", "/catalogo"],
-  ["/product-category/robotica", "/catalogo?categoria=robotica"], ["/product-category/:slug*", "/catalogo"], ["/categoria-producto/:slug*", "/catalogo"],
+  ["/shop", "/catalogo"], ["/tienda", "/catalogo"], ["/product/robotica-educativa-modulo-:numero(\\d+)", "/catalogo?categoria=Libros"], ["/product/:slug", "/catalogo"], ["/producto/:slug", "/catalogo"],
+  ["/product-category/robotica", "/catalogo?categoria=robotica"], ["/product-category/planlector", "/plan-lector"], ["/product-category/:slug", "/catalogo"], ["/categoria-producto/:slug", "/catalogo"],
   ["/cart", "/carrito"], ["/finalizar-compra", "/checkout"],
   ["/mi-cuenta/:path*", "/pedido"], ["/cuenta-de-usuario", "/pedido"], ["/iniciar-sesion", "/pedido"], ["/registro", "/pedido"], ["/forgot-password", "/pedido"], ["/restablecer-contrasena", "/pedido"], ["/lp-profile/:path*", "/pedido"], ["/lp-checkout", "/pedido"],
   ["/contacto", "/colegios#diagnostico"], ["/contact", "/colegios#diagnostico"], ["/faqs", "/colegios"],
   ["/about-us", "/#clientes"], ["/nosotros", "/#clientes"], ["/quienes-somos", "/#clientes"], ["/galeria", "/#clientes"],
-  ["/robotica", "/proyectos"], ["/recursos", "/proyectos"],
+  ["/robotica", "/robotica-educativa"], ["/recursos", "/proyectos"],
   ["/literatura", "/catalogo?categoria=Libros"], ["/literatura-infantil-2", "/catalogo?categoria=Libros"], ["/literatura-juvenil-2", "/catalogo?categoria=Libros"], ["/literatura-adulta-2", "/catalogo?categoria=Libros"],
   // El Área de Inglés del sitio anterior (con libros por grado y Unit 1–4) vive ahora en /ingles.
   // Todos los QR de los libros de inglés apuntan a /grado-N/; los de 4° (edición 2023) y uno de 3° (edición 2026, pág. 138)
@@ -32,6 +32,17 @@ const wordpress: [source: string, destination: string][] = [
   ["/media/alesya-x-tech.svg", "/media/alesya-x-tech.png"],
 ];
 
+/**
+ * Política de contenido completa, solo en modo reporte. Mientras Next inyecte guiones propios sin `nonce` hace falta
+ * `'unsafe-inline'` en scripts y estilos; el siguiente paso es pasar a nonces desde proxy.ts (ver el informe de seguridad).
+ * En desarrollo React necesita `'unsafe-eval'`.
+ */
+const reportOnlyPolicy = [
+  "default-src 'self'", `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`, "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:", "font-src 'self' data:", "media-src 'self' blob:", "connect-src 'self'", "worker-src 'self' blob:", "manifest-src 'self'",
+  "frame-src 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'", "report-uri /api/csp-report",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // Produce a self-contained Node.js server that can run under cPanel/Passenger.
   output: "standalone",
@@ -39,6 +50,9 @@ const nextConfig: NextConfig = {
   turbopack: { root },
   // Seeded SQLite file for demo previews (DEMO_DATABASE=1); absent in normal builds.
   outputFileTracingIncludes: { "/**": ["./.demo/**/*"] },
+  // pino (lo usa imapflow) arrastra las pruebas de thread-stream y sonic-boom, con .zip que llevan JavaScript: el
+  // antivirus del hosting (ClamAV, Sanesecurity.Foxhole.JS_Zip) rechaza el paquete entero al subirlo.
+  outputFileTracingExcludes: { "/**": ["node_modules/thread-stream/test/**", "node_modules/sonic-boom/test/**"] },
   // No anunciar la tecnología del servidor.
   poweredByHeader: false,
   // Next quitaría la barra final antes de las redirecciones propias (dos saltos para /about-us/). Se desactiva y la
@@ -60,10 +74,21 @@ const nextConfig: NextConfig = {
         { key: "X-Frame-Options", value: "DENY" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-        { key: "Strict-Transport-Security", value: "max-age=31536000" },
+        { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+        { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+        // Directivas que se aplican ya: nadie puede enmarcar el sitio, cambiar su <base> ni mandar formularios a otro dominio.
+        { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" },
+        // Política completa en modo «solo reporte»: no bloquea nada, avisa a /api/csp-report qué cargaría un origen no previsto.
+        { key: "Content-Security-Policy-Report-Only", value: reportOnlyPolicy },
       ] },
+      // El panel y sus APIs nunca se guardan en cachés ni se indexan; las APIs y los archivos subidos no se incrustan desde otros sitios.
+      { source: "/admin/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+      { source: "/api/:path*", headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-site" }] },
+      // Lo subido desde el panel se sirve inerte: sin guiones, estilos ni marcos aunque alguien lo abra directamente.
+      { source: "/uploads/:file", headers: [{ key: "Cross-Origin-Resource-Policy", value: "same-site" }, { key: "Content-Security-Policy", value: "default-src 'none'; sandbox" }] },
       // El lector del Área de Inglés muestra los PDF dentro del propio sitio: solo esa ruta se deja enmarcar (y solo por el sitio).
-      { source: "/ingles/archivo/:id", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }, { key: "Content-Security-Policy", value: "frame-ancestors 'self'" }] },
+      { source: "/ingles/archivo/:id", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }, { key: "Content-Security-Policy", value: "frame-ancestors 'self'" }, { key: "Cross-Origin-Resource-Policy", value: "same-site" }] },
       { source: "/media/:path*", headers: [{ key: "Cache-Control", value: media }] },
       { source: "/:icon(favicon.ico|favicon.svg|apple-touch-icon.png|icon-192.png|icon-512.png)", headers: [{ key: "Cache-Control", value: media }] },
     ];

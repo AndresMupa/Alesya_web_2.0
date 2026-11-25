@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authorizeAdmin } from "@/lib/admin-auth";
-import { actorName, leadPriorityValues, leadStageValues } from "@/lib/crm/constants";
+import { actorName, leadPriorityValues, leadSourceValues, leadStageValues } from "@/lib/crm/constants";
 import { getLeadDetail, updateLead } from "@/lib/crm/leads";
 import { fail, handleError, noStore, ok, readBody } from "@/lib/http";
 
@@ -17,6 +17,7 @@ const patchSchema = z.object({
   nextAction: nullableText(200), expectedClose: day, students: z.coerce.number().int().min(0).max(100_000), program: nullableText(120), decisionMaker: nullableText(160),
   grades: nullableText(80), sector: z.union([z.enum(["privado", "publico"]), z.null()]), calendar: z.union([z.enum(["A", "B"]), z.null()]), techLevel: z.union([z.enum(["ninguno", "basico", "avanzado"]), z.null()]),
   budgetRange: z.union([z.enum(["desconocido", "menos_5m", "5_20m", "20_50m", "mas_50m"]), z.null()]), painPoints: z.string().trim().max(2000), competitors: nullableText(200),
+  source: z.string().trim().max(80).refine((value) => leadSourceValues.some((channel) => value === channel || value.startsWith(`${channel} / `)), "Origen no válido"),
 }).partial().extend({ asesor: z.string().trim().max(80).optional() }).refine((value) => Object.keys(value).some((key) => key !== "asesor"));
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

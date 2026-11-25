@@ -10,7 +10,7 @@ import { bogotaDay, daysSince, formatDay, formatMoneyCompact } from "@/lib/forma
 /** Días en la misma etapa a partir de los cuales una oportunidad abierta se marca como estancada. */
 const STALE_DAYS = 14;
 
-export type PipelineCard = { id: string; name: string; organization: string; city: string | null; stage: string; priority: string; owner: string | null; estimatedValueInCents: number; nextFollowUp: string | null; lastContact: string | null; source: string; phone: string | null; email: string | null; stageChangedAt: string | null; score: number; nextAction: string | null; expectedClose: string | null; students: number; program: string | null };
+export type PipelineCard = { id: string; name: string; organization: string; city: string | null; stage: string; priority: string; owner: string | null; estimatedValueInCents: number; nextFollowUp: string | null; lastContact: string | null; source: string; phone: string | null; email: string | null; stageChangedAt: string | null; score: number; nextAction: string | null; expectedClose: string | null; students: number; program: string | null; marketingOptOutAt: string | null };
 export type PipelineColumn = { stage: string; label: string; cards: PipelineCard[]; total: number; valueInCents: number };
 
 const hints: Record<string, string> = { new: "Entrantes sin atender", contacted: "Primer contacto hecho", meeting: "Reunión agendada o hecha", proposal: "Propuesta enviada", won: "Últimos 60 días", lost: "Últimos 60 días" };

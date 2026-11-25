@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, desc, eq, gte, inArray, isNull, like, lte, not, or, sql, sum, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNotNull, isNull, like, lte, not, or, sql, sum, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { leadActivities, leads, orders, quotes } from "@/db/schema";
 import { bogotaDay, bogotaMonthStart } from "@/lib/format";
@@ -8,6 +8,8 @@ import {
   MAX_ATTEMPTS, PROSPECT_SOURCE, activityTypes, isContactActivity, leadPriorities, leadPriorityValues, leadSourceLabel, leadSourceValues, leadStageLabel, leadStages, leadStageValues, openLeadStages, stagePlaybook, workActivityTypes,
   type ActivityType, type ContactChannel, type LeadPriority, type LeadStage, type Outcome,
 } from "@/lib/crm/constants";
+import { cleanAttribution, type Attribution } from "@/lib/crm/attribution";
+import { PROPOSAL_ACTIVITY, proposalSignals } from "@/lib/crm/proposal-plan";
 import { scoreLead } from "@/lib/crm/score";
 
 export type Lead = typeof leads.$inferSelect;
@@ -80,7 +82,7 @@ export async function getLeadDetail(id: string) {
     db.select({ id: quotes.id, number: quotes.number, status: quotes.status, title: quotes.title, totalInCents: quotes.totalInCents, validUntil: quotes.validUntil, token: quotes.token, createdAt: quotes.createdAt }).from(quotes).where(eq(quotes.leadId, id)).orderBy(desc(quotes.createdAt)).limit(20),
     db.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, id), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, new Date(Date.now() - 90 * 86_400_000)))),
   ]);
-  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay() });
+  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay(), proposal: proposalSignals(activities) });
   return { lead, activities, orders: relatedOrders, quotes: leadQuotes, score, playbook: stagePlaybook[lead.stage as LeadStage] ?? null };
 }
 
@@ -95,30 +97,108 @@ export async function getWithoutNextAction(filters: { owner?: string } = {}, lim
 
 export type LeadInput = {
   name: string; organization: string; email?: string | null; phone?: string | null; city?: string | null; website?: string | null; message: string; source: string;
-  priority?: LeadPriority; owner?: string | null; notes?: string; estimatedValueInCents?: number; nextFollowUp?: string | null; externalId?: string | null;
+  priority?: LeadPriority; owner?: string | null; notes?: string; estimatedValueInCents?: number; nextFollowUp?: string | null; nextAction?: string | null; externalId?: string | null;
+  /** Calificación que deja el formulario: niveles (`gradeLevels` separados por coma), estudiantes aproximados y programa de interés. */
+  grades?: string | null; students?: number; program?: string | null;
+  /** Estudio del colegio que el formulario pide de forma opcional (valores de lib/crm/score.ts; `competitors` es la plataforma de robótica actual). */
+  sector?: string | null; calendar?: string | null; techLevel?: string | null; budgetRange?: string | null; competitors?: string | null;
+  /** Cuándo autorizó el tratamiento de datos (Ley 1581) y con qué versión del texto (lib/crm/consent.ts). */
+  consentAt?: Date | null; consentVersion?: string | null;
+  /** Autorización aparte de comunicaciones comerciales (Ley 2300 de 2023): cuándo, versión del texto y canales (`email,whatsapp`). */
+  marketingConsentAt?: Date | null; marketingConsentVersion?: string | null; marketingChannels?: string | null;
+  /** Primer toque: UTM, referente y página de entrada. Se limpia aquí aunque el llamador ya lo haya hecho. */
+  attribution?: Partial<Attribution>;
 };
 
 const clean = (value: string | null | undefined) => value?.trim() || null;
 
-function leadValues(input: LeadInput, now: Date) {
+/** Fila nueva de `leads` (también la usa la captación por correo dentro de su propia transacción). */
+export function leadValues(input: LeadInput, now: Date) {
+  const students = Math.max(0, Math.round(input.students ?? 0));
+  const program = clean(input.program);
+  const sector = clean(input.sector), techLevel = clean(input.techLevel), budgetRange = clean(input.budgetRange);
+  const touch = cleanAttribution(input.attribution ?? {});
   return {
     id: crypto.randomUUID(), name: input.name.trim(), organization: input.organization.trim(), email: clean(input.email)?.toLowerCase() ?? null, phone: clean(input.phone), city: clean(input.city), website: clean(input.website),
     message: input.message.trim(), source: input.source, stage: "new", priority: input.priority ?? "medium", owner: clean(input.owner), notes: input.notes?.trim() ?? "", estimatedValueInCents: input.estimatedValueInCents ?? 0,
-    nextFollowUp: input.nextFollowUp ?? null, externalId: clean(input.externalId), stageChangedAt: now, createdAt: now, updatedAt: now,
+    nextFollowUp: input.nextFollowUp ?? null, nextAction: clean(input.nextAction), externalId: clean(input.externalId), grades: clean(input.grades), students, program,
+    sector, calendar: clean(input.calendar), techLevel, budgetRange, competitors: clean(input.competitors),
+    consentAt: input.consentAt ?? null, consentVersion: input.consentAt ? clean(input.consentVersion) : null,
+    marketingConsentAt: input.marketingConsentAt ?? null, marketingConsentVersion: input.marketingConsentAt ? clean(input.marketingConsentVersion) : null, marketingChannels: input.marketingConsentAt ? clean(input.marketingChannels) : null,
+    // Cada contacto nace con su enlace de baja (`/baja/[token]`): 128 bits aleatorios, en hexadecimal.
+    unsubscribeToken: crypto.randomUUID().replaceAll("-", ""),
+    utmSource: touch.utmSource || null, utmMedium: touch.utmMedium || null, utmCampaign: touch.utmCampaign || null, utmContent: touch.utmContent || null, utmTerm: touch.utmTerm || null, referrer: touch.referrer || null, landingPage: touch.landingPage || null,
+    score: scoreLead({ stage: "new", students, sector, techLevel, budgetRange, program, decisionMaker: null, contacts: 0, lastContact: null, today: bogotaDay() }).total,
+    stageChangedAt: now, createdAt: now, updatedAt: now,
   };
+}
+
+/** Siguiente acción de un lead del formulario: entra a la agenda de hoy para contactarlo en minutos. */
+const FORM_FIRST_ACTION ="Primer contacto (meta: menos de 5 minutos)";
+
+type OptOut = { email: string | null; phone: string | null; at: Date };
+
+/** Bajas de comunicaciones comerciales ya registradas, con el correo y el celular de quien las pidió. */
+export async function loadOptOuts(db: Pick<Db, "select">): Promise<OptOut[]> {
+  const rows = await db.select({ email: leads.email, phone: leads.phone, at: leads.marketingOptOutAt }).from(leads).where(isNotNull(leads.marketingOptOutAt));
+  return rows.flatMap((row) => (row.at ? [{ email: row.email?.toLowerCase() ?? null, phone: row.phone, at: row.at }] : []));
+}
+
+/**
+ * La baja más antigua de quien tenga ese correo o celular. Pedir la baja vale para la persona y no para una sola ficha: un registro
+ * nuevo (formulario, captación por correo o CSV) con el mismo contacto nace con ella, para que ningún atajo del panel ofrezca escribirle.
+ */
+export function inheritedOptOut(optOuts: OptOut[], contact: { email?: string | null; phone?: string | null }): Date | null {
+  const email = clean(contact.email)?.toLowerCase(), phone = clean(contact.phone);
+  const found = optOuts.filter((row) => (!!email && row.email === email) || (!!phone && row.phone === phone));
+  return found.length ? new Date(Math.min(...found.map((row) => row.at.getTime()))) : null;
 }
 
 /** Crea un contacto y deja la primera entrada del historial (registro manual o formulario web). */
 export async function createLead(input: LeadInput, origin: { type: "created" | "form"; actor?: string | null }) {
   const db = getDb();
   const now = new Date();
-  const values = leadValues(input, now);
-  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).` : `Registrado a mano (${input.source}).`;
+  // Quien vuelve a aceptar comunicaciones comerciales en este mismo envío da una autorización nueva y no hereda la baja anterior.
+  const optedOutAt = input.marketingConsentAt ? null : inheritedOptOut(await loadOptOuts(db), input);
+  const values = { ...leadValues(origin.type === "form" ? { ...input, nextFollowUp: input.nextFollowUp ?? bogotaDay(), nextAction: input.nextAction ?? FORM_FIRST_ACTION } : input, now), ...(optedOutAt && { marketingOptOutAt: optedOutAt }) };
+  const consent = input.consentAt ? " Autorizó el tratamiento de sus datos personales (Ley 1581 de 2012)." : "";
+  const marketing = input.marketingConsentAt ? ` Aceptó recibir comunicaciones comerciales (${values.marketingChannels || "sin canal"}).` : optedOutAt ? " Ya se había dado de baja de las comunicaciones comerciales con este correo o celular: no contactarlo con fines comerciales." : "";
+  const summary = origin.type === "form" ? `Llegó por el formulario (${input.source}).${consent}${marketing}` : `Registrado a mano (${input.source}).${marketing}`;
   await db.batch([
     db.insert(leads).values(values),
     db.insert(leadActivities).values({ id: crypto.randomUUID(), leadId: values.id, type: origin.type, summary, createdBy: origin.actor ?? null, createdAt: now }),
   ]);
-  return values.id;
+  return { id: values.id, unsubscribeToken: values.unsubscribeToken };
+}
+
+/** Formato del token de baja (`leadValues`): 128 bits en hexadecimal. */
+export const UNSUBSCRIBE_TOKEN = /^[a-f0-9]{32}$/;
+
+/** ¿Existe el token y ya está dado de baja? No devuelve ningún dato personal. */
+export async function getOptOutState(token: string) {
+  if (!UNSUBSCRIBE_TOKEN.test(token)) return null;
+  const [lead] = await getDb().select({ optedOut: leads.marketingOptOutAt }).from(leads).where(eq(leads.unsubscribeToken, token)).limit(1);
+  return lead ? { optedOut: !!lead.optedOut } : null;
+}
+
+/**
+ * Baja de comunicaciones comerciales por correo y WhatsApp (enlace `/baja/[token]`). Aplica al contacto y a los demás registros con el
+ * mismo correo o celular, porque una persona puede haber llenado el formulario más de una vez. Es idempotente; devuelve `null` si el token no existe.
+ */
+export async function optOutByToken(token: string) {
+  return getDb().transaction(async (tx) => {
+    const [lead] = await tx.select({ id: leads.id, email: leads.email, phone: leads.phone }).from(leads).where(eq(leads.unsubscribeToken, token)).limit(1);
+    if (!lead) return null;
+    const same = or(eq(leads.id, lead.id), lead.email ? eq(leads.email, lead.email) : undefined, lead.phone ? eq(leads.phone, lead.phone) : undefined);
+    const pending = await tx.select({ id: leads.id }).from(leads).where(and(same, isNull(leads.marketingOptOutAt)));
+    const now = new Date();
+    for (let index = 0; index < pending.length; index += 100) {
+      const ids = pending.slice(index, index + 100).map((row) => row.id);
+      await tx.update(leads).set({ marketingOptOutAt: now }).where(inArray(leads.id, ids));
+      await tx.insert(leadActivities).values(ids.map((id) => ({ id: crypto.randomUUID(), leadId: id, type: "opt_out", summary: "Se dio de baja de las comunicaciones comerciales por correo y WhatsApp (enlace de baja). No contactarlo con fines comerciales.", createdBy: null, createdAt: now })));
+    }
+    return { updated: pending.length };
+  });
 }
 
 export type LeadPatch = Partial<{
@@ -126,16 +206,20 @@ export type LeadPatch = Partial<{
   notes: string; lastContact: string | null; nextFollowUp: string | null; estimatedValueInCents: number; lostReason: string | null;
   nextAction: string | null; expectedClose: string | null; students: number; program: string | null; decisionMaker: string | null;
   grades: string | null; sector: string | null; calendar: string | null; techLevel: string | null; budgetRange: string | null; painPoints: string; competitors: string | null;
+  /** Origen: un canal de `leadSources`, con subcanal opcional ("base_colegios_2026 / Clientes potenciales Colombia"). */
+  source: string;
 }>;
 
 const CONTACT_TYPES = activityTypes.filter((type) => type.contact).map((type) => type.value);
 
-/** Recalcula el puntaje (ajuste del colegio + avance de la relación) y lo guarda en el contacto. */
-async function refreshScore(tx: Tx, leadId: string) {
+/** Recalcula el puntaje (ajuste del colegio + avance de la relación, incluida la lectura de la propuesta) y lo guarda en el contacto. */
+export async function refreshScore(tx: Tx, leadId: string) {
   const [lead] = await tx.select().from(leads).where(eq(leads.id, leadId)).limit(1);
   if (!lead) return 0;
-  const [{ contacts }] = await tx.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, new Date(Date.now() - 90 * 86_400_000))));
-  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay() }).total;
+  const since = new Date(Date.now() - 90 * 86_400_000);
+  const [{ contacts }] = await tx.select({ contacts: count() }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), inArray(leadActivities.type, CONTACT_TYPES), gte(leadActivities.createdAt, since)));
+  const reads = await tx.select({ type: leadActivities.type, summary: leadActivities.summary, createdAt: leadActivities.createdAt }).from(leadActivities).where(and(eq(leadActivities.leadId, leadId), eq(leadActivities.type, PROPOSAL_ACTIVITY), gte(leadActivities.createdAt, since)));
+  const score = scoreLead({ stage: lead.stage, students: lead.students, sector: lead.sector, techLevel: lead.techLevel, budgetRange: lead.budgetRange, program: lead.program, decisionMaker: lead.decisionMaker, contacts: Number(contacts), lastContact: lead.lastContact, today: bogotaDay(), proposal: proposalSignals(reads) }).total;
   if (score !== lead.score) await tx.update(leads).set({ score }).where(eq(leads.id, leadId));
   return score;
 }
@@ -211,7 +295,7 @@ export async function logActivity(id: string, input: { type: ActivityType; summa
 // ── Máquina de ventas ────────────────────────────────────────────────────────
 
 const PIPELINE_COLUMN_LIMIT = 60;
-const pipelineCard = { id: leads.id, name: leads.name, organization: leads.organization, city: leads.city, phone: leads.phone, email: leads.email, source: leads.source, stage: leads.stage, priority: leads.priority, owner: leads.owner, estimatedValueInCents: leads.estimatedValueInCents, lastContact: leads.lastContact, nextFollowUp: leads.nextFollowUp, stageChangedAt: leads.stageChangedAt, score: leads.score, nextAction: leads.nextAction, expectedClose: leads.expectedClose, students: leads.students, program: leads.program };
+const pipelineCard = { id: leads.id, name: leads.name, organization: leads.organization, city: leads.city, phone: leads.phone, email: leads.email, source: leads.source, stage: leads.stage, priority: leads.priority, owner: leads.owner, estimatedValueInCents: leads.estimatedValueInCents, lastContact: leads.lastContact, nextFollowUp: leads.nextFollowUp, stageChangedAt: leads.stageChangedAt, score: leads.score, nextAction: leads.nextAction, expectedClose: leads.expectedClose, students: leads.students, program: leads.program, marketingOptOutAt: leads.marketingOptOutAt };
 export type PipelineCard = { [K in keyof typeof pipelineCard]: Lead[K] };
 
 /**
@@ -466,6 +550,8 @@ const fromLabel = <T extends string>(list: readonly { value: T; label: string }[
   return list.find((item) => item.value === value || item.label.toLowerCase() === value)?.value ?? fallback;
 };
 const isoDay = (value: string) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null);
+const sectorValue = (value: string) => (/^priv/i.test(value.trim()) ? "privado" : /^(p[uú]bl|ofic)/i.test(value.trim()) ? "publico" : null);
+const calendarValue = (value: string) => (/^[AB]$/i.test(value.trim()) ? value.trim().toUpperCase() : null);
 
 /**
  * Importa contactos desde un CSV (el mismo formato que exporta el panel, o columnas equivalentes como
@@ -476,6 +562,7 @@ export async function importLeads(records: Record<string, string>[]) {
   const existing = await db.select({ email: leads.email, externalId: leads.externalId }).from(leads);
   const emails = new Set(existing.map((row) => row.email?.toLowerCase()).filter(Boolean));
   const externalIds = new Set(existing.map((row) => row.externalId).filter(Boolean));
+  const optOuts = await loadOptOuts(db);
   const now = new Date();
   const values: ReturnType<typeof leadValues>[] = [];
   let skipped = 0, invalid = 0;
@@ -496,9 +583,13 @@ export async function importLeads(records: Record<string, string>[]) {
       priority: fromLabel(leadPriorities, pick(record, "prioridad", "priority"), "medium"), owner: pick(record, "responsable", "owner", "asesor").slice(0, 120),
       estimatedValueInCents: Math.max(0, Math.round(Number(pick(record, "valor_estimado_cop", "valor_estimado", "valor").replace(/[^\d.]/g, "")) || 0)) * 100,
       nextFollowUp: isoDay(pick(record, "proximo_seguimiento", "next_follow_up")),
+      nextAction: pick(record, "proxima_accion", "next_action").slice(0, 200) || null,
+      sector: sectorValue(pick(record, "sector")), calendar: calendarValue(pick(record, "calendario", "calendar")),
+      grades: pick(record, "grados", "nivel_educativo", "grades").slice(0, 80) || null,
     }, now);
     const stage = fromLabel(leadStages, pick(record, "etapa", "stage"), "new");
-    values.push({ ...value, stage, ...(isoDay(pick(record, "ultimo_contacto", "last_contact")) && { lastContact: isoDay(pick(record, "ultimo_contacto", "last_contact")) }) } as typeof value);
+    const optedOutAt = inheritedOptOut(optOuts, value);
+    values.push({ ...value, stage, ...(optedOutAt && { marketingOptOutAt: optedOutAt }), ...(isoDay(pick(record, "ultimo_contacto", "last_contact")) && { lastContact: isoDay(pick(record, "ultimo_contacto", "last_contact")) }) } as typeof value);
     if (email) emails.add(email);
     if (externalId) externalIds.add(externalId);
   }

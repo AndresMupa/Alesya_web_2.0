@@ -1,0 +1,32 @@
+import { z } from "zod";
+import { harveyAuthorized, recordHarveyContact } from "@/lib/crm/harvey";
+import { handleError, noStore, readBody } from "@/lib/http";
+
+const total = z.number().int().min(0).max(1_000_000);
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const validTimeZone = (zone: string) => { try { new Intl.DateTimeFormat("es-CO", { timeZone: zone }); return true; } catch { return false; } };
+const schema = z.object({
+  prospects: total, verified: total, pendingVerification: total, risky: total, invalid: total,
+  outboxPending: total, outboxApproved: total, sent: total,
+  sendingPaused: z.boolean(),
+  lastCycleAt: z.string().trim().max(40).nullable(),
+  recent: z.array(z.object({ at: z.string().trim().max(40), text: z.string().trim().min(1).max(200) })).max(20).optional(),
+  filters: z.object({ cities: z.array(z.string().trim().min(1).max(100)).max(50), sources: z.array(z.string().trim().min(1).max(80)).max(20) }).optional(),
+  quietHours: z.object({ start: hhmm, end: hhmm, timezone: z.string().trim().min(1).max(60).refine(validTimeZone, "Zona horaria no válida") }).optional(),
+});
+
+/**
+ * Resumen de la base local de Harvey al final de cada sincronización (solo conteos de los colegios que vinieron del CRM).
+ * Lo muestra /admin/harvey: verificación de correos, correos esperando aprobación, envíos pausados, último ciclo y
+ * sus últimas acciones ("En vivo").
+ */
+export async function POST(request: Request) {
+  if (!harveyAuthorized(request)) return Response.json({ message: "No autorizado" }, { status: 401, headers: noStore });
+  const body = await readBody(request, schema, "Resumen de Harvey inválido."); if (body instanceof Response) return body;
+  try {
+    await recordHarveyContact("status", body);
+    return Response.json({ ok: true }, { headers: noStore });
+  } catch (error) {
+    return handleError(error, "harvey_status_failed", "No se pudo guardar el resumen de Harvey.");
+  }
+}

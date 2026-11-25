@@ -1,16 +1,14 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { and, count, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { leadActivities, leads, quotes } from "@/db/schema";
 import { leadStageLabel, workActivityTypes } from "@/lib/crm/constants";
 import { getAgenda, getWithoutNextAction } from "@/lib/crm/leads";
+import { cronAuthorized } from "@/lib/cron";
 import { bogotaDay, formatMoney } from "@/lib/format";
 import { noStore } from "@/lib/http";
+import { publicOrigin } from "@/lib/payments/wompi";
 import { mailStatus, renderEmail, sendMail } from "@/lib/mail";
 import { getSettings, storeConfig } from "@/lib/settings";
-
-const digest = (value: string) => createHash("sha256").update(value).digest();
-const validToken = (token: string | null) => { const secret = process.env.CRON_SECRET; return Boolean(secret && token && secret.length >= 16 && timingSafeEqual(digest(secret), digest(token))); };
 
 /**
  * Resumen diario para el equipo (llamar cada mañana desde un cron de cPanel con `?token=CRON_SECRET`):
@@ -18,7 +16,7 @@ const validToken = (token: string | null) => { const secret = process.env.CRON_S
  * cotizaciones por vencer y gestiones de ayer frente a la meta.
  */
 export async function GET(request: Request) {
-  if (!validToken(new URL(request.url).searchParams.get("token"))) return Response.json({ message: "No autorizado" }, { status: 401, headers: noStore });
+  if (!cronAuthorized(request)) return Response.json({ message: "No autorizado" }, { status: 401, headers: noStore });
   const db = getDb();
   const today = bogotaDay();
   const yesterdayStart = new Date(Date.parse(`${bogotaDay(-1)}T05:00:00Z`)), todayStart = new Date(Date.parse(`${today}T05:00:00Z`));
@@ -33,7 +31,7 @@ export async function GET(request: Request) {
   const byOwner = new Map<string, typeof due>();
   for (const item of due) byOwner.set(item.owner ?? "Sin asignar", [...(byOwner.get(item.owner ?? "Sin asignar") ?? []), item]);
   const goal = Math.max(1, Number(settings["crm.daily_goal"]) || 20);
-  const origin = process.env.PRODUCTION_URL?.replace(/\/$/, "") || new URL(request.url).origin;
+  const origin = publicOrigin(request);
 
   const paragraphs: string[] = [];
   for (const [owner, items] of byOwner) paragraphs.push(`${owner} · ${items.length} seguimientos:\n${items.slice(0, 12).map((item) => `• ${item.organization} — ${leadStageLabel(item.stage)}${item.nextAction ? ` · ${item.nextAction}` : ""}${item.nextFollowUp! < today ? " (vencido)" : ""}`).join("\n")}${items.length > 12 ? `\n… y ${items.length - 12} más` : ""}`);

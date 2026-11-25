@@ -26,11 +26,14 @@ export const leadPriorityValues = leadPriorities.map((priority) => priority.valu
 export const leadSources = [
   { value: "base_colegios_2026", label: "Base colegios 2026" },
   { value: "website", label: "Sitio web" },
+  { value: "email", label: "Correo" },
   { value: "whatsapp", label: "WhatsApp" },
   { value: "instagram", label: "Instagram" },
   { value: "facebook", label: "Facebook" },
   { value: "linkedin", label: "LinkedIn" },
   { value: "referral", label: "Referido" },
+  { value: "google", label: "Google" },
+  { value: "mercadolibre", label: "Mercado Libre" },
   { value: "event", label: "Evento o feria" },
   { value: "manual", label: "Otro" },
   { value: "import", label: "Importación CSV" },
@@ -40,8 +43,24 @@ export const leadSourceValues = leadSources.map((source) => source.value) as [Le
 export const PROSPECT_SOURCE = "base_colegios_2026";
 /** Canales que el asesor puede elegir al registrar un contacto a mano. */
 export const manualLeadSources = leadSources.filter((source) => !["base_colegios_2026", "import"].includes(source.value));
-/** Canales que el formulario público acepta desde los enlaces de campaña (`utm_source`). */
+/** Redes con enlace de campaña propio (`utm_source`) en la máquina de ventas. */
 export const campaignChannels = ["linkedin", "instagram", "facebook", "whatsapp"] as const;
+/** Canales con que el formulario público registra un lead: sitio web, correo, referidos, Google, Mercado Libre, eventos o ferias y las redes. */
+export const formLeadSources = ["website", "event", "email", "referral", "google", "mercadolibre", ...campaignChannels] as const;
+/** Programa con que entra al CRM quien se anota en la lista de espera de un producto agotado. */
+export const WAITLIST_PROGRAM = "Lista de espera";
+export type FormLeadSource = (typeof formLeadSources)[number];
+
+/**
+ * Canal y campaña del lead según el enlace (`utm_source`, `utm_campaign`). El QR del brochure impreso
+ * (`brochure`) entra como sitio web: la campaña dice qué pieza fue, y sin campaña queda `brochure`.
+ */
+export function formAttribution(utmSource: string | null, utmCampaign: string | null) {
+  const utm = utmSource?.trim().toLowerCase() ?? "";
+  const source: FormLeadSource = formLeadSources.includes(utm as FormLeadSource) ? utm as FormLeadSource : "website";
+  const campaign = /^[a-zA-Z0-9_-]{1,40}$/.test(utmCampaign ?? "") ? utmCampaign! : utm === "brochure" ? "brochure" : "";
+  return { source, campaign };
+}
 
 /** Actividades que registra el asesor. Las de contacto actualizan "último contacto" y avanzan un lead nuevo a "contactado". */
 export const activityTypes = [
@@ -79,7 +98,7 @@ export const outcomeValues = outcomes.map((item) => item.value) as [Outcome, ...
 export const MAX_ATTEMPTS = 3;
 
 /** Actividades automáticas que escribe el sistema. */
-const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación" };
+const systemActivityLabels: Record<string, string> = { created: "Registro", stage_change: "Cambio de etapa", assignment: "Asignación", form: "Formulario web", import: "Importación", email_in: "Correo recibido", proposal_view: "Lectura de la propuesta", opt_out: "Baja de comunicaciones" };
 
 /** Quién hizo la gestión: el asesor activo del panel (varios asesores comparten la cuenta de administración) o el correo de la sesión. */
 export const actorName = (email: string, asesor?: string | null) => asesor?.trim() ? asesor.trim().slice(0, 80) : email;

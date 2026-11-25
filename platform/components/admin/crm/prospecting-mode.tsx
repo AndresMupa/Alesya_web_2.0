@@ -8,7 +8,7 @@ import { MessageComposer, mobilesOf, phonesOf } from "@/components/admin/crm/mes
 import { MAX_ATTEMPTS, contactChannels, leadPriorityLabel, lostReasons, outcomes, type ContactChannel, type Outcome } from "@/lib/crm/constants";
 import { bogotaDay, formatDay, whatsappLink } from "@/lib/format";
 
-type Prospect = { id: string; name: string; organization: string; city: string | null; phone: string | null; email: string | null; website: string | null; externalId: string | null; notes: string; stage: string; priority: string; owner: string | null; attempts: number; nextFollowUp: string | null };
+type Prospect = { id: string; name: string; organization: string; city: string | null; phone: string | null; email: string | null; website: string | null; externalId: string | null; notes: string; stage: string; priority: string; owner: string | null; attempts: number; nextFollowUp: string | null; marketingOptOutAt: string | null };
 type Batch = { rows: Prospect[]; total: number; cities: string[]; owners: string[] };
 
 const BATCH = 25;
@@ -77,6 +77,8 @@ function ProspectCard({ prospect, position, batch, asesor, onSkip, onDone, onOpe
   const [reason, setReason] = useState<string>(lostReasons[0]);
   const [saving, setSaving] = useState(false);
   const phones = phonesOf(prospect.phone);
+  /** Se dio de baja de las comunicaciones comerciales: sin enlaces directos de WhatsApp ni de correo; la llamada sigue disponible. */
+  const optedOut = !!prospect.marketingOptOutAt;
   const needsDate = outcome === "meeting";
   const defaultDays = outcome === "answered" ? 3 : outcome === "no_answer" ? 2 : 0;
   const formRef = useRef<HTMLFormElement>(null);
@@ -117,11 +119,12 @@ function ProspectCard({ prospect, position, batch, asesor, onSkip, onDone, onOpe
         <p>{prospect.name}{prospect.city && ` · ${prospect.city}`}{prospect.externalId && ` · DANE ${prospect.externalId}`}</p>
       </div>
       <ul className="adm-prospect-contacts">
-        {phones.map((phone) => <li key={phone}><Phone size={14} /><a href={`tel:${phone}`}>{phone}</a>{whatsappLink(phone) && <a className="adm-chip" href={whatsappLink(phone)!} target="_blank" rel="noopener noreferrer"><MessageCircle size={12} /> WhatsApp</a>}</li>)}
-        {prospect.email && <li><Mail size={14} /><a href={`mailto:${prospect.email}`}>{prospect.email}</a></li>}
+        {phones.map((phone) => <li key={phone}><Phone size={14} /><a href={`tel:${phone}`}>{phone}</a>{!optedOut && whatsappLink(phone) && <a className="adm-chip" href={whatsappLink(phone)!} target="_blank" rel="noopener noreferrer"><MessageCircle size={12} /> WhatsApp</a>}</li>)}
+        {prospect.email && <li><Mail size={14} />{optedOut ? <span>{prospect.email}</span> : <a href={`mailto:${prospect.email}`}>{prospect.email}</a>}</li>}
         {prospect.website && <li><ExternalLink size={14} /><a href={prospect.website} target="_blank" rel="noopener noreferrer">{prospect.website.replace(/^https?:\/\//, "")}</a></li>}
         {!phones.length && !prospect.email && <li className="adm-muted">Sin teléfono ni correo: marca “Datos errados” o busca el contacto en el sitio web.</li>}
       </ul>
+      {optedOut && <p className="adm-callout"><strong>No contactar con fines comerciales.</strong> Se dio de baja de las comunicaciones por correo y WhatsApp: aquí no hay enlaces directos. Solo respóndele si pidió algo, desde «Escribir con plantilla».</p>}
       {prospect.notes && <p className="adm-prospect-notes">{prospect.notes}</p>}
       {prospect.attempts >= MAX_ATTEMPTS && <p className="adm-callout">Ya van {prospect.attempts} intentos sin respuesta. Si no contesta hoy, márcalo como <strong>No interesa · Sin respuesta</strong> para sacarlo de la cola.</p>}
       <div className="adm-prospect-links"><button type="button" className="adm-link-button" onClick={() => onOpenLead(prospect.id)}>Abrir ficha completa</button><button type="button" className="adm-link-button" onClick={onSkip}><SkipForward size={12} /> Saltar por ahora</button></div>

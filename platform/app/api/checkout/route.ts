@@ -2,7 +2,7 @@ import { z } from "zod";
 import { cartItemsSchema } from "@/lib/commerce/catalog";
 import { notifyOrder } from "@/lib/commerce/notifications";
 import { createOrder } from "@/lib/commerce/orders";
-import { handleError, ok, readBody } from "@/lib/http";
+import { PUBLIC_BODY_LIMIT, handleError, ok, readBody } from "@/lib/http";
 import { publicOrigin, wompiCheckoutUrl, wompiStatus } from "@/lib/payments/wompi";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
@@ -21,7 +21,7 @@ const checkoutSchema = z.object({
 export async function POST(request: Request) {
   const limited = await enforceRateLimit(request, { name: "checkout", limit: 10, globalLimit: 200, windowMs: 15 * 60_000 });
   if (limited) return limited;
-  const body = await readBody(request, checkoutSchema, "Los datos del pedido no están completos."); if (body instanceof Response) return body;
+  const body = await readBody(request, checkoutSchema, "Los datos del pedido no están completos.", PUBLIC_BODY_LIMIT); if (body instanceof Response) return body;
   const wompi = wompiStatus();
   try {
     const order = await createOrder(body.items, body.customer, wompi.ready ? "wompi" : "manual", { channel: "web" });

@@ -10,6 +10,8 @@ export const settingDefaults = {
   "store.shipping_note": "Envíos a toda Colombia. Coordinamos la entrega al confirmar el pago.",
   "mail.notify_to": "comercial@alesyaediciones.com",
   "crm.daily_goal": "20",
+  /** Remitentes que la captación por correo no convierte en leads: direcciones o dominios (proveedores, bancos…). */
+  "crm.inbox_ignore": "",
 } as const;
 
 export type SettingKey = keyof typeof settingDefaults;

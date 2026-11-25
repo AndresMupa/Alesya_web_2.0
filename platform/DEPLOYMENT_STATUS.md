@@ -24,10 +24,11 @@ Cada merge a la rama `main-rzbi9x` se publica solo mediante GitHub Actions (`.gi
 1. `npm run lint`, las pruebas del despliegue y `npm run build` (`.github/workflows/ci.yml`).
 2. `npm run package:cpanel`: paquete Linux x86-64 construido en Docker, validado (sin secretos, bases de datos, `.env` ni binarios de otra arquitectura) y con smoke test.
 3. **Autoprueba en el servidor:** sube, renombra, lee y borra una carpeta temporal para confirmar que la API se comporta como se espera, sin tocar la app.
-4. Se sube un único `.tar.gz` con la API de cPanel (`Fileman::upload_files`) a `/home/alesyaed/alesya-platform.release-<commit>`, cPanel lo extrae (`Fileman::fileop extract`) y se verifica que su `BUILD_ID` sea el del build.
-5. Se intercambian carpetas con dos renombrados: la versión anterior queda en `/home/alesyaed/alesya-platform.previous`. Si el segundo renombrado falla, se restaura la anterior en el acto.
-6. `tmp/restart.txt` reinicia la aplicación; `bootstrap.mjs` aplica las migraciones pendientes al arrancar.
-7. Chequeo de salud: el sitio debe servir un archivo estático que solo existe en el build nuevo. **Si falla, el workflow vuelve solo a la versión anterior** (la que falló queda en `alesya-platform.failed-<commit>` para revisarla).
+4. **Espacio:** consulta la cuota de la cuenta (MB y número de archivos) y la compara con lo que ocupa el despliegue (paquete + versión extraída). Si no alcanza, borra antes la versión de hace dos despliegues (`alesya-platform.previous`, que el paso 6 borraría igual); si aun así no alcanza, se detiene con un mensaje claro sin tocar la app. Si cPanel rechaza la subida, el registro muestra el motivo real que devuelve.
+5. Se sube un único `.tar.gz` con la API de cPanel (`Fileman::upload_files`) a `/home/alesyaed/alesya-platform.release-<commit>`, cPanel lo extrae (`Fileman::fileop extract`) y se verifica que su `BUILD_ID` sea el del build.
+6. Se intercambian carpetas con dos renombrados: la versión anterior queda en `/home/alesyaed/alesya-platform.previous`. Si el segundo renombrado falla, se restaura la anterior en el acto.
+7. `tmp/restart.txt` reinicia la aplicación; `bootstrap.mjs` aplica las migraciones pendientes al arrancar.
+8. Chequeo de salud: el sitio debe servir un archivo estático que solo existe en el build nuevo. **Si falla, el workflow vuelve solo a la versión anterior** (la que falló queda en `alesya-platform.failed-<commit>` para revisarla).
 
 Duración típica: unos 3 minutos. Si algo falla antes del intercambio de carpetas, producción no cambia.
 
@@ -74,6 +75,9 @@ ALESYA_DATA_DIR=/home/alesyaed/alesya-data
 ADMIN_EMAIL
 ADMIN_PASSWORD_HASH
 ADMIN_SESSION_SECRET
+# Verificación en dos pasos del panel (opcional; sin estas, el acceso es solo correo + contraseña):
+# ADMIN_TOTP_SECRET
+# ADMIN_RECOVERY_HASHES
 WOMPI_PUBLIC_KEY
 WOMPI_INTEGRITY_SECRET
 WOMPI_EVENTS_SECRET
@@ -83,6 +87,12 @@ SMTP_PORT=465
 SMTP_USER=comercial@alesyaediciones.com
 SMTP_PASS
 MAIL_FROM=Alesya X-Tech <comercial@alesyaediciones.com>
+CRON_SECRET
+# Captación por correo (si es la misma cuenta de SMTP_USER basta IMAP_USER):
+IMAP_USER=comercial@alesyaediciones.com
+# IMAP_PASS, IMAP_HOST=mail.alesyaediciones.com, IMAP_PORT=993, IMAP_MAILBOX=INBOX
+# Borradores con IA y Harvey (opcionales):
+# ANTHROPIC_API_KEY, CRM_AI_MODEL=claude-haiku-5-5, HARVEY_SYNC_TOKEN
 # Solo al pasar al dominio principal (ver "Cambio al dominio principal"):
 # CANONICAL_REDIRECT=1
 ```
@@ -99,9 +109,29 @@ wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/daily?token=EL_
 
 Envía al correo de avisos (`/admin/configuracion`) los seguimientos del día, entrantes sin atender, oportunidades sin siguiente acción y cotizaciones por vencer. Requiere el correo SMTP configurado; sin él responde con el resumen en JSON pero no envía nada.
 
+### Captación por correo (cron)
+
+Lleva al CRM los correos que llegan al buzón comercial (ver README → "Captación por correo"). Requiere `IMAP_USER` (la cuenta que recibe a los clientes, normalmente `comercial@alesyaediciones.com`) y su contraseña: si es la misma cuenta de `SMTP_USER` se reutilizan `SMTP_HOST` y `SMTP_PASS`; si es otra, definir también `IMAP_PASS` (y `IMAP_HOST` si el servidor no es el de SMTP). El buzón se abre en modo lectura: no se marcan, mueven ni borran correos. Después de **Restart**, en cPanel → **Trabajos de cron** crear uno cada 10 minutos (`*/10 * * * *`):
+
+```sh
+wget -q -O /dev/null "https://nueva.alesyaediciones.com/api/cron/inbox?token=EL_SECRETO"
+```
+
+Comprobar en `/admin/ventas?tab=captacion` (**Revisar ahora**). La primera revisión trae los correos de los últimos 3 días. Antes de activarla conviene cargar en *Configuración → Remitentes que no son clientes* los dominios de proveedores, bancos y plataformas que escriben a ese buzón. Mientras la cuenta esté en el límite de procesos (NPROC) el cron puede no arrancar; la captación igual corre al abrir la máquina de ventas.
+
 Las variables `SMTP_*` y `MAIL_FROM` activan el correo transaccional (pedido recibido, pago confirmado, envío y avisos al equipo). Se obtienen en cPanel → **Cuentas de correo** → *Connect Devices* de la cuenta que enviará; sin ellas la tienda funciona igual pero no envía correos (Integraciones lo indica). Después de pegarlas, **Restart** y probar con **Configuración → Enviar correo de prueba**.
 
 Las credenciales de `/admin` se generan con `npm run admin:setup -- --production --force correo@dominio.co` (quedan en `.local/admin-cpanel.txt`); después de pegarlas hay que pulsar **Restart**. Los valores secretos no deben escribirse en este documento.
+
+### Verificación en dos pasos del panel (2FA)
+
+El acceso a `/admin` admite un segundo factor TOTP (código de una app autenticadora). Es opcional pero muy recomendable, porque hoy el panel (leads con datos personales, pedidos, exportaciones) se protege solo con contraseña.
+
+1. Generar el secreto y los códigos de recuperación: `npm run admin:totp -- --production` (no toca `.env.local`; deja el URL `otpauth://`, 10 códigos de recuperación de un solo uso y las variables `ADMIN_TOTP_SECRET` y `ADMIN_RECOVERY_HASHES` en `.local/admin-totp-cpanel.txt`). Escanear el URI con Google Authenticator/Authy y guardar los códigos de recuperación en el gestor de contraseñas.
+2. En "Setup Node.js App" agregar `ADMIN_TOTP_SECRET` y `ADMIN_RECOVERY_HASHES` con esos valores y pulsar **Restart**. Desde ese momento el panel pide el código de 6 dígitos después de la contraseña.
+3. Comprobar el acceso con la app autenticadora antes de cerrar la sesión actual.
+
+**Recuperar el acceso si se pierde el teléfono:** entrar con un código de recuperación (cada uno sirve una vez) y volver a ejecutar `npm run admin:totp -- --production --force` para rotar el secreto, o —si no quedan códigos— borrar la variable `ADMIN_TOTP_SECRET` en "Setup Node.js App" y **Restart**: el acceso vuelve a ser solo correo + contraseña y se puede reconfigurar el 2FA. Los códigos y el secreto nunca deben escribirse en este documento ni subirse al repositorio.
 
 Antes de activar pagos reales se debe configurar en Wompi:
 
@@ -158,7 +188,7 @@ El código ya está listo para servir el dominio principal: páginas legales con
 6. **SSL:** cPanel → *SSL/TLS Status* → confirmar (o ejecutar AutoSSL) para `alesyaediciones.com` y `www.alesyaediciones.com`.
 7. **GitHub:** variable `PRODUCTION_URL` del entorno `production` = `https://www.alesyaediciones.com` (la usa el chequeo de salud del despliegue).
 8. **Wompi:** URL de eventos = `https://www.alesyaediciones.com/api/webhooks/wompi`, en sandbox y en producción.
-9. **Cron del resumen diario:** cambiar la URL a `https://www.alesyaediciones.com/api/cron/daily?token=…`.
+9. **Cron del resumen diario y de la captación por correo:** cambiar las URL a `https://www.alesyaediciones.com/api/cron/daily?token=…` y `…/api/cron/inbox?token=…`.
 
 ### Verificación
 
