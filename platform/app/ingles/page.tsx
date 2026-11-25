@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, GraduationCap, KeyRound, Lock, MessageCircle, MousePointerClick, School } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, GraduationCap, KeyRound, Lock, MessageCircle, MousePointerClick, School } from "lucide-react";
 import { CodeDialogButton, ForgetAccessButton } from "@/components/english/access-controls";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getEnglishAccess } from "@/lib/english/access";
-import { resourceTypes, RESOURCE_TYPES } from "@/lib/english/levels";
+import { resourceTypes, RESOURCE_TYPES, SAMPLE_NOTICE } from "@/lib/english/levels";
 import { listLevels, type LevelSummary } from "@/lib/english/resources";
 import { pageMetadata } from "@/lib/seo";
 import { jsonLd, siteUrl } from "@/lib/site";
@@ -63,9 +63,10 @@ export default async function EnglishLandingPage() {
         <div className="section-heading split-heading"><div><p className="eyebrow">Elige tu nivel</p><h2>Un camino para cada grado.</h2></div><p>Cada grado sigue las unidades de su libro. Entra al tuyo para ver el material; con el código de tu libro se abre todo.</p></div>
         {levels ? <div className="eng-levels">
           {levels.map((level) => {
-            const open = access?.grades.has(level.grade);
+            const sample = level.accessMode === "sample";
+            const open = !sample && access?.grades.has(level.grade);
             return <Link key={level.grade} href={`/ingles/${level.slug}`} className="eng-level-card" data-tone={level.tone}>
-              <span className="eng-level-top"><b className="eng-level-ordinal">{level.ordinal}</b><span className={open ? "eng-chip is-open" : "eng-chip"}>{open ? <><CheckCircle2 size={13} aria-hidden="true" /> Desbloqueado</> : <><Lock size={13} aria-hidden="true" /> Con código</>}</span></span>
+              <span className="eng-level-top"><b className="eng-level-ordinal">{level.ordinal}</b><span className={sample ? "eng-chip is-sample" : open ? "eng-chip is-open" : "eng-chip"}>{sample ? <><Eye size={13} aria-hidden="true" /> {SAMPLE_NOTICE.title}</> : open ? <><CheckCircle2 size={13} aria-hidden="true" /> Desbloqueado</> : <><Lock size={13} aria-hidden="true" /> Con código</>}</span></span>
               <span className="eng-level-name">{level.name} de primaria</span>
               <em className="eng-level-tagline">{level.tagline}</em>
               <span className="eng-level-desc">{level.description}</span>

@@ -585,6 +585,11 @@ a.activity-item:hover span { text-decoration:underline; }
 .adm-eng-grades button b { font-size:20px; line-height:1; letter-spacing:-.03em; }
 .adm-eng-grades button small { font-size:11px; color:#6f7986; }
 .adm-eng-grades button.is-active { background:var(--ink); color:white; box-shadow:0 8px 18px rgba(16,24,40,.15); }
+.adm-eng-access { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 0; }
+.adm-eng-access > span { font-size:12px; font-weight:700; color:#3d4756; margin-right:4px; }
+.adm-eng-access button { padding:7px 12px; border:1px solid var(--adm-line); border-radius:999px; background:white; font-size:13px; cursor:pointer; }
+.adm-eng-access button.is-active { background:var(--ink); color:white; border-color:var(--ink); }
+.adm-eng-access small { flex-basis:100%; font-size:12px; color:#6f7986; }
 .adm-eng-grades button.is-active small { color:rgba(255,255,255,.7); }
 .adm-eng-intro { margin:0 0 16px; line-height:1.55; }
 .adm-eng-list { display:grid; gap:8px; }

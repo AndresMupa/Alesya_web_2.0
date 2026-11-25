@@ -1,7 +1,8 @@
 import { getAdmin } from "@/lib/admin-auth";
-import { getEnglishAccess } from "@/lib/english/access";
+import { getEnglishAccess, gradeUnlocked } from "@/lib/english/access";
 import { englishContentType, englishFilePath, ENGLISH_FILE_NAME, extensionOf, type EnglishExtension } from "@/lib/english/files";
-import { findResource } from "@/lib/english/resources";
+import { isGrade } from "@/lib/english/levels";
+import { findResource, getLevel } from "@/lib/english/resources";
 import { fileResponse } from "@/lib/file-response";
 
 const deny = (status: number, message: string) => new Response(message, { status, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "private, no-store", "x-robots-tag": "noindex, nofollow" } });
@@ -14,8 +15,9 @@ function disposition(kind: "inline" | "attachment", title: string, extension: st
 }
 
 /**
- * Entrega el material del Área de Inglés. Solo con un código vigente para el grado (o si el material es de
- * muestra gratuita); el equipo con sesión del panel puede ver también los borradores. `?descargar=1` lo baja.
+ * Entrega el material del Área de Inglés. Se valida aquí, en el servidor: si el grado está en versión de muestra se
+ * entrega a cualquiera; si requiere activación, solo con un código vigente para el grado (o si el material es de
+ * muestra gratuita). El equipo con sesión del panel puede ver también los borradores. `?descargar=1` lo baja.
  */
 async function serve(request: Request, { params }: RouteContext<"/ingles/archivo/[id]">) {
   const { id } = await params;
@@ -25,8 +27,10 @@ async function serve(request: Request, { params }: RouteContext<"/ingles/archivo
   if (!admin) {
     if (resource.status !== "published") return deny(404, "Material no encontrado.");
     if (!resource.free) {
-      const access = await getEnglishAccess().catch(() => null);
-      if (!access?.grades.has(resource.grade as 1 | 2 | 3 | 4 | 5)) return deny(403, "Este material se abre con el código de tu libro. Ingrésalo en alesyaediciones.com/ingles.");
+      if (!isGrade(resource.grade)) return deny(404, "Material no encontrado.");
+      // Si no se puede leer el modo del grado, se trata como "requiere activación": nunca se abre por error.
+      const [level, access] = await Promise.all([getLevel(resource.grade).catch(() => null), getEnglishAccess().catch(() => null)]);
+      if (!gradeUnlocked(resource.grade, level?.accessMode ?? "code", access)) return deny(403, "Este material se abre con el código de tu libro. Ingrésalo en alesyaediciones.com/ingles.");
     }
   }
   const extension = extensionOf(resource.fileName) as EnglishExtension;

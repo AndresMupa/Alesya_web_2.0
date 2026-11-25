@@ -123,11 +123,13 @@ export const rateLimits = sqliteTable("rate_limits", {
 
 // ── Área de Inglés ───────────────────────────────────────────────────────────
 
-/** Texto editable de cada grado (1° a 5°). Lo que no se ha guardado usa el texto por defecto de lib/english/levels.ts. */
+/** Texto editable y modo de acceso de cada grado (1° a 5°). Lo que no se ha guardado usa los valores por defecto de lib/english/levels.ts. */
 export const englishLevels = sqliteTable("english_levels", {
   grade: integer("grade").primaryKey(),
   tagline: text("tagline").notNull().default(""),
   description: text("description").notNull().default(""),
+  /** "sample" = versión de muestra abierta, sin código; "code" = requiere activación con un código válido. */
+  accessMode: text("access_mode").notNull().default("sample"),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 

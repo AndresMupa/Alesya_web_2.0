@@ -85,6 +85,20 @@
       "when": 1795636467630,
       "tag": "0011_english_area",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1795648499320,
+      "tag": "0012_english_access_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1795649387724,
+      "tag": "0013_english_legacy_videos",
+      "breakpoints": true
     }
   ]
 }

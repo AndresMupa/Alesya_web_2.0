@@ -1,0 +1,1 @@
+ALTER TABLE `english_levels` ADD `access_mode` text DEFAULT 'sample' NOT NULL;

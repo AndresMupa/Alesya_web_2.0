@@ -24,7 +24,9 @@ const wordpress: [source: string, destination: string][] = [
   // El Área de Inglés del sitio anterior (con libros por grado y Unit 1–4) vive ahora en /ingles.
   // Todos los QR de los libros de inglés apuntan a /grado-N/; los de 4° (edición 2023) y uno de 3° (edición 2026, pág. 138)
   // apuntan a /videos-educativos/, que comparten varios grados: va a la portada del área para elegir el grado.
-  ["/area-ingles", "/ingles"], ["/grado-:numero([1-5])", "/ingles/grado-:numero"], ["/3d-flip-book/tercero-flipbook", "/ingles/grado-3"], ["/videos-educativos", "/ingles"],
+  // `?desde=qr` marca la entrada desde el libro: el grado aplica el mismo modo de acceso (muestra o con código) y, si
+  // pide código, deja el campo listo para escribirlo.
+  ["/area-ingles", "/ingles"], ["/grado-:numero([1-5])", "/ingles/grado-:numero?desde=qr"], ["/3d-flip-book/tercero-flipbook", "/ingles/grado-3?desde=qr"], ["/videos-educativos", "/ingles"],
   ["/grado-:numero(\\d+)", "/catalogo?categoria=Libros"], ["/modulos-escolares", "/catalogo?categoria=Libros"], ["/3d-flip-book/:slug*", "/catalogo?categoria=Libros"],
   ["/blog", "/"], ["/author/:slug*", "/"], ["/category/:slug*", "/"], ["/tag/:slug*", "/"], ["/mantenimiento", "/"],
   ["/wp-sitemap.xml", "/sitemap.xml"], ["/sitemap_index.xml", "/sitemap.xml"],

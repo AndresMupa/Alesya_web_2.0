@@ -40,6 +40,7 @@
 .eng-level-ordinal { font-size:76px; line-height:.78; letter-spacing:-.06em; font-weight:800; }
 .eng-chip { display:inline-flex; align-items:center; gap:5px; padding:5px 9px; background:rgba(255,255,255,.75); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; white-space:nowrap; }
 .eng-chip.is-open { background:var(--ink); color:var(--signal-lime); }
+.eng-chip.is-sample { background:var(--ink); color:white; }
 .eng-level-name { padding:20px 20px 0; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
 .eng-level-tagline { padding:8px 20px 0; font-family:Georgia, serif; font-size:23px; line-height:1.15; }
 .eng-level-desc { padding:12px 20px 0; color:var(--muted); font-size:14px; line-height:1.55; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
@@ -106,6 +107,11 @@
 .eng-access-card .eng-code-row { flex-direction:column; }
 .eng-access-card .eng-code-row .button { width:100%; }
 .eng-access-card.is-open .button { width:100%; margin-bottom:14px; }
+/* Versión de muestra: aviso sobrio en la tarjeta de acceso y etiqueta discreta junto al grado. */
+.eng-access-card.is-sample > svg { color:var(--muted); margin-bottom:12px; }
+.eng-access-card.is-sample .eng-sample-label { margin:0 0 8px; font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--ink); }
+.eng-access-card.is-sample .button { width:100%; }
+.eng-sample-tag { display:inline-block; margin-left:12px; padding:3px 8px; border:1px solid rgba(255,255,255,.35); color:rgba(255,255,255,.8); font-size:10px; letter-spacing:.12em; vertical-align:middle; }
 
 .eng-switch { position:sticky; top:86px; z-index:15; background:rgba(255,255,255,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
 .eng-switch .page-width { display:flex; align-items:center; gap:8px; min-height:64px; overflow-x:auto; }

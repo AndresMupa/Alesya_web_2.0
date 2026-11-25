@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { getDb } from "@/db";
 import { englishAccessCodes } from "@/db/schema";
 import { DomainError } from "@/lib/http";
-import { CODE_ALPHABET, GRADES, isGrade, normalizeCode, type Grade } from "@/lib/english/levels";
+import { CODE_ALPHABET, GRADES, isGrade, normalizeCode, type AccessMode, type Grade } from "@/lib/english/levels";
 
 /**
  * Acceso al material del Área de Inglés. Quien canjea un código recibe una cookie firmada con la lista de códigos
@@ -70,6 +70,13 @@ export async function getEnglishAccess(): Promise<EnglishAccess> {
   const expiresAt = rows.some((row) => !row.expiresAt) ? null : new Date(Math.max(...rows.map((row) => row.expiresAt!.getTime())));
   return { grades, codeIds: rows.map((row) => row.id), expiresAt };
 }
+
+/**
+ * Única regla de acceso al material completo de un grado, usada por las páginas y por la entrega de archivos.
+ * En versión de muestra todo está abierto; con "requiere activación" hace falta un código vigente para ese grado.
+ */
+export const gradeUnlocked = (grade: Grade, accessMode: AccessMode, access: EnglishAccess | null) =>
+  accessMode === "sample" || Boolean(access?.grades.has(grade));
 
 /** IDs crudos de la cookie (incluye códigos ya desactivados), para sumar uno nuevo sin perder los anteriores. */
 export async function cookieCodeIds() {

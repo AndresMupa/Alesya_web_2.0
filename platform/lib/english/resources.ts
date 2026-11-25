@@ -3,7 +3,7 @@ import { and, asc, count, desc, eq, max, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { englishAccessCodes, englishLevels, englishResources } from "@/db/schema";
 import { DomainError } from "@/lib/http";
-import { embedUrl, GRADES, levelOf, RESOURCE_TYPES, type Grade, type Level, type PublicResource, type ResourceType } from "@/lib/english/levels";
+import { embedUrl, GRADES, levelOf, RESOURCE_TYPES, type AccessMode, type Grade, type Level, type PublicResource, type ResourceType } from "@/lib/english/levels";
 
 export type { PublicResource };
 import { extensionOf, removeEnglishFile } from "@/lib/english/files";
@@ -129,6 +129,13 @@ export async function saveLevel(grade: Grade, tagline: string, description: stri
   const now = new Date();
   await getDb().insert(englishLevels).values({ grade, tagline, description, updatedAt: now })
     .onConflictDoUpdate({ target: englishLevels.grade, set: { tagline, description, updatedAt: now } });
+}
+
+/** Cambia un grado entre versión de muestra (abierta) y requiere activación (con código). */
+export async function saveLevelAccessMode(grade: Grade, accessMode: AccessMode) {
+  const now = new Date();
+  await getDb().insert(englishLevels).values({ grade, accessMode, updatedAt: now })
+    .onConflictDoUpdate({ target: englishLevels.grade, set: { accessMode, updatedAt: now } });
 }
 
 /** Números para la cabecera del panel. */
