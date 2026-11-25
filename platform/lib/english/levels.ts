@@ -9,6 +9,26 @@ export type Grade = (typeof GRADES)[number];
 
 export type LevelTone = "lime" | "cyan" | "yellow" | "coral" | "violet";
 
+/**
+ * Modo de acceso de un grado. "sample": versión de muestra abierta, todo el material se consulta sin código.
+ * "code": requiere activación; solo se abre con un código válido (o lo marcado como muestra gratis).
+ * Por defecto "sample": ningún grado exige código hasta que el panel lo cambie.
+ */
+export const ACCESS_MODES = ["sample", "code"] as const;
+export type AccessMode = (typeof ACCESS_MODES)[number];
+export const DEFAULT_ACCESS_MODE: AccessMode = "sample";
+export const isAccessMode = (value: unknown): value is AccessMode => ACCESS_MODES.includes(value as AccessMode);
+export const accessModes: Record<AccessMode, { label: string; hint: string }> = {
+  sample: { label: "Muestra", hint: "Abierto para consulta y demostración, sin código." },
+  code: { label: "Requiere activación", hint: "El material completo solo se abre con un código válido." },
+};
+
+/** Texto del aviso de versión de muestra (se muestra igual en todos los grados abiertos). */
+export const SAMPLE_NOTICE = {
+  title: "Versión de muestra",
+  text: "Este libro se encuentra habilitado temporalmente para consulta y demostración. Próximamente, el acceso al contenido requerirá un código de activación.",
+};
+
 export type Level = {
   grade: Grade;
   slug: `grado-${Grade}`;
@@ -17,9 +37,10 @@ export type Level = {
   tone: LevelTone;
   tagline: string;
   description: string;
+  accessMode: AccessMode;
 };
 
-const defaults: Record<Grade, Omit<Level, "grade" | "slug">> = {
+const defaults: Record<Grade, Omit<Level, "grade" | "slug" | "accessMode">> = {
   1: { name: "Primero", ordinal: "1°", tone: "lime", tagline: "Hello, world!", description: "Primeras palabras en inglés: saludos, colores, números y el salón de clase, con canciones y juegos para escuchar y repetir." },
   2: { name: "Segundo", ordinal: "2°", tone: "cyan", tagline: "My world, my words", description: "La familia, los animales, la comida y la casa. Frases cortas para describir lo que ven y lo que les gusta." },
   3: { name: "Tercero", ordinal: "3°", tone: "yellow", tagline: "Let's talk!", description: "Rutinas, la hora, los lugares de la ciudad y las profesiones. Preguntas y respuestas para conversar en clase." },
@@ -29,10 +50,13 @@ const defaults: Record<Grade, Omit<Level, "grade" | "slug">> = {
 
 export const isGrade = (value: unknown): value is Grade => GRADES.includes(value as Grade);
 
-/** Nivel con los textos guardados en el panel encima de los de por defecto. */
-export function levelOf(grade: Grade, stored?: { tagline?: string | null; description?: string | null }): Level {
+/** Nivel con los textos y el modo de acceso guardados en el panel encima de los de por defecto. */
+export function levelOf(grade: Grade, stored?: { tagline?: string | null; description?: string | null; accessMode?: string | null }): Level {
   const base = defaults[grade];
-  return { grade, slug: `grado-${grade}`, ...base, tagline: stored?.tagline?.trim() || base.tagline, description: stored?.description?.trim() || base.description };
+  return {
+    grade, slug: `grado-${grade}`, ...base, tagline: stored?.tagline?.trim() || base.tagline, description: stored?.description?.trim() || base.description,
+    accessMode: isAccessMode(stored?.accessMode) ? stored.accessMode : DEFAULT_ACCESS_MODE,
+  };
 }
 
 export const defaultLevel = (grade: Grade) => defaults[grade];

@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp, Eye, EyeOff, ExternalLink, Pencil, Plus, Trash2, Ty
 import { toast } from "sonner";
 import { send, useJson } from "@/components/admin/kit";
 import { LevelTextDrawer, ResourceDrawer } from "@/components/admin/english/resource-drawer";
-import { formatBytes, GRADES, resourceTypes, type Grade } from "@/lib/english/levels";
+import { accessModes, ACCESS_MODES, formatBytes, GRADES, resourceTypes, type AccessMode, type Grade } from "@/lib/english/levels";
 import type { AdminResource, LevelSummary } from "@/lib/english/resources";
 
 /** Material de un grado: lista en el orden público, con publicar/ocultar, reordenar, editar y eliminar. */
@@ -24,6 +24,15 @@ export function ResourcesPanel({ levels, grade, onGrade, onChanged, uploads }: {
     const result = await send(`/api/admin/ingles/recursos/${resource.id}`, "PATCH", body, success);
     setBusy(null);
     if (result) reload();
+  }
+
+  async function changeAccess(accessMode: AccessMode) {
+    if (accessMode === level.accessMode) return;
+    if (accessMode === "code" && !confirm(`¿Pasar ${level.ordinal} a "Requiere activación"? Desde ese momento el material completo solo se abre con un código válido para ${level.ordinal}; sin códigos activos, nadie podrá verlo (salvo lo marcado como muestra gratis).`)) return;
+    setBusy("access");
+    const result = await send("/api/admin/ingles/niveles", "PATCH", { grade, accessMode }, `${level.ordinal}: ${accessModes[accessMode].label}.`);
+    setBusy(null);
+    if (result) onChanged();
   }
 
   async function remove(resource: AdminResource) {
@@ -46,6 +55,12 @@ export function ResourcesPanel({ levels, grade, onGrade, onChanged, uploads }: {
         <a className="refresh-button" href={`/ingles/grado-${grade}`} target="_blank" rel="noopener"><ExternalLink size={14} /> Ver {level.ordinal}</a>
         <button type="button" className="button button-dark" onClick={() => setEditing("new")}><Plus size={16} /> Nuevo material</button>
       </div>
+    </div>
+
+    <div className="adm-eng-access" role="radiogroup" aria-label={`Acceso a ${level.ordinal}`}>
+      <span>Acceso a {level.ordinal}</span>
+      {ACCESS_MODES.map((mode) => <button key={mode} type="button" role="radio" aria-checked={level.accessMode === mode} className={level.accessMode === mode ? "is-active" : undefined} disabled={!!busy} onClick={() => void changeAccess(mode)} title={accessModes[mode].hint}>{accessModes[mode].label}</button>)}
+      <small>{accessModes[level.accessMode].hint}</small>
     </div>
 
     <p className="adm-muted adm-eng-intro"><strong>{level.ordinal} · {level.tagline}.</strong> {level.description}</p>
