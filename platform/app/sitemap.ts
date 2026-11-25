@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { listSitemapProducts, listStoreCategories } from "@/lib/commerce/catalog";
+import { GRADES } from "@/lib/english/levels";
 import { legalPages } from "@/lib/legal";
 import { absoluteUrl, siteUrl } from "@/lib/site";
 
@@ -14,6 +15,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/catalogo`, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/colegios`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${base}/proyectos`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${base}/ingles`, changeFrequency: "weekly", priority: 0.8 },
+    ...GRADES.map((grade) => ({ url: `${base}/ingles/grado-${grade}`, changeFrequency: "weekly" as const, priority: 0.7 })),
     ...legalPages.map((page) => ({ url: `${base}/${page.slug}`, changeFrequency: "yearly" as const, priority: 0.2 })),
   ];
   const [products, categories] = await Promise.all([

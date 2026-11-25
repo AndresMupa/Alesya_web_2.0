@@ -19,9 +19,13 @@ const wordpress: [source: string, destination: string][] = [
   ["/mi-cuenta/:path*", "/pedido"], ["/cuenta-de-usuario", "/pedido"], ["/iniciar-sesion", "/pedido"], ["/registro", "/pedido"], ["/forgot-password", "/pedido"], ["/restablecer-contrasena", "/pedido"], ["/lp-profile/:path*", "/pedido"], ["/lp-checkout", "/pedido"],
   ["/contacto", "/colegios#diagnostico"], ["/contact", "/colegios#diagnostico"], ["/faqs", "/colegios"],
   ["/about-us", "/#clientes"], ["/nosotros", "/#clientes"], ["/quienes-somos", "/#clientes"], ["/galeria", "/#clientes"],
-  ["/robotica", "/proyectos"], ["/recursos", "/proyectos"], ["/videos-educativos", "/proyectos"],
+  ["/robotica", "/proyectos"], ["/recursos", "/proyectos"],
   ["/literatura", "/catalogo?categoria=Libros"], ["/literatura-infantil-2", "/catalogo?categoria=Libros"], ["/literatura-juvenil-2", "/catalogo?categoria=Libros"], ["/literatura-adulta-2", "/catalogo?categoria=Libros"],
-  ["/grado-:numero(\\d+)", "/catalogo?categoria=Libros"], ["/modulos-escolares", "/catalogo?categoria=Libros"], ["/area-ingles", "/catalogo?categoria=Libros"], ["/3d-flip-book/:slug*", "/catalogo?categoria=Libros"],
+  // El Área de Inglés del sitio anterior (con libros por grado y Unit 1–4) vive ahora en /ingles.
+  // Todos los QR de los libros de inglés apuntan a /grado-N/; los de 4° (edición 2023) y uno de 3° (edición 2026, pág. 138)
+  // apuntan a /videos-educativos/, que comparten varios grados: va a la portada del área para elegir el grado.
+  ["/area-ingles", "/ingles"], ["/grado-:numero([1-5])", "/ingles/grado-:numero"], ["/3d-flip-book/tercero-flipbook", "/ingles/grado-3"], ["/videos-educativos", "/ingles"],
+  ["/grado-:numero(\\d+)", "/catalogo?categoria=Libros"], ["/modulos-escolares", "/catalogo?categoria=Libros"], ["/3d-flip-book/:slug*", "/catalogo?categoria=Libros"],
   ["/blog", "/"], ["/author/:slug*", "/"], ["/category/:slug*", "/"], ["/tag/:slug*", "/"], ["/mantenimiento", "/"],
   ["/wp-sitemap.xml", "/sitemap.xml"], ["/sitemap_index.xml", "/sitemap.xml"],
   // El logo vectorial de 10 MB se reemplazó por una versión de 12 KB; las páginas guardadas en caché aún lo piden.
@@ -58,6 +62,8 @@ const nextConfig: NextConfig = {
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         { key: "Strict-Transport-Security", value: "max-age=31536000" },
       ] },
+      // El lector del Área de Inglés muestra los PDF dentro del propio sitio: solo esa ruta se deja enmarcar (y solo por el sitio).
+      { source: "/ingles/archivo/:id", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }, { key: "Content-Security-Policy", value: "frame-ancestors 'self'" }] },
       { source: "/media/:path*", headers: [{ key: "Cache-Control", value: media }] },
       { source: "/:icon(favicon.ico|favicon.svg|apple-touch-icon.png|icon-192.png|icon-512.png)", headers: [{ key: "Cache-Control", value: media }] },
     ];

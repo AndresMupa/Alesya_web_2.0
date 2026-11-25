@@ -12,7 +12,7 @@ export function SiteHeader() {
     <BrandLockup />
     <button className="mobile-menu" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="main-navigation" aria-label={open ? "Cerrar menú" : "Abrir menú"}>{open ? <X /> : <Menu />}</button>
     <nav id="main-navigation" className={open ? "main-nav is-open" : "main-nav"} aria-label="Navegación principal" onClick={() => setOpen(false)}>
-      <Link href="/#explorar">Explora</Link><Link href="/proyectos">Proyectos</Link><Link href="/catalogo">Tienda</Link><Link href="/colegios">Colegios</Link><Link href="/#clientes">Comunidad</Link>
+      <Link href="/#explorar">Explora</Link><Link href="/proyectos">Proyectos</Link><Link href="/ingles">Inglés</Link><Link href="/catalogo">Tienda</Link><Link href="/colegios">Colegios</Link><Link href="/#clientes">Comunidad</Link>
     </nav>
     <div className="header-actions"><CartButton /></div>
   </div></header>;

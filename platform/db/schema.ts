@@ -98,3 +98,51 @@ export const rateLimits = sqliteTable("rate_limits", {
   count: integer("count").notNull().default(0),
   resetAt: integer("reset_at", { mode: "number" }).notNull(),
 }, (table) => [index("idx_rate_limits_reset_at").on(table.resetAt)]);
+
+// ── Área de Inglés ───────────────────────────────────────────────────────────
+
+/** Texto editable de cada grado (1° a 5°). Lo que no se ha guardado usa el texto por defecto de lib/english/levels.ts. */
+export const englishLevels = sqliteTable("english_levels", {
+  grade: integer("grade").primaryKey(),
+  tagline: text("tagline").notNull().default(""),
+  description: text("description").notNull().default(""),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+/**
+ * Material de un grado: libro digital (PDF), audio, video (archivo o enlace de YouTube/Vimeo) o actividad.
+ * El archivo vive en la carpeta privada de datos y solo se entrega con un código válido, salvo que sea `free`.
+ */
+export const englishResources = sqliteTable("english_resources", {
+  id: text("id").primaryKey(),
+  grade: integer("grade").notNull(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  unit: text("unit").notNull().default(""),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  externalUrl: text("external_url"),
+  free: integer("free", { mode: "boolean" }).notNull().default(false),
+  status: text("status").notNull().default("draft"),
+  position: integer("position").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [index("idx_english_resources_grade").on(table.grade, table.status, table.position)]);
+
+/**
+ * Códigos que desbloquean uno o varios grados (los trae el libro o los entrega el colegio). `grades` es una lista
+ * separada por comas ("1,2,3"). `maxUses` nulo = ilimitado; cada canje suma a `uses`.
+ */
+export const englishAccessCodes = sqliteTable("english_access_codes", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull(),
+  label: text("label").notNull(),
+  grades: text("grades").notNull(),
+  maxUses: integer("max_uses"),
+  uses: integer("uses").notNull().default(0),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [uniqueIndex("idx_english_codes_code_unique").on(table.code), index("idx_english_codes_created").on(table.createdAt)]);
